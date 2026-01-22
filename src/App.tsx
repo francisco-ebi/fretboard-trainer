@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import './App.css'; // We might remove this if we use index.css for everything, but keeping for standard structure
 import Fretboard, { type Orientation } from './components/Fretboard';
 import Controls from './components/Controls';
 import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from './utils/musicTheory';
 
 function App() {
+  const { t } = useTranslation();
   const [selectedRoot, setSelectedRoot] = useState<Note>('C');
   const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
   const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
@@ -44,8 +46,8 @@ function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>Fretboard Trainer</h1>
-        <p>Visualize scales and master the fretboard.</p>
+        <h1>{t('title')}</h1>
+        <p>{t('subtitle')}</p>
       </header>
 
       <main>

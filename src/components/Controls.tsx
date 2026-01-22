@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
 import { type Orientation } from './Fretboard';
 import './Controls.css';
@@ -28,22 +29,36 @@ const Controls: React.FC<ControlsProps> = ({
     orientation,
     onOrientationChange
 }) => {
+    const { t, i18n } = useTranslation();
+
     return (
         <div className="controls">
             <div className="control-group">
-                <label htmlFor="orientation-select">Orientation:</label>
+                <label htmlFor="language-select">{t('language')}:</label>
+                <select
+                    id="language-select"
+                    value={i18n.resolvedLanguage}
+                    onChange={(e) => i18n.changeLanguage(e.target.value)}
+                >
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                </select>
+            </div>
+
+            <div className="control-group">
+                <label htmlFor="orientation-select">{t('controls.orientation')}:</label>
                 <select
                     id="orientation-select"
                     value={orientation}
                     onChange={(e) => onOrientationChange(e.target.value as Orientation)}
                 >
-                    <option value="HORIZONTAL">Horizontal</option>
-                    <option value="VERTICAL">Vertical</option>
+                    <option value="HORIZONTAL">{t('orientations.HORIZONTAL')}</option>
+                    <option value="VERTICAL">{t('orientations.VERTICAL')}</option>
                 </select>
             </div>
 
             <div className="control-group">
-                <label htmlFor="instrument-select">Instrument:</label>
+                <label htmlFor="instrument-select">{t('controls.instrument')}:</label>
                 <select
                     id="instrument-select"
                     value={instrument}
@@ -51,14 +66,14 @@ const Controls: React.FC<ControlsProps> = ({
                 >
                     {(Object.keys(INSTRUMENT_CONFIGS) as Instrument[]).map((inst) => (
                         <option key={inst} value={inst}>
-                            {INSTRUMENT_CONFIGS[inst].name}
+                            {t(`instruments.${inst}`)}
                         </option>
                     ))}
                 </select>
             </div>
 
             <div className="control-group">
-                <label htmlFor="root-select">Key (Root Note):</label>
+                <label htmlFor="root-select">{t('controls.key')}:</label>
                 <select
                     id="root-select"
                     value={selectedRoot}
@@ -73,7 +88,7 @@ const Controls: React.FC<ControlsProps> = ({
             </div>
 
             <div className="control-group">
-                <label htmlFor="scale-select">Scale Type:</label>
+                <label htmlFor="scale-select">{t('controls.scale')}:</label>
                 <select
                     id="scale-select"
                     value={selectedScale}
@@ -88,14 +103,14 @@ const Controls: React.FC<ControlsProps> = ({
             </div>
 
             <div className="control-group">
-                <label htmlFor="naming-select">Note Names:</label>
+                <label htmlFor="naming-select">{t('controls.noteNames')}:</label>
                 <select
                     id="naming-select"
                     value={namingSystem}
                     onChange={(e) => onNamingSystemChange(e.target.value as NamingSystem)}
                 >
-                    <option value="ENGLISH">English (C, D, E)</option>
-                    <option value="SOLFEGE">Solfège (Do, Re, Mi)</option>
+                    <option value="ENGLISH">{t('naming.ENGLISH')}</option>
+                    <option value="SOLFEGE">{t('naming.SOLFEGE')}</option>
                 </select>
             </div>
         </div>
