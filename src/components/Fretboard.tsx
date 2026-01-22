@@ -1,16 +1,17 @@
 import React from 'react';
-import { getNoteAtPosition, type Note } from '../utils/musicTheory';
+import { getNoteAtPosition, getNoteName, type Note, type NamingSystem } from '../utils/musicTheory';
 import './Fretboard.css';
 
 interface FretboardProps {
     selectedRoot: Note;
     scaleNotes: Note[];
+    namingSystem: NamingSystem;
 }
 
 const STRINGS = 6;
 const FRETS = 15; // 0 (open) to 15
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem }) => {
     // Generate the fretboard data structure
     // We want to render strings from High E (top visual) to Low E (bottom visual) usually?
     // Or standard tab view: Top line = High E (String 1), Bottom line = Low E (String 6)
@@ -45,7 +46,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes }) => {
                     {/* The note marker */}
                     {isNoteInScale && (
                         <div className={`note-marker ${isRoot ? 'root-note' : ''}`}>
-                            {note}
+                            {getNoteName(note, namingSystem)}
                         </div>
                     )}
 

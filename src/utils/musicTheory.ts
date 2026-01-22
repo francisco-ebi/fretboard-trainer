@@ -1,4 +1,20 @@
 export type Note = string;
+export type NamingSystem = 'ENGLISH' | 'SOLFEGE';
+
+const SOLFEGE_MAP: Record<string, string> = {
+    'C': 'Do', 'C#': 'Do#',
+    'D': 'Re', 'D#': 'Re#',
+    'E': 'Mi',
+    'F': 'Fa', 'F#': 'Fa#',
+    'G': 'Sol', 'G#': 'Sol#',
+    'A': 'La', 'A#': 'La#',
+    'B': 'Si'
+};
+
+export const getNoteName = (note: Note, system: NamingSystem): string => {
+    if (system === 'ENGLISH') return note;
+    return SOLFEGE_MAP[note] || note;
+};
 
 export const CHROMATIC_SCALE: Note[] = [
     'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'

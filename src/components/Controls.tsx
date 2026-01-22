@@ -1,5 +1,5 @@
 import React from 'react';
-import { CHROMATIC_SCALE, SCALES, type Note, type ScaleType } from '../utils/musicTheory';
+import { CHROMATIC_SCALE, SCALES, type Note, type ScaleType, type NamingSystem } from '../utils/musicTheory';
 import './Controls.css';
 
 interface ControlsProps {
@@ -7,9 +7,18 @@ interface ControlsProps {
     onRootChange: (root: Note) => void;
     selectedScale: ScaleType;
     onScaleChange: (scale: ScaleType) => void;
+    namingSystem: NamingSystem;
+    onNamingSystemChange: (system: NamingSystem) => void;
 }
 
-const Controls: React.FC<ControlsProps> = ({ selectedRoot, onRootChange, selectedScale, onScaleChange }) => {
+const Controls: React.FC<ControlsProps> = ({
+    selectedRoot,
+    onRootChange,
+    selectedScale,
+    onScaleChange,
+    namingSystem,
+    onNamingSystemChange
+}) => {
     return (
         <div className="controls">
             <div className="control-group">
@@ -39,6 +48,18 @@ const Controls: React.FC<ControlsProps> = ({ selectedRoot, onRootChange, selecte
                             {scale.replace('_', ' ')}
                         </option>
                     ))}
+                </select>
+            </div>
+
+            <div className="control-group">
+                <label htmlFor="naming-select">Note Names:</label>
+                <select
+                    id="naming-select"
+                    value={namingSystem}
+                    onChange={(e) => onNamingSystemChange(e.target.value as NamingSystem)}
+                >
+                    <option value="ENGLISH">English (C, D, E)</option>
+                    <option value="SOLFEGE">Solfège (Do, Re, Mi)</option>
                 </select>
             </div>
         </div>
