@@ -2,12 +2,13 @@ import { useState } from 'react';
 import './App.css'; // We might remove this if we use index.css for everything, but keeping for standard structure
 import Fretboard from './components/Fretboard';
 import Controls from './components/Controls';
-import { getScale, type Note } from './utils/musicTheory';
+import { getScale, type Note, type ScaleType } from './utils/musicTheory';
 
 function App() {
   const [selectedRoot, setSelectedRoot] = useState<Note>('C');
-  // Currently fixed to MAJOR, but easier to expand later
-  const scaleNotes = getScale(selectedRoot, 'MAJOR');
+  const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
+
+  const scaleNotes = getScale(selectedRoot, selectedScale);
 
   return (
     <div className="app-container">
@@ -20,6 +21,8 @@ function App() {
         <Controls
           selectedRoot={selectedRoot}
           onRootChange={setSelectedRoot}
+          selectedScale={selectedScale}
+          onScaleChange={setSelectedScale}
         />
 
         <div className="fretboard-wrapper">

@@ -1,34 +1,39 @@
 export type Note = string;
 
 export const CHROMATIC_SCALE: Note[] = [
-  'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
+    'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
 ];
 
 export const SCALES = {
-  MAJOR: [0, 2, 4, 5, 7, 9, 11] // Intervals from root: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
+    MAJOR: [0, 2, 4, 5, 7, 9, 11], // Intervals from root: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
+    MINOR: [0, 2, 3, 5, 7, 8, 10], // Natural Minor: Root, Maj 2nd, Min 3rd, Perf 4th, Perf 5th, Min 6th, Min 7th
+    PENTATONIC_MAJOR: [0, 2, 4, 7, 9], // Root, Maj 2nd, Maj 3rd, Perf 5th, Maj 6th
+    PENTATONIC_MINOR: [0, 3, 5, 7, 10] // Root, Min 3rd, Perf 4th, Perf 5th, Min 7th
 };
+
+export type ScaleType = keyof typeof SCALES;
 
 /**
  * Rotates the chromatic scale so it starts with the given root note.
  */
 const getRotatedScale = (root: Note): Note[] => {
-  const rootIndex = CHROMATIC_SCALE.indexOf(root);
-  if (rootIndex === -1) {
-    throw new Error(`Invalid root note: ${root}`);
-  }
-  return [
-    ...CHROMATIC_SCALE.slice(rootIndex),
-    ...CHROMATIC_SCALE.slice(0, rootIndex)
-  ];
+    const rootIndex = CHROMATIC_SCALE.indexOf(root);
+    if (rootIndex === -1) {
+        throw new Error(`Invalid root note: ${root}`);
+    }
+    return [
+        ...CHROMATIC_SCALE.slice(rootIndex),
+        ...CHROMATIC_SCALE.slice(0, rootIndex)
+    ];
 };
 
 /**
  * Returns the notes in the scale for a given root note and scale intervals.
  */
-export const getScale = (root: Note, scaleType: keyof typeof SCALES = 'MAJOR'): Note[] => {
-  const rotatedChromatic = getRotatedScale(root);
-  const intervals = SCALES[scaleType];
-  return intervals.map(interval => rotatedChromatic[interval]);
+export const getScale = (root: Note, scaleType: ScaleType = 'MAJOR'): Note[] => {
+    const rotatedChromatic = getRotatedScale(root);
+    const intervals = SCALES[scaleType];
+    return intervals.map(interval => rotatedChromatic[interval]);
 };
 
 /**
@@ -65,7 +70,7 @@ const STANDARD_TUNING_OFFSETS: number[] = [
 const STRING_TUNING_INDICES = [4, 9, 2, 7, 11, 4]; // E, A, D, G, B, E indices in CHROMATIC_SCALE
 
 export const getNoteAtPosition = (stringIndex: number, fretIndex: number): Note => {
-  const openStringNoteIndex = STRING_TUNING_INDICES[stringIndex];
-  const chromaticIndex = (openStringNoteIndex + fretIndex) % 12;
-  return CHROMATIC_SCALE[chromaticIndex];
+    const openStringNoteIndex = STRING_TUNING_INDICES[stringIndex];
+    const chromaticIndex = (openStringNoteIndex + fretIndex) % 12;
+    return CHROMATIC_SCALE[chromaticIndex];
 };
