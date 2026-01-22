@@ -3,11 +3,14 @@ import { getNoteAtPosition, getInterval, getOctave, type Note, type NamingSystem
 import NoteMarker from './NoteMarker';
 import './Fretboard.css';
 
+export type Orientation = 'HORIZONTAL' | 'VERTICAL';
+
 interface FretboardProps {
     selectedRoot: Note;
     scaleNotes: Note[];
     namingSystem: NamingSystem;
     instrument: Instrument;
+    orientation: Orientation;
 }
 
 const FRETS = 18; // 0 (open) to 18
@@ -23,7 +26,7 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, orientation }) => {
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
 
@@ -111,8 +114,8 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
     }
 
     return (
-        <div className={`fretboard-container ${instrument.toLowerCase()}-mode`}>
-            <div className="fretboard">
+        <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()}`}>
+            <div className={`fretboard ${orientation.toLowerCase()}`}>
                 {renderStrings()}
             </div>
             {renderFretNumbers()}

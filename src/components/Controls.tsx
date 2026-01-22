@@ -1,5 +1,6 @@
 import React from 'react';
 import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
+import { type Orientation } from './Fretboard';
 import './Controls.css';
 
 interface ControlsProps {
@@ -11,6 +12,8 @@ interface ControlsProps {
     onNamingSystemChange: (system: NamingSystem) => void;
     instrument: Instrument;
     onInstrumentChange: (instrument: Instrument) => void;
+    orientation: Orientation;
+    onOrientationChange: (orientation: Orientation) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -21,10 +24,24 @@ const Controls: React.FC<ControlsProps> = ({
     namingSystem,
     onNamingSystemChange,
     instrument,
-    onInstrumentChange
+    onInstrumentChange,
+    orientation,
+    onOrientationChange
 }) => {
     return (
         <div className="controls">
+            <div className="control-group">
+                <label htmlFor="orientation-select">Orientation:</label>
+                <select
+                    id="orientation-select"
+                    value={orientation}
+                    onChange={(e) => onOrientationChange(e.target.value as Orientation)}
+                >
+                    <option value="HORIZONTAL">Horizontal</option>
+                    <option value="VERTICAL">Vertical</option>
+                </select>
+            </div>
+
             <div className="control-group">
                 <label htmlFor="instrument-select">Instrument:</label>
                 <select

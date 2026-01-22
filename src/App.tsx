@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import './App.css'; // We might remove this if we use index.css for everything, but keeping for standard structure
-import Fretboard from './components/Fretboard';
+import Fretboard, { type Orientation } from './components/Fretboard';
 import Controls from './components/Controls';
 import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from './utils/musicTheory';
 
@@ -9,6 +9,7 @@ function App() {
   const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
   const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
   const [instrument, setInstrument] = useState<Instrument>('GUITAR');
+  const [orientation, setOrientation] = useState<Orientation>('HORIZONTAL');
 
   const scaleNotes = getScale(selectedRoot, selectedScale);
 
@@ -29,6 +30,8 @@ function App() {
           onNamingSystemChange={setNamingSystem}
           instrument={instrument}
           onInstrumentChange={setInstrument}
+          orientation={orientation}
+          onOrientationChange={setOrientation}
         />
 
         <div className="fretboard-wrapper">
@@ -37,6 +40,7 @@ function App() {
             scaleNotes={scaleNotes}
             namingSystem={namingSystem}
             instrument={instrument}
+            orientation={orientation}
           />
         </div>
       </main>

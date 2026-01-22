@@ -165,3 +165,132 @@
     transform: translate(-50%, -50%);
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
+
+/* --- Vertical Mode Overrides --- */
+
+.fretboard-container.vertical {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 80vh;
+    /* Scrollable vertically */
+}
+
+.fretboard.vertical {
+    flex-direction: row;
+    /* Strings as columns */
+    min-width: unset;
+    min-height: 1200px;
+    /* Ensure vertical space */
+    border-bottom: 0px;
+}
+
+/* Texture rotation? Maybe not needed if it's subtle. */
+
+.fretboard-container.vertical .string-row {
+    flex-direction: column;
+    /* Frets as rows */
+    width: 60px;
+    /* String spacing width */
+    height: 100%;
+}
+
+.fretboard-container.vertical .fret {
+    width: 100%;
+    height: 60px;
+    /* Fret height */
+    border-right: none;
+    border-bottom: 4px solid #c0c0c0;
+}
+
+.fretboard-container.vertical .fret:not(.open-string) {
+    border-bottom: 4px solid #d4d4d4;
+    box-shadow: inset 0 -2px 2px rgba(0, 0, 0, 0.5);
+}
+
+.fretboard-container.vertical .fret.open-string {
+    height: 60px;
+    /* Nut height */
+    border-bottom: 6px solid #e0e0e0;
+}
+
+/* String Lines: Vertical */
+.fretboard-container.vertical .string-line {
+    height: 100% !important;
+    /* Override thickness-based height */
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    /* Center horizontally */
+}
+
+/* Vertical String Thicknesses (Width) */
+.fretboard-container.vertical .string-row:nth-last-child(1) .string-line {
+    width: 4px;
+}
+
+.fretboard-container.vertical .string-row:nth-last-child(2) .string-line {
+    width: 3.5px;
+}
+
+.fretboard-container.vertical .string-row:nth-last-child(3) .string-line {
+    width: 3px;
+}
+
+.fretboard-container.vertical .string-row:nth-last-child(4) .string-line {
+    width: 2.5px;
+}
+
+.fretboard-container.vertical .string-row:nth-last-child(5) .string-line {
+    width: 2px;
+}
+
+.fretboard-container.vertical .string-row:nth-last-child(6) .string-line {
+    width: 1.5px;
+}
+
+/* Fret Numbers for Vertical */
+.fretboard-container.vertical .fret-numbers-row {
+    flex-direction: column;
+    min-width: unset;
+    min-height: 1200px;
+    /* Match fretboard */
+    margin-top: 0;
+    margin-left: 0.5rem;
+}
+
+.fretboard-container.vertical .fret-number {
+    height: 60px;
+    width: auto;
+    line-height: 60px;
+    /* Center text vertically */
+}
+
+/* Inlay Dots */
+/* For vertical, fret cells are same size generally, so centering works. */
+/* But 'isDoubleInlayTop' refers to 'stringIndex + 1' which is visually RIGHT in Vertical Logic (index 0 is left/bottom usually? wait).
+Rendering Order:
+Strings Loop: STRINGS-1 (High Index) -> 0 (Low Index).
+Horizontal: Top -> Bottom.
+Vertical: flex-direction row: Left -> Right.
+So Leftmost is High Index? Use standard chart: Low E usually on Left?
+Standard Chart: Low E (Thick) on Left.
+Our Loop: High E first. So High E is Left.
+This is "Reverse" of standard chart.
+To fix visual order for Vertical: `flex-direction: row-reverse`?
+Or change loop order.
+If we use `row-reverse` on `.fretboard.vertical`:
+Items 5, 4, 3, 2, 1, 0.
+Visual: 0 (Right) ... 5 (Left).
+Wait, `row` means 5 is left, 0 is right.
+If High E is 5, then High E is Left.
+Standard Chart: Low E is Left.
+So we want 0 on Left.
+So `flex-direction: row-reverse`.
+*/
+
+.fretboard.vertical {
+    flex-direction: row-reverse;
+}
+
+/* Inlay Dots might need rotation fix if they were non-circular, but they are dots. */
