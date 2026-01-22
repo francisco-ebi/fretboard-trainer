@@ -25,7 +25,7 @@
     padding-left: 0;
     /* Open strings are handled inside */
     position: relative;
-    min-width: 900px;
+    min-width: 1200px;
     /* Ensure enough space for frets */
 }
 
@@ -128,9 +128,10 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: #3b82f6;
-    /* Default note color (blue) */
-    color: white;
+    /* Default: White background, Dark text */
+    background: #ffffff;
+    color: #1f2937;
+    /* Gray 800 */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -142,6 +143,31 @@
     transition: all 0.2s ease;
     flex-shrink: 0;
 }
+
+/* Interval-based Palette */
+/* 3rds (Major or Minor) */
+.interval-3 {
+    background-color: #ca8a04;
+    color: white;
+}
+
+/* Yellow 700 */
+
+/* 5ths (Perfect or Diminished) */
+.interval-5 {
+    background-color: #1d4ed8;
+    color: white;
+}
+
+/* Blue 700 */
+
+/* 7ths (Major or Minor) */
+.interval-7 {
+    background-color: #7e22ce;
+    color: white;
+}
+
+/* Purple 700 */
 
 .note-name {
     font-weight: bold;
@@ -172,7 +198,7 @@
     display: flex;
     margin-top: 0.5rem;
     padding-left: 0;
-    min-width: 900px;
+    min-width: 1200px;
     /* Match fretboard */
 }
 
@@ -214,4 +240,22 @@
 
 .shake {
     animation: shake 0.4s ease-in-out;
+}
+
+.inlay-dot {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 0;
+    /* Below strings (1) and notes (2) */
+    /* Position vertically: We'll anchor it to the bottom of the fret cell */
+    /* Fret cell is flexible, but string runs through middle. */
+    /* If we put it at top: 20%, let's try top: 50% combined with translate */
+    top: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }

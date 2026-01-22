@@ -9,7 +9,7 @@ interface FretboardProps {
 }
 
 const STRINGS = 6;
-const FRETS = 15; // 0 (open) to 15
+const FRETS = 18; // 0 (open) to 18
 
 // Helper hook to track previous value
 function usePrevious<T>(value: T): T | undefined {
@@ -39,8 +39,17 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, int
         }
     }, [shouldShake]);
 
+    // Determine class based on interval (3rd, 5th, 7th)
+    // Intervals are strings like "1", "b3", "3", "4", "b5", "5", "b7", "7"
+    let intervalClass = '';
+    if (interval) {
+        if (interval.includes('3')) intervalClass = 'interval-3';
+        else if (interval.includes('5')) intervalClass = 'interval-5';
+        else if (interval.includes('7')) intervalClass = 'interval-7';
+    }
+
     return (
-        <div className={`note-marker ${isRoot ? 'root-note' : ''} ${shaking ? 'shake' : ''}`}>
+        <div className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${shaking ? 'shake' : ''}`}>
             <span className="note-name">{getNoteName(note, namingSystem)}</span>
             <hr className="note-separator" />
             <span className="note-interval">{interval}</span>
