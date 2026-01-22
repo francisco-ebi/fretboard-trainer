@@ -2,7 +2,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem;
+    padding: var(--app-padding-desktop);
     background: rgba(30, 30, 35, 0.8);
     border-radius: 16px;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -13,6 +13,13 @@
     overflow-x: auto;
     /* Handle overflow on small screens */
     max-width: 100%;
+}
+
+@media (max-width: 600px) {
+    .fretboard-container {
+        padding: 1rem;
+        padding: var(--app-padding-mobile);
+    }
 }
 
 .fretboard {
@@ -169,6 +176,10 @@
 /* --- Vertical Mode Overrides --- */
 
 .fretboard-container.vertical {
+    flex-direction: row;
+    /* Fretboard and Numbers side-by-side */
+    align-items: flex-start;
+    /* Align top */
     overflow-x: hidden;
     overflow-y: auto;
     max-height: 80vh;
@@ -256,7 +267,6 @@
     min-height: 1200px;
     /* Match fretboard */
     margin-top: 0;
-    margin-left: 0.5rem;
 }
 
 .fretboard-container.vertical .fret-number {
