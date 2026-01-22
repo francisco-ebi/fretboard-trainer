@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css'; // We might remove this if we use index.css for everything, but keeping for standard structure
 import Fretboard, { type Orientation } from './components/Fretboard';
 import Controls from './components/Controls';
@@ -9,7 +9,35 @@ function App() {
   const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
   const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
   const [instrument, setInstrument] = useState<Instrument>('GUITAR');
-  const [orientation, setOrientation] = useState<Orientation>('HORIZONTAL');
+
+  // Auto-detect orientation on start and change
+  const [orientation, setOrientation] = useState<Orientation>(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(orientation: portrait)').matches ? 'VERTICAL' : 'HORIZONTAL';
+    }
+    return 'HORIZONTAL';
+  });
+
+  useEffect(() => {
+    const handleOrientationChange = (e: MediaQueryListEvent) => {
+      setOrientation(e.matches ? 'VERTICAL' : 'HORIZONTAL');
+    };
+
+    const mediaQuery = window.matchMedia('(orientation: portrait)');
+
+    // Ensure state is correct on mount (redundant if using lazy init, but safe)
+    if (mediaQuery.matches && orientation !== 'VERTICAL') {
+      setOrientation('VERTICAL');
+    } else if (!mediaQuery.matches && orientation !== 'HORIZONTAL') {
+      setOrientation('HORIZONTAL');
+    }
+
+    mediaQuery.addEventListener('change', handleOrientationChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleOrientationChange);
+    };
+  }, [orientation]);
 
   const scaleNotes = getScale(selectedRoot, selectedScale);
 
