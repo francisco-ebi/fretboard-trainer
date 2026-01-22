@@ -1,0 +1,116 @@
+.help-section {
+    margin-top: 1rem;
+    width: 100%;
+    max-width: 600px;
+}
+
+details {
+    background: rgba(40, 40, 45, 0.6);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    overflow: hidden;
+}
+
+summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: bold;
+    color: #ccc;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+summary:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.help-content {
+    padding: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.help-example {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px;
+}
+
+.help-example h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.example-marker-container {
+    padding: 1rem;
+    background: #2c241b;
+    border-radius: 4px;
+    position: relative;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #333;
+}
+
+.help-legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: left;
+    min-width: 250px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.legend-label {
+    font-weight: bold;
+    color: #ddd;
+    min-width: 80px;
+}
+
+.legend-desc {
+    color: #999;
+}
+
+.legend-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+}
+
+.color-info {
+    align-items: center;
+}
+
+.color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.color-dot.root {
+    background: linear-gradient(135deg, #ff5e62, #ff9966);
+    box-shadow: 0 0 4px #ff5e62;
+}
+
+.color-dot.interval {
+    background: linear-gradient(135deg, #2193b0, #6dd5ed);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+}

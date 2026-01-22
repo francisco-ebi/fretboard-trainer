@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import './App.css'; // We might remove this if we use index.css for everything, but keeping for standard structure
 import Fretboard, { type Orientation } from './components/Fretboard';
 import Controls from './components/Controls';
+import HelpSection from './components/HelpSection';
 import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from './utils/musicTheory';
 
 function App() {
@@ -63,6 +64,8 @@ function App() {
           orientation={orientation}
           onOrientationChange={setOrientation}
         />
+
+        <HelpSection />
 
         <div className="fretboard-wrapper">
           <Fretboard

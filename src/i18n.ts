@@ -26,6 +26,19 @@ const resources = {
                 ENGLISH: "English (C, D, E)",
                 SOLFEGE: "Solfège (Do, Re, Mi)"
             },
+            help: {
+                title: "Reference Guide",
+                summary: "How to read the notes?",
+                example: "Example",
+                noteName: "Note Name",
+                noteNameDesc: "Displays the pitch class (e.g., C, F#).",
+                octave: "Octave",
+                octaveDesc: "Indicates the pitch height/register.",
+                interval: "Interval",
+                intervalDesc: "Shows the degree relative to the Root.",
+                rootColor: "Red: Root Note (Tonic)",
+                intervalColor: "Blue: Interval Note"
+            },
             language: "Language"
         }
     },
@@ -51,6 +64,19 @@ const resources = {
             naming: {
                 ENGLISH: "Inglés (C, D, E)",
                 SOLFEGE: "Solfeo (Do, Re, Mi)"
+            },
+            help: {
+                title: "Guía de Referencia",
+                summary: "¿Cómo leer las notas?",
+                example: "Ejemplo",
+                noteName: "Nombre de Nota",
+                noteNameDesc: "Muestra la clase de tono (ej. C, F#).",
+                octave: "Octava",
+                octaveDesc: "Indica la altura/registro del tono.",
+                interval: "Intervalo",
+                intervalDesc: "Muestra el grado relativo a la Raíz.",
+                rootColor: "Rojo: Nota Raíz (Tónica)",
+                intervalColor: "Azul: Nota de Intervalo"
             },
             language: "Idioma"
         }
