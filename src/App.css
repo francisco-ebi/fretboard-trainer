@@ -1,13 +1,23 @@
+:root {
+  --app-padding-desktop: 2rem;
+  /* Reduciton factor for mobile (e.g., 0.75 for 25% reduction) */
+  --mobile-padding-scale: 0.75;
+  --app-padding-mobile: calc(var(--app-padding-desktop) * var(--mobile-padding-scale));
+
+  --controls-gap-desktop: 2rem;
+  --controls-gap-mobile: calc(var(--controls-gap-desktop) * var(--mobile-padding-scale));
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--app-padding-desktop);
   text-align: center;
 }
 
 @media (max-width: 600px) {
   #root {
-    padding: 1rem;
+    padding: var(--app-padding-mobile);
   }
 }
 
