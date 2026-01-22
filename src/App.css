@@ -23,6 +23,8 @@
 
 main {
   width: 100%;
+  position: relative;
+  /* Context for absolute positioning of HelpSection */
 }
 
 .logo {
