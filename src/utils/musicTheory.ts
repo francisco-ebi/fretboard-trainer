@@ -113,3 +113,15 @@ export const getNoteAtPosition = (stringIndex: number, fretIndex: number): Note 
     const chromaticIndex = (openStringNoteIndex + fretIndex) % 12;
     return CHROMATIC_SCALE[chromaticIndex];
 };
+
+/**
+ * Returns the octave for a specific string (1-6) and fret (0-15+).
+ * Based on Standard Tuning: E2, A2, D3, G3, B3, E4.
+ * C4 is middle C.
+ */
+const STRING_BASE_SEMITONES = [28, 33, 38, 43, 47, 52]; // Semitones from C0 for E2, A2, D3, G3, B3, E4
+
+export const getOctave = (stringIndex: number, fretIndex: number): number => {
+    const totalSemitones = STRING_BASE_SEMITONES[stringIndex] + fretIndex;
+    return Math.floor(totalSemitones / 12);
+};

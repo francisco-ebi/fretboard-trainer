@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getNoteAtPosition, getNoteName, getInterval, type Note, type NamingSystem } from '../utils/musicTheory';
+import { getNoteAtPosition, getNoteName, getInterval, getOctave, type Note, type NamingSystem } from '../utils/musicTheory';
 import './Fretboard.css';
 
 interface FretboardProps {
@@ -10,6 +10,8 @@ interface FretboardProps {
 
 const STRINGS = 6;
 const FRETS = 18; // 0 (open) to 18
+const INLAY_FRETS = [3, 5, 7, 9, 15, 17];
+const DOUBLE_INLAY_FRETS = [12];
 
 // Helper hook to track previous value
 function usePrevious<T>(value: T): T | undefined {
@@ -26,9 +28,10 @@ interface NoteMarkerProps {
     namingSystem: NamingSystem;
     interval: string | null;
     shouldShake: boolean;
+    octave: number;
 }
 
-const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, shouldShake }) => {
+const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, shouldShake, octave }) => {
     const [shaking, setShaking] = useState(false);
 
     useEffect(() => {
@@ -50,7 +53,7 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, int
 
     return (
         <div className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${shaking ? 'shake' : ''}`}>
-            <span className="note-name">{getNoteName(note, namingSystem)}</span>
+            <span className="note-name">{getNoteName(note, namingSystem)}<sub className="note-octave">{octave}</sub></span>
             <hr className="note-separator" />
             <span className="note-interval">{interval}</span>
         </div>
@@ -91,15 +94,25 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             const isNoteInScale = scaleNotes.includes(note);
             const isRoot = note === selectedRoot;
             const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
+            const octave = getOctave(stringIndex, fret);
 
             // Shake if context changed AND note was in previous scale
             const wasInScale = prevScaleNotes?.includes(note);
             const shouldShake = isNoteInScale && contextChanged && !!wasInScale;
 
+            // Inlay Logic
+            const isSingleInlay = INLAY_FRETS.includes(fret) && stringIndex === 3; // Render on G string, shift down
+            const isDoubleInlayTop = DOUBLE_INLAY_FRETS.includes(fret) && stringIndex === 4; // B string
+            const isDoubleInlayBottom = DOUBLE_INLAY_FRETS.includes(fret) && stringIndex === 1; // A string
+
             fretElements.push(
                 <div key={`fret-${stringIndex}-${fret}`} className={`fret ${fret === 0 ? 'open-string' : ''}`}>
                     {/* The string line itself */}
                     <div className="string-line"></div>
+
+                    {/* Inlay Dots */}
+                    {isSingleInlay && <div className="inlay-dot" style={{ top: '100%', transform: 'translate(-50%, -50%)' }} />}
+                    {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
 
                     {/* The note marker */}
                     {isNoteInScale && (
@@ -109,6 +122,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                             namingSystem={namingSystem}
                             interval={interval}
                             shouldShake={shouldShake}
+                            octave={octave}
                         />
                     )}
 

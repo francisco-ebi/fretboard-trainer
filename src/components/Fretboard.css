@@ -177,8 +177,17 @@
 .note-separator {
     width: 80%;
     border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    border-top: 2px solid rgba(0, 0, 0, 0.5);
+    /* Bolder and dark for default white bg */
     margin: 2px 0;
+}
+
+/* Override separator color for colored backgrounds */
+.interval-3 .note-separator,
+.interval-5 .note-separator,
+.interval-7 .note-separator,
+.root-note .note-separator {
+    border-top: 2px solid rgba(255, 255, 255, 0.6);
 }
 
 .note-interval {
@@ -212,7 +221,7 @@
 }
 
 .fret-number:first-child {
-    width: 40px;
+    width: 60px;
     /* Match nut width */
 }
 
