@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
-import { type Orientation } from './Fretboard';
 import './Controls.css';
 
 interface ControlsProps {
@@ -13,8 +12,6 @@ interface ControlsProps {
     onNamingSystemChange: (system: NamingSystem) => void;
     instrument: Instrument;
     onInstrumentChange: (instrument: Instrument) => void;
-    orientation: Orientation;
-    onOrientationChange: (orientation: Orientation) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -25,38 +22,12 @@ const Controls: React.FC<ControlsProps> = ({
     namingSystem,
     onNamingSystemChange,
     instrument,
-    onInstrumentChange,
-    orientation,
-    onOrientationChange
+    onInstrumentChange
 }) => {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
 
     return (
         <div className="controls">
-            <div className="control-group">
-                <label htmlFor="language-select">{t('language')}:</label>
-                <select
-                    id="language-select"
-                    value={i18n.resolvedLanguage}
-                    onChange={(e) => i18n.changeLanguage(e.target.value)}
-                >
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
-                </select>
-            </div>
-
-            <div className="control-group">
-                <label htmlFor="orientation-select">{t('controls.orientation')}:</label>
-                <select
-                    id="orientation-select"
-                    value={orientation}
-                    onChange={(e) => onOrientationChange(e.target.value as Orientation)}
-                >
-                    <option value="HORIZONTAL">{t('orientations.HORIZONTAL')}</option>
-                    <option value="VERTICAL">{t('orientations.VERTICAL')}</option>
-                </select>
-            </div>
-
             <div className="control-group">
                 <label htmlFor="instrument-select">{t('controls.instrument')}:</label>
                 <select

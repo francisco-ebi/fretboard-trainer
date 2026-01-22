@@ -4,6 +4,7 @@ import './App.css'; // We might remove this if we use index.css for everything, 
 import Fretboard, { type Orientation } from './components/Fretboard';
 import Controls from './components/Controls';
 import HelpSection from './components/HelpSection';
+import TopBar from './components/TopBar';
 import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from './utils/musicTheory';
 
 function App() {
@@ -46,6 +47,10 @@ function App() {
 
   return (
     <div className="app-container">
+      <TopBar
+        orientation={orientation}
+        onOrientationChange={setOrientation}
+      />
       <header className="app-header">
         <h1>{t('title')}</h1>
         <p></p>
@@ -61,8 +66,6 @@ function App() {
           onNamingSystemChange={setNamingSystem}
           instrument={instrument}
           onInstrumentChange={setInstrument}
-          orientation={orientation}
-          onOrientationChange={setOrientation}
         />
 
         <HelpSection />
