@@ -1,5 +1,5 @@
 import React from 'react';
-import { CHROMATIC_SCALE, SCALES, type Note, type ScaleType, type NamingSystem } from '../utils/musicTheory';
+import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
 import './Controls.css';
 
 interface ControlsProps {
@@ -9,6 +9,8 @@ interface ControlsProps {
     onScaleChange: (scale: ScaleType) => void;
     namingSystem: NamingSystem;
     onNamingSystemChange: (system: NamingSystem) => void;
+    instrument: Instrument;
+    onInstrumentChange: (instrument: Instrument) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -17,10 +19,27 @@ const Controls: React.FC<ControlsProps> = ({
     selectedScale,
     onScaleChange,
     namingSystem,
-    onNamingSystemChange
+    onNamingSystemChange,
+    instrument,
+    onInstrumentChange
 }) => {
     return (
         <div className="controls">
+            <div className="control-group">
+                <label htmlFor="instrument-select">Instrument:</label>
+                <select
+                    id="instrument-select"
+                    value={instrument}
+                    onChange={(e) => onInstrumentChange(e.target.value as Instrument)}
+                >
+                    {(Object.keys(INSTRUMENT_CONFIGS) as Instrument[]).map((inst) => (
+                        <option key={inst} value={inst}>
+                            {INSTRUMENT_CONFIGS[inst].name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
             <div className="control-group">
                 <label htmlFor="root-select">Key (Root Note):</label>
                 <select

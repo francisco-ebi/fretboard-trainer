@@ -75,53 +75,49 @@ export const getScale = (root: Note, scaleType: ScaleType = 'MAJOR'): Note[] => 
     return intervals.map(interval => rotatedChromatic[interval]);
 };
 
-/**
- * Standard Guitar Tuning: E2, A2, D3, G3, B3, E4
- * We only care about the note name, not the octave for now, but tuning matters for relative intervals.
- * 0 = E, 1 = F, etc.
- * String 6 (Low E) -> E
- * String 5 (A) -> A
- * String 4 (D) -> D
- * String 3 (G) -> G
- * String 2 (B) -> B
- * String 1 (High E) -> E
- */
-const STANDARD_TUNING_OFFSETS: number[] = [
-    4,  // E (index 4 in C-based chromatic scale: C, C#, D, D#, E...)
-    9,  // A
-    2,  // D
-    7,  // G
-    11, // B
-    4   // E
-];
+// Instrument Configuration
+export type Instrument = 'GUITAR' | 'BASS';
+
+interface InstrumentConfig {
+    name: string;
+    strings: number;
+    tuning: number[]; // Indices in CHROMATIC_SCALE
+    baseSemitones: number[]; // Semitones from C0
+    inlayCenterStringIndex: number; // String index to anchor center inlays
+}
+
+export const INSTRUMENT_CONFIGS: Record<Instrument, InstrumentConfig> = {
+    GUITAR: {
+        name: 'Guitar',
+        strings: 6,
+        tuning: [4, 9, 2, 7, 11, 4], // E, A, D, G, B, E
+        baseSemitones: [28, 33, 38, 43, 47, 52], // E2-E4
+        inlayCenterStringIndex: 3 // G string (index 3 from bottom 0)
+    },
+    BASS: {
+        name: 'Bass',
+        strings: 4,
+        tuning: [4, 9, 2, 7], // E, A, D, G
+        baseSemitones: [16, 21, 26, 31], // E1-G2
+        inlayCenterStringIndex: 2 // D string (index 2 from bottom 0)
+    }
+};
 
 /**
- * Returns the note at a specific string (1-6) and fret (0-15+).
- * stringIndex: 0 is Low E (String 6), 5 is High E (String 1) - Wait, let's normalize.
- * Let's say top to bottom visually?
- * Usually String 1 is High E (bottom physically, top data-wise maybe?).
- * Let's Stick to: 
- * Index 0: Low E (Thickest)
- * Index 1: A
- * ...
- * Index 5: High E (Thinnest)
+ * Returns the note at a specific string (0-based index) and fret (0-based index).
  */
-const STRING_TUNING_INDICES = [4, 9, 2, 7, 11, 4]; // E, A, D, G, B, E indices in CHROMATIC_SCALE
-
-export const getNoteAtPosition = (stringIndex: number, fretIndex: number): Note => {
-    const openStringNoteIndex = STRING_TUNING_INDICES[stringIndex];
+export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, fretIndex: number): Note => {
+    const config = INSTRUMENT_CONFIGS[instrument];
+    const openStringNoteIndex = config.tuning[stringIndex];
     const chromaticIndex = (openStringNoteIndex + fretIndex) % 12;
     return CHROMATIC_SCALE[chromaticIndex];
 };
 
 /**
- * Returns the octave for a specific string (1-6) and fret (0-15+).
- * Based on Standard Tuning: E2, A2, D3, G3, B3, E4.
- * C4 is middle C.
+ * Returns the octave for a specific string and fret.
  */
-const STRING_BASE_SEMITONES = [28, 33, 38, 43, 47, 52]; // Semitones from C0 for E2, A2, D3, G3, B3, E4
-
-export const getOctave = (stringIndex: number, fretIndex: number): number => {
-    const totalSemitones = STRING_BASE_SEMITONES[stringIndex] + fretIndex;
+export const getOctave = (instrument: Instrument, stringIndex: number, fretIndex: number): number => {
+    const config = INSTRUMENT_CONFIGS[instrument];
+    const totalSemitones = config.baseSemitones[stringIndex] + fretIndex;
     return Math.floor(totalSemitones / 12);
 };

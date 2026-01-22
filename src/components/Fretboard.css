@@ -124,84 +124,7 @@
 
 /* High E */
 
-.note-marker {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    /* Default: White background, Dark text */
-    background: #ffffff;
-    color: #1f2937;
-    /* Gray 800 */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    z-index: 2;
-    /* Above string */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-}
-
-/* Interval-based Palette */
-/* 3rds (Major or Minor) */
-.interval-3 {
-    background-color: #ca8a04;
-    color: white;
-}
-
-/* Yellow 700 */
-
-/* 5ths (Perfect or Diminished) */
-.interval-5 {
-    background-color: #1d4ed8;
-    color: white;
-}
-
-/* Blue 700 */
-
-/* 7ths (Major or Minor) */
-.interval-7 {
-    background-color: #7e22ce;
-    color: white;
-}
-
-/* Purple 700 */
-
-.note-name {
-    font-weight: bold;
-    font-size: 0.9rem;
-}
-
-.note-separator {
-    width: 80%;
-    border: none;
-    border-top: 2px solid rgba(0, 0, 0, 0.5);
-    /* Bolder and dark for default white bg */
-    margin: 2px 0;
-}
-
-/* Override separator color for colored backgrounds */
-.interval-3 .note-separator,
-.interval-5 .note-separator,
-.interval-7 .note-separator,
-.root-note .note-separator {
-    border-top: 2px solid rgba(255, 255, 255, 0.6);
-}
-
-.note-interval {
-    font-size: 0.7rem;
-    opacity: 0.9;
-}
-
-.note-marker.root-note {
-    background: #ef4444;
-    /* Root note color (red) */
-    transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
-    border: 2px solid white;
-}
+/* NoteMarker styles moved to NoteMarker.css */
 
 .fret-numbers-row {
     display: flex;
@@ -223,32 +146,6 @@
 .fret-number:first-child {
     width: 60px;
     /* Match nut width */
-}
-
-@keyframes shake {
-    0% {
-        transform: translateX(0);
-    }
-
-    25% {
-        transform: translateX(-2px) rotate(-5deg);
-    }
-
-    50% {
-        transform: translateX(2px) rotate(5deg);
-    }
-
-    75% {
-        transform: translateX(-2px) rotate(-5deg);
-    }
-
-    100% {
-        transform: translateX(0);
-    }
-}
-
-.shake {
-    animation: shake 0.4s ease-in-out;
 }
 
 .inlay-dot {
