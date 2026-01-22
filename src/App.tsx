@@ -48,7 +48,7 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <h1>{t('title')}</h1>
-        <p>{t('subtitle')}</p>
+        <p></p>
       </header>
 
       <main>

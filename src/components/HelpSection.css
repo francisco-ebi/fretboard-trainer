@@ -1,13 +1,14 @@
 .help-section {
     position: absolute;
-    top: 0;
+    top: -65px;
     right: 0;
     width: auto;
     max-width: 600px;
     z-index: 100;
+    transition: all 1s;
 }
 
-details {
+.help-card {
     background: rgba(40, 40, 45, 0.95);
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -17,18 +18,53 @@ details {
     /* Add shadow for lifting effect */
 }
 
-summary {
+.help-header {
     padding: 0.75rem 1rem;
     cursor: pointer;
     font-weight: bold;
     color: #ccc;
     user-select: none;
     background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
 }
 
-summary:hover {
+.help-card.collapsed .help-header {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.1);
+    /* Slightly more visible background when small? or same? */
+}
+
+.help-header:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
+}
+
+.arrow {
+    display: inline-block;
+    transition: transform 0.3s ease;
+    font-size: 0.8rem;
+    margin-left: 1rem;
+}
+
+.arrow.open {
+    transform: rotate(180deg);
+}
+
+.help-content-wrapper {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.help-content-wrapper.open {
+    max-height: 600px;
+    /* Large enough to fit content */
+    opacity: 1;
 }
 
 .help-content {
@@ -111,11 +147,26 @@ summary:hover {
 }
 
 .color-dot.root {
-    background: linear-gradient(135deg, #ff5e62, #ff9966);
-    box-shadow: 0 0 4px #ff5e62;
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    box-shadow: 0 0 4px #ef4444;
 }
 
-.color-dot.interval {
-    background: linear-gradient(135deg, #2193b0, #6dd5ed);
-    border: 2px solid rgba(255, 255, 255, 0.9);
+.color-dot.interval-3 {
+    background-color: #ca8a04;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-dot.interval-5 {
+    background-color: #1d4ed8;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-dot.interval-7 {
+    background-color: #7e22ce;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-dot.other {
+    background-color: #ffffff;
+    border: 2px solid #ccc;
 }

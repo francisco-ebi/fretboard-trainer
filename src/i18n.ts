@@ -36,8 +36,11 @@ const resources = {
                 octaveDesc: "Indicates the pitch height/register.",
                 interval: "Interval",
                 intervalDesc: "Shows the degree relative to the Root.",
-                rootColor: "Red: Root Note (Tonic)",
-                intervalColor: "Blue: Interval Note"
+                rootColor: "Red: Root / Tonic (1)",
+                thirdColor: "Gold: 3rd (Major/Minor)",
+                fifthColor: "Blue: 5th (Perfect/Dim/Aug)",
+                seventhColor: "Purple: 7th (Major/Minor)",
+                otherColor: "White: Other Intervals (2, 4, 6)"
             },
             language: "Language"
         }
@@ -75,8 +78,11 @@ const resources = {
                 octaveDesc: "Indica la altura/registro del tono.",
                 interval: "Intervalo",
                 intervalDesc: "Muestra el grado relativo a la Raíz.",
-                rootColor: "Rojo: Nota Raíz (Tónica)",
-                intervalColor: "Azul: Nota de Intervalo"
+                rootColor: "Rojo: Raíz / Tónica (1)",
+                thirdColor: "Dorado: 3ª (Mayor/Menor)",
+                fifthColor: "Azul: 5ª (Justa/Dis/Aum)",
+                seventhColor: "Morado: 7ª (Mayor/Menor)",
+                otherColor: "Blanco: Otros Intervalos (2, 4, 6)"
             },
             language: "Idioma"
         }
