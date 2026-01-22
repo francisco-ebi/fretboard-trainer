@@ -8,6 +8,7 @@
     justify-content: center;
     gap: 2rem;
     backdrop-filter: blur(4px);
+    flex-wrap: wrap;
 }
 
 .control-group {
