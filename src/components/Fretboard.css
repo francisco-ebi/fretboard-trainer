@@ -17,8 +17,7 @@
 
 @media (max-width: 600px) {
     .fretboard-container {
-        padding: 1rem;
-        padding: var(--app-padding-mobile);
+        padding: 0;
     }
 }
 

@@ -3,15 +3,16 @@
   --bg-secondary: #1e1e1e;
   --text-primary: #ffffff;
   --text-secondary: #a0a0a0;
-  
-  --accent-color: #646cff; /* Vite default nice blue/purple */
+
+  --accent-color: #646cff;
+  /* Vite default nice blue/purple */
   --highlight-color: #535bf2;
-  
+
   --fretboard-wood: #3e2723;
   --fretboard-inlay: #d7ccc8;
   --string-color: #9e9e9e;
   --fret-wire: #cfd8dc;
-  
+
   --note-bg: #2196f3;
   --note-root-bg: #ff5722;
   --note-text: #ffffff;
@@ -30,7 +31,13 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
+  padding: var(--app-padding-desktop);
+}
+
+@media (max-width: 600px) {
+  .app-container {
+    padding: var(--app-padding-mobile);
+  }
 }
 
 .app-header {
@@ -57,7 +64,7 @@ body {
   background-color: var(--bg-secondary);
   padding: 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .control-group {
@@ -92,88 +99,104 @@ body {
 
 /* Fretboard */
 .fretboard-wrapper {
-  overflow-x: auto; /* Allow scrolling on small screens */
+  overflow-x: auto;
+  /* Allow scrolling on small screens */
   width: 100%;
   max-width: 1200px;
   padding: 1rem 0;
 }
 
 .fretboard-container {
-    display: inline-block;
-    background-color: var(--fretboard-wood);
-    border-radius: 4px;
-    padding: 20px 0 0 0; /* Add some padding if needed */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    position: relative;
-    user-select: none;
+  display: inline-block;
+  background-color: var(--fretboard-wood);
+  border-radius: 4px;
+  padding: 20px 0 0 0;
+  /* Add some padding if needed */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+  user-select: none;
 }
 
 .fretboard {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .string-row {
-    display: flex;
-    height: 40px; /* Spacing between strings */
-    position: relative;
-    align-items: center; /* Center string line vertically */
+  display: flex;
+  height: 40px;
+  /* Spacing between strings */
+  position: relative;
+  align-items: center;
+  /* Center string line vertically */
 }
 
 /* Logic for Fret styling involves layering */
 .fret {
-    width: 60px; /* Width of each fret */
-    height: 100%;
-    position: relative;
-    border-right: 2px solid var(--fret-wire);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  width: 60px;
+  /* Width of each fret */
+  height: 100%;
+  position: relative;
+  border-right: 2px solid var(--fret-wire);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .fret.open-string {
-    border-right: 4px solid #fff; /* The "Nut" */
-    width: 40px;
-    background-color: #222; /* Different bg for open strings (behind the nut) or just leave wood */
-    background-color: rgba(0,0,0,0.2); 
+  border-right: 4px solid #fff;
+  /* The "Nut" */
+  width: 40px;
+  background-color: #222;
+  /* Different bg for open strings (behind the nut) or just leave wood */
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 /* The String Line */
 .string-line {
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background-color: var(--string-color);
-    z-index: 1;
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--string-color);
+  z-index: 1;
 }
 
 /* Thicker strings for lower pitch */
-.string-row:nth-child(5) .string-line { height: 3px; } /* A */
-.string-row:nth-child(6) .string-line { height: 4px; } /* Low E */
+.string-row:nth-child(5) .string-line {
+  height: 3px;
+}
+
+/* A */
+.string-row:nth-child(6) .string-line {
+  height: 4px;
+}
+
+/* Low E */
 
 /* Note Markers */
 .note-marker {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background-color: var(--note-bg);
-    color: var(--note-text);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 0.85rem;
-    z-index: 2; /* On top of string */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-    animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--note-bg);
+  color: var(--note-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.85rem;
+  z-index: 2;
+  /* On top of string */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .note-marker.root-note {
-    background-color: var(--note-root-bg);
-    transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(255, 87, 34, 0.6);
-    border: 2px solid #fff;
+  background-color: var(--note-root-bg);
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 87, 34, 0.6);
+  border: 2px solid #fff;
 }
 
 /* Fret Markers (dots) - Visual sugar */
@@ -185,23 +208,33 @@ body {
 
 /* Fret Numbers */
 .fret-numbers-row {
-    display: flex;
-    margin-top: 5px;
-    padding-left: 0; /* Align with frets */
+  display: flex;
+  margin-top: 5px;
+  padding-left: 0;
+  /* Align with frets */
 }
 
 .fret-number {
-    width: 60px; /* Match fret width */
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+  width: 60px;
+  /* Match fret width */
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .fret-number:first-child {
-    width: 40px; /* Match open string width */
+  width: 40px;
+  /* Match open string width */
 }
 
 @keyframes popIn {
-    from { transform: scale(0); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
