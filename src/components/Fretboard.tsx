@@ -1,5 +1,5 @@
 import React from 'react';
-import { getNoteAtPosition, getNoteName, type Note, type NamingSystem } from '../utils/musicTheory';
+import { getNoteAtPosition, getNoteName, getInterval, type Note, type NamingSystem } from '../utils/musicTheory';
 import './Fretboard.css';
 
 interface FretboardProps {
@@ -37,6 +37,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             const note = getNoteAtPosition(stringIndex, fret);
             const isNoteInScale = scaleNotes.includes(note);
             const isRoot = note === selectedRoot;
+            const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
 
             fretElements.push(
                 <div key={`fret-${stringIndex}-${fret}`} className={`fret ${fret === 0 ? 'open-string' : ''}`}>
@@ -46,7 +47,9 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                     {/* The note marker */}
                     {isNoteInScale && (
                         <div className={`note-marker ${isRoot ? 'root-note' : ''}`}>
-                            {getNoteName(note, namingSystem)}
+                            <span className="note-name">{getNoteName(note, namingSystem)}</span>
+                            <hr className="note-separator" />
+                            <span className="note-interval">{interval}</span>
                         </div>
                     )}
 

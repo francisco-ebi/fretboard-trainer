@@ -11,9 +11,31 @@ const SOLFEGE_MAP: Record<string, string> = {
     'B': 'Si'
 };
 
+const INTERVAL_NAMES: Record<number, string> = {
+    0: '1',
+    1: 'b2', 2: '2',
+    3: 'b3', 4: '3',
+    5: '4',
+    6: 'b5', 7: '5',
+    8: 'b6', 9: '6',
+    10: 'b7', 11: '7'
+};
+
 export const getNoteName = (note: Note, system: NamingSystem): string => {
     if (system === 'ENGLISH') return note;
     return SOLFEGE_MAP[note] || note;
+};
+
+export const getInterval = (root: Note, note: Note): string => {
+    const rootIndex = CHROMATIC_SCALE.indexOf(root);
+    const noteIndex = CHROMATIC_SCALE.indexOf(note);
+
+    if (rootIndex === -1 || noteIndex === -1) return '?';
+
+    let semitones = noteIndex - rootIndex;
+    if (semitones < 0) semitones += 12;
+
+    return INTERVAL_NAMES[semitones] || '?';
 };
 
 export const CHROMATIC_SCALE: Note[] = [
@@ -24,7 +46,8 @@ export const SCALES = {
     MAJOR: [0, 2, 4, 5, 7, 9, 11], // Intervals from root: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
     MINOR: [0, 2, 3, 5, 7, 8, 10], // Natural Minor: Root, Maj 2nd, Min 3rd, Perf 4th, Perf 5th, Min 6th, Min 7th
     PENTATONIC_MAJOR: [0, 2, 4, 7, 9], // Root, Maj 2nd, Maj 3rd, Perf 5th, Maj 6th
-    PENTATONIC_MINOR: [0, 3, 5, 7, 10] // Root, Min 3rd, Perf 4th, Perf 5th, Min 7th
+    PENTATONIC_MINOR: [0, 3, 5, 7, 10], // Root, Min 3rd, Perf 4th, Perf 5th, Min 7th
+    BLUES: [0, 3, 5, 6, 7, 10] // Root, Min 3rd, Perf 4th, Dim 5th, Perf 5th, Min 7th
 };
 
 export type ScaleType = keyof typeof SCALES;

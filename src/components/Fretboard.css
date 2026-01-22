@@ -46,7 +46,7 @@
 
 .string-row {
     display: flex;
-    height: 40px;
+    height: 64px;
     /* Space between strings */
     position: relative;
     /* border-bottom: 1px solid red; Debug alignment */
@@ -66,10 +66,12 @@
 }
 
 .fret.open-string {
-    width: 40px;
+    width: 60px;
+    /* Match standard fret width or at least enough for marker */
     border-right: 6px solid #e0e0e0;
     /* Nut */
     background-color: #1a1a1a;
+    flex-shrink: 0;
 }
 
 /* Metallic fret effect */
@@ -123,21 +125,39 @@
 /* High E */
 
 .note-marker {
-    width: 28px;
-    height: 28px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: #3b82f6;
     /* Default note color (blue) */
     color: white;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    font-size: 0.85rem;
+    line-height: 1;
     z-index: 2;
     /* Above string */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
     transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.note-name {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.note-separator {
+    width: 80%;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    margin: 2px 0;
+}
+
+.note-interval {
+    font-size: 0.7rem;
+    opacity: 0.9;
 }
 
 .note-marker.root-note {
