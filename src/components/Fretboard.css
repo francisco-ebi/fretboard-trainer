@@ -179,7 +179,7 @@
     /* Fretboard and Numbers side-by-side */
     align-items: flex-start;
     /* Align top */
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: auto;
     max-height: 80vh;
     /* Scrollable vertically */

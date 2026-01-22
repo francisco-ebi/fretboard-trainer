@@ -1,7 +1,7 @@
 :root {
   --app-padding-desktop: 2rem;
   /* Reduciton factor for mobile (e.g., 0.75 for 25% reduction) */
-  --mobile-padding-scale: 0.75;
+  --mobile-padding-scale: 0.25;
   --app-padding-mobile: calc(var(--app-padding-desktop) * var(--mobile-padding-scale));
 
   --controls-gap-desktop: 2rem;
