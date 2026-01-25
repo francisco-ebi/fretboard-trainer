@@ -12,7 +12,8 @@ import {
     type Note,
     type NamingSystem,
     type Instrument,
-    type Tuning
+    type Tuning,
+    type ChordInfo,
 } from '../utils/musicTheory';
 import './ChordMode.css';
 
@@ -107,6 +108,13 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
         if (tuning) setTuningOffsets(tuning.offsets);
     };
 
+    const getFullChordName = (chord: ChordInfo, isSelected: boolean) => {
+        if (isSelected) {
+            return `${chord.displayName}${selectedChord?.modifier ? selectedChord.modifier.toLowerCase() : ''}`;
+        }
+        return `${chord.displayName}`;
+    };
+
 
     const diatonicChords = getDiatonicChords(selectedRoot, selectedScaleType);
 
@@ -191,7 +199,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
                             onClick={() => handleChordClick(index)}
                         >
                             <div className="roman">{chord.romanNumeral}</div>
-                            <div className="name">{chord.displayName}</div>
+                            <div className="name">{getFullChordName(chord, selectedChord?.index === index)}</div>
                         </button>
 
                         {/* Modifiers */}
