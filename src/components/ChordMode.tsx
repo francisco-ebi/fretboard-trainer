@@ -146,7 +146,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
         <div className="chord-mode">
             <div className="chord-controls">
                 <div className="control-group">
-                    <label>Key:</label>
+                    <label>{t('controls.key')}:</label>
                     <select value={selectedRoot} onChange={(e) => {
                         setSelectedRoot(e.target.value as Note);
                         setSelectedChordIndex(null);
@@ -156,7 +156,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
                     </select>
                 </div>
                 <div className="control-group">
-                    <label>Scale:</label>
+                    <label>{t('controls.scale')}:</label>
                     <select value={selectedScaleType} onChange={(e) => {
                         setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR');
                         setSelectedChordIndex(null);
@@ -178,14 +178,14 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
                 </div>
                 <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
                     <button className="advanced-toggle" onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}>
-                        {isAdvancedOpen ? '▼ ' : '▶ '}{t('controls.advanced') || 'Setups'}
+                        {isAdvancedOpen ? '▼ ' : '▶ '}{t('controls.advanced')}
                     </button>
                     {isAdvancedOpen && (
                         <div className="advanced-controls">
                             {instrument === 'GUITAR' && (
                                 <>
                                     <div className="control-group">
-                                        <label>Strings:</label>
+                                        <label>{t('controls.strings')}:</label>
                                         <select value={stringCount} onChange={(e) => handleStringCountChange(parseInt(e.target.value))}>
                                             <option value={6}>6</option>
                                             <option value={7}>7</option>
@@ -193,7 +193,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
                                         </select>
                                     </div>
                                     <div className="control-group">
-                                        <label>Tuning:</label>
+                                        <label>{t('controls.tuning')}:</label>
                                         <select value={getCurrentTuningKey()} onChange={(e) => handleTuningChange(e.target.value)}>
                                             {Object.entries(availableTunings).map(([key, tuning]) => (
                                                 <option key={key} value={key}>{tuning.name}</option>

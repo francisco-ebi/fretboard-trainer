@@ -12,11 +12,18 @@ const resources = {
                 key: "Key (Root Note)",
                 scale: "Scale Type",
                 noteNames: "Note Names",
-                orientation: "Orientation"
+                orientation: "Orientation",
+                advanced: "Advanced",
+                strings: "Strings",
+                tuning: "Tuning"
             },
             instruments: {
                 GUITAR: "Guitar",
                 BASS: "Bass"
+            },
+            modes: {
+                scale: "Scale Explorer",
+                chord: "Chord Viewer"
             },
             orientations: {
                 HORIZONTAL: "Horizontal",
@@ -54,11 +61,18 @@ const resources = {
                 key: "Tonalidad (Nota Raíz)",
                 scale: "Tipo de Escala",
                 noteNames: "Nombres de Notas",
-                orientation: "Orientación"
+                orientation: "Orientación",
+                advanced: "Avanzado",
+                strings: "Cuerdas",
+                tuning: "Afinación"
             },
             instruments: {
                 GUITAR: "Guitarra",
                 BASS: "Bajo"
+            },
+            modes: {
+                scale: "Explorador de Escalas",
+                chord: "Visor de Acordes"
             },
             orientations: {
                 HORIZONTAL: "Horizontal",

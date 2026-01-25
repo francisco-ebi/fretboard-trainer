@@ -54,13 +54,13 @@ function App() {
             className={`mode-btn ${currentMode === 'SCALE' ? 'active' : ''}`}
             onClick={() => setCurrentMode('SCALE')}
           >
-            Scale Explorer
+            {t('modes.scale')}
           </button>
           <button
             className={`mode-btn ${currentMode === 'CHORD' ? 'active' : ''}`}
             onClick={() => setCurrentMode('CHORD')}
           >
-            Chord Viewer
+            {t('modes.chord')}
           </button>
         </div>
       </header>
