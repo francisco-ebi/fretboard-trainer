@@ -160,7 +160,7 @@ export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
 
 // Chord Theory
 
-export type ChordQuality = 'MAJOR' | 'MINOR' | 'DIMINISHED';
+export type ChordQuality = 'MAJOR' | 'MINOR' | 'DIMINISHED' | 'SUS2' | 'SUS4' | 'ADD9' | 'DOM7' | 'MAJ7';
 
 export interface ChordInfo {
     root: Note;
@@ -174,7 +174,12 @@ export interface ChordInfo {
 const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
     MAJOR: [0, 4, 7],
     MINOR: [0, 3, 7],
-    DIMINISHED: [0, 3, 6]
+    DIMINISHED: [0, 3, 6],
+    SUS2: [0, 2, 7],
+    SUS4: [0, 5, 7],
+    ADD9: [0, 4, 7, 14],
+    DOM7: [0, 4, 7, 10],
+    MAJ7: [0, 4, 7, 11]
 };
 
 // Diatonic patterns
