@@ -42,7 +42,7 @@ const HelpSection: React.FC = () => {
                         <motion.div
                             className="help-content-wrapper"
                             initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
+                            animate={{ height: 250, opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.5, ease: "easeInOut" }}
                         >
