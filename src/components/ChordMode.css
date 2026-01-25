@@ -24,6 +24,16 @@
     overflow-x: auto;
     padding: 1rem 0;
     justify-content: center;
+    /* Ensure there's space for modifiers popping out below */
+    padding-bottom: 4rem;
+}
+
+/* Wrapper to position modifiers relative to the card */
+.chord-card-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .chord-card {
@@ -38,6 +48,9 @@
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
+    position: relative;
+    z-index: 2;
+    /* Keep card above modifiers container if overlapping, though container is below */
 }
 
 .chord-card:hover {
@@ -63,9 +76,74 @@
     color: #fff;
 }
 
+/* Modifiers Container */
+.modifiers-container {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    z-index: 10;
+}
+
+.modifiers-container.fade-in {
+    animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.modifier-btn {
+    background: rgba(40, 40, 45, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ccc;
+    border-radius: 4px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.7rem;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.modifier-btn:hover {
+    background: #444;
+    border-color: #fff;
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.modifier-btn.selected {
+    background: #646cff;
+    border-color: #8888ff;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(100, 108, 255, 0.5);
+}
+
+.mod-label {
+    text-align: center;
+    line-height: 1;
+}
+
 @media (max-width: 600px) {
     .chord-list {
         justify-content: flex-start;
         padding: 1rem;
+        padding-bottom: 4rem;
     }
 }
