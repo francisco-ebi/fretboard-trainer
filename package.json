@@ -12,6 +12,7 @@
   "dependencies": {
     "i18next": "^25.8.0",
     "i18next-browser-languagedetector": "^8.2.0",
+    "meyda": "^5.6.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-i18next": "^16.5.3"
@@ -30,5 +31,6 @@
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0"
-  }
+  },
+  "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447"
 }
