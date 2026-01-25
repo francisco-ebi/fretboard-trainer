@@ -46,7 +46,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = setTimeout(() => {
             setModifiersVisible(true);
-        }, 2000);
+        }, 500);
     };
 
     const handleMouseLeave = () => {
