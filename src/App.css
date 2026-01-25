@@ -58,10 +58,32 @@ main {
   }
 }
 
-.card {
-  padding: 2em;
+.mode-selector {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
 }
 
-.read-the-docs {
-  color: #888;
+.mode-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #aaa;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.mode-btn:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+
+.mode-btn.active {
+  background: #646cff;
+  border-color: #646cff;
+  color: white;
 }

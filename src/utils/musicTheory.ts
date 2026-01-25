@@ -158,6 +158,74 @@ export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1, -1, -1] }
 };
 
+// Chord Theory
+
+export type ChordQuality = 'MAJOR' | 'MINOR' | 'DIMINISHED';
+
+export interface ChordInfo {
+    root: Note;
+    quality: ChordQuality;
+    notes: Note[];
+    displayName: string;
+    romanNumeral: string;
+}
+
+// Intervals for chord construction (Root, 3rd, 5th)
+const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
+    MAJOR: [0, 4, 7],
+    MINOR: [0, 3, 7],
+    DIMINISHED: [0, 3, 6]
+};
+
+// Diatonic patterns
+const DIATONIC_PATTERNS: Record<'MAJOR' | 'MINOR', { quality: ChordQuality, roman: string }[]> = {
+    MAJOR: [
+        { quality: 'MAJOR', roman: 'I' },
+        { quality: 'MINOR', roman: 'ii' },
+        { quality: 'MINOR', roman: 'iii' },
+        { quality: 'MAJOR', roman: 'IV' },
+        { quality: 'MAJOR', roman: 'V' },
+        { quality: 'MINOR', roman: 'vi' },
+        { quality: 'DIMINISHED', roman: 'vii°' }
+    ],
+    MINOR: [
+        { quality: 'MINOR', roman: 'i' },
+        { quality: 'DIMINISHED', roman: 'ii°' },
+        { quality: 'MAJOR', roman: 'III' },
+        { quality: 'MINOR', roman: 'iv' },
+        { quality: 'MINOR', roman: 'v' },
+        { quality: 'MAJOR', roman: 'VI' },
+        { quality: 'MAJOR', roman: 'VII' }
+    ]
+};
+
+export const getChordNotes = (root: Note, quality: ChordQuality): Note[] => {
+    const rotatedChromatic = getRotatedScale(root);
+    return CHORD_INTERVALS[quality].map(interval => rotatedChromatic[interval]);
+};
+
+export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+    const scaleNotes = getScale(keyRoot, scaleType);
+    const pattern = DIATONIC_PATTERNS[scaleType];
+
+    return scaleNotes.map((note, index) => {
+        const { quality, roman } = pattern[index];
+        const notes = getChordNotes(note, quality);
+
+        let suffix = '';
+        if (quality === 'MINOR') suffix = 'm';
+        if (quality === 'DIMINISHED') suffix = '°';
+
+        return {
+            root: note,
+            quality,
+            notes,
+            displayName: `${note}${suffix}`,
+            romanNumeral: roman
+        };
+    });
+};
+
 /**
  * Returns the note at a specific string (0-based index) and fret (0-based index).
  * Takes an optional tuningOffset array to adjust the open string notes.

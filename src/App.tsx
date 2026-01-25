@@ -3,10 +3,14 @@ import { useTranslation } from 'react-i18next';
 import './App.css';
 import TopBar from './components/TopBar';
 import ScaleMode from './components/ScaleMode';
+import ChordMode from './components/ChordMode';
 import { type Orientation } from './components/Fretboard';
+
+type AppMode = 'SCALE' | 'CHORD';
 
 function App() {
   const { t } = useTranslation();
+  const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
 
   // Auto-detect orientation on start and change
   const [orientation, setOrientation] = useState<Orientation>(() => {
@@ -45,11 +49,28 @@ function App() {
       />
       <header className="app-header">
         <h1>{t('title')}</h1>
-        <p></p>
+        <div className="mode-selector">
+          <button
+            className={`mode-btn ${currentMode === 'SCALE' ? 'active' : ''}`}
+            onClick={() => setCurrentMode('SCALE')}
+          >
+            Scale Explorer
+          </button>
+          <button
+            className={`mode-btn ${currentMode === 'CHORD' ? 'active' : ''}`}
+            onClick={() => setCurrentMode('CHORD')}
+          >
+            Chord Viewer
+          </button>
+        </div>
       </header>
 
       <main>
-        <ScaleMode orientation={orientation} />
+        {currentMode === 'SCALE' ? (
+          <ScaleMode orientation={orientation} />
+        ) : (
+          <ChordMode orientation={orientation} />
+        )}
       </main>
     </div>
   );
