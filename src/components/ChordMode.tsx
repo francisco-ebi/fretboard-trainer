@@ -26,8 +26,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScaleType, setSelectedScaleType] = useState<'MAJOR' | 'MINOR'>('MAJOR');
 
-    // Modified state to track selection including modifiers
-    const [selectedChord, setSelectedChord] = useState<{ index: number, modifier: any | null } | null>(null);
+    // Mofidied state to track selection including modifiers
+    const [selectedChordIndex, setSelectedChordIndex] = useState<number | null>(null);
+    const [chordModifiers, setChordModifiers] = useState<Record<number, any>>({});
     const [hoveredChordIndex, setHoveredChordIndex] = useState<number | null>(null);
     const [modifiersVisible, setModifiersVisible] = useState(false);
     const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,14 +57,16 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
     };
 
     const handleChordClick = (index: number) => {
-        setSelectedChord({ index, modifier: null });
+        setSelectedChordIndex(index);
     };
 
-    const handleModifierClick = (modifier: any, e: React.MouseEvent) => {
+    const handleModifierClick = (modifier: any, index: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (hoveredChordIndex !== null) {
-            setSelectedChord({ index: hoveredChordIndex, modifier });
-        }
+        setChordModifiers(prev => ({
+            ...prev,
+            [index]: prev[index] === modifier ? null : modifier
+        }));
+        setSelectedChordIndex(index);
     };
 
     const handleInstrumentChange = (newInstrument: Instrument) => {
@@ -108,24 +111,34 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
         if (tuning) setTuningOffsets(tuning.offsets);
     };
 
-    const getFullChordName = (chord: ChordInfo, isSelected: boolean) => {
-        if (isSelected) {
-            return `${chord.displayName}${selectedChord?.modifier ? selectedChord.modifier.toLowerCase() : ''}`;
+    const getFullChordName = (chord: ChordInfo, index: number) => {
+        const modifier = chordModifiers[index];
+        if (modifier) {
+            return `${chord.root}${MODIFIER_DISPLAY_NAMES[modifier]}`;
         }
-        return `${chord.displayName}`;
+        return chord.displayName;
     };
 
 
     const diatonicChords = getDiatonicChords(selectedRoot, selectedScaleType);
 
-    // Notes to display: If a chord is selected, show its notes. Otherwise, maybe show nothing or root? 
-    // Let's show nothing initially or perhaps the key scale notes but faded? 
-    // For "Chord Viewer", user expects to see the chord.
-    const notesToDisplay = selectedChord
-        ? (selectedChord.modifier
-            ? getChordNotes(diatonicChords[selectedChord.index].root, selectedChord.modifier)
-            : diatonicChords[selectedChord.index].notes)
+    // Notes to display
+    const notesToDisplay = selectedChordIndex !== null
+        ? (chordModifiers[selectedChordIndex]
+            ? getChordNotes(diatonicChords[selectedChordIndex].root, chordModifiers[selectedChordIndex])
+            : diatonicChords[selectedChordIndex].notes)
         : [];
+
+    // Move this up or ensure it's defined before usage if we were executing sequentially, 
+    // but in a component function scope `const` must be defined before use.
+    // I will insert it before getFullChordName to be safe.
+    const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
+        'SUS2': 'sus2',
+        'SUS4': 'sus4',
+        'ADD9': 'add9',
+        'DOM7': '7',
+        'MAJ7': 'maj7'
+    };
 
     const modifiers = ['SUS2', 'SUS4', 'ADD9', 'DOM7', 'MAJ7'];
 
@@ -134,13 +147,21 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
             <div className="chord-controls">
                 <div className="control-group">
                     <label>Key:</label>
-                    <select value={selectedRoot} onChange={(e) => { setSelectedRoot(e.target.value as Note); setSelectedChord(null); }}>
+                    <select value={selectedRoot} onChange={(e) => {
+                        setSelectedRoot(e.target.value as Note);
+                        setSelectedChordIndex(null);
+                        setChordModifiers({});
+                    }}>
                         {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{note}</option>)}
                     </select>
                 </div>
                 <div className="control-group">
                     <label>Scale:</label>
-                    <select value={selectedScaleType} onChange={(e) => { setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR'); setSelectedChord(null); }}>
+                    <select value={selectedScaleType} onChange={(e) => {
+                        setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR');
+                        setSelectedChordIndex(null);
+                        setChordModifiers({});
+                    }}>
                         <option value="MAJOR">Major</option>
                         <option value="MINOR">Minor</option>
                     </select>
@@ -187,44 +208,50 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
             </div>
 
             <div className="chord-list">
-                {diatonicChords.map((chord, index) => (
-                    <div
-                        key={index}
-                        className="chord-card-wrapper"
-                        onMouseEnter={() => handleMouseEnter(index)}
-                        onMouseLeave={handleMouseLeave}
-                    >
-                        <button
-                            className={`chord-card ${selectedChord?.index === index && !selectedChord?.modifier ? 'selected' : ''}`}
-                            onClick={() => handleChordClick(index)}
-                        >
-                            <div className="roman">{chord.romanNumeral}</div>
-                            <div className="name">{getFullChordName(chord, selectedChord?.index === index)}</div>
-                        </button>
+                {diatonicChords.map((chord, index) => {
+                    const isSelected = selectedChordIndex === index;
+                    const activeModifier = chordModifiers[index];
 
-                        {/* Modifiers */}
-                        {hoveredChordIndex === index && modifiersVisible && (
-                            <div className="modifiers-container fade-in">
-                                {modifiers.map(mod => (
-                                    <button
-                                        key={mod}
-                                        className={`modifier-btn ${selectedChord?.index === index && selectedChord?.modifier === mod ? 'selected' : ''}`}
-                                        onClick={(e) => handleModifierClick(mod, e)}
-                                        title={mod}
-                                    >
-                                        {/* Simple cube look: we'll handle this in CSS */}
-                                        <span className="mod-label">{mod}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                ))}
+                    return (
+                        <div
+                            key={index}
+                            className="chord-card-wrapper"
+                            onMouseEnter={() => handleMouseEnter(index)}
+                            onMouseLeave={handleMouseLeave}
+                        >
+                            <button
+                                className={`chord-card ${isSelected && !activeModifier ? 'selected' : ''}`}
+                                onClick={() => handleChordClick(index)}
+                            >
+                                <div className="roman">{chord.romanNumeral}</div>
+                                <div className="name">
+                                    {getFullChordName(chord, index)}
+                                </div>
+                            </button>
+
+                            {/* Modifiers */}
+                            {hoveredChordIndex === index && modifiersVisible && (
+                                <div className="modifiers-container fade-in">
+                                    {modifiers.map(mod => (
+                                        <button
+                                            key={mod}
+                                            className={`modifier-btn ${activeModifier === mod ? 'selected' : ''}`}
+                                            onClick={(e) => handleModifierClick(mod, index, e)}
+                                            title={mod}
+                                        >
+                                            <span className="mod-label">{MODIFIER_DISPLAY_NAMES[mod]}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             <div className="fretboard-wrapper">
                 <Fretboard
-                    selectedRoot={selectedChord ? diatonicChords[selectedChord.index].root : selectedRoot} // Highlight root of chord
+                    selectedRoot={selectedChordIndex !== null ? diatonicChords[selectedChordIndex].root : selectedRoot} // Highlight root of chord
                     scaleNotes={notesToDisplay}
                     namingSystem={namingSystem}
                     instrument={instrument}
