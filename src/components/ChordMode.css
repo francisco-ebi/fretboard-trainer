@@ -88,21 +88,7 @@
     z-index: 10;
 }
 
-.modifiers-container.fade-in {
-    animation: fadeIn 0.3s ease-in-out forwards;
-}
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-    }
-}
 
 .modifier-btn {
     background: rgba(40, 40, 45, 0.95);

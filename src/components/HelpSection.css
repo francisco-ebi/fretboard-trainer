@@ -1,7 +1,6 @@
 .help-section {
     width: auto;
     max-width: 600px;
-    transition: all 1s;
 }
 
 .help-card {
@@ -11,7 +10,6 @@
     width: 100%;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    /* Add shadow for lifting effect */
 }
 
 .help-header {
@@ -31,7 +29,6 @@
     padding: 0.4rem 0.8rem;
     font-size: 0.9rem;
     background: rgba(255, 255, 255, 0.1);
-    /* Slightly more visible background when small? or same? */
 }
 
 .help-header:hover {
@@ -41,26 +38,13 @@
 
 .arrow {
     display: inline-block;
-    transition: transform 0.3s ease;
     font-size: 0.8rem;
     margin-left: 1rem;
 }
 
-.arrow.open {
-    transform: rotate(180deg);
-}
-
+/* help-content-wrapper handled by Framer Motion */
 .help-content-wrapper {
-    max-height: 0;
-    opacity: 0;
     overflow: hidden;
-    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-}
-
-.help-content-wrapper.open {
-    max-height: 600px;
-    /* Large enough to fit content */
-    opacity: 1;
 }
 
 .help-content {

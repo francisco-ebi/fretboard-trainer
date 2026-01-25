@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '../utils/musicTheory';
 import './Controls.css';
 
@@ -135,46 +136,61 @@ const Controls: React.FC<ControlsProps> = ({
                     className="advanced-toggle"
                     onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
                 >
-                    {isAdvancedOpen ? '▼ ' : '▶ '}{t('controls.advanced') || 'Advanced'}
+                    <motion.span
+                        animate={{ rotate: isAdvancedOpen ? 90 : 0 }}
+                        style={{ display: 'inline-block', marginRight: '8px' }}
+                    >
+                        ▶
+                    </motion.span>
+                    {t('controls.advanced') || 'Advanced'}
                 </button>
 
-                {isAdvancedOpen && (
-                    <div className="advanced-controls">
-                        {instrument === 'GUITAR' && (
-                            <>
-                                <div className="control-group">
-                                    <label htmlFor="string-count-select">Strings:</label>
-                                    <select
-                                        id="string-count-select"
-                                        value={stringCount}
-                                        onChange={(e) => handleStringCountChange(parseInt(e.target.value))}
-                                    >
-                                        <option value={6}>6 Strings</option>
-                                        <option value={7}>7 Strings</option>
-                                        <option value={8}>8 Strings</option>
-                                    </select>
-                                </div>
-                                <div className="control-group">
-                                    <label htmlFor="tuning-select">Tuning:</label>
-                                    <select
-                                        id="tuning-select"
-                                        value={getCurrentTuningKey()}
-                                        onChange={(e) => handleTuningChange(e.target.value)}
-                                    >
-                                        {Object.entries(availableTunings).map(([key, tuning]) => (
-                                            <option key={key} value={key}>
-                                                {tuning.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </>
-                        )}
-                        {instrument !== 'GUITAR' && (
-                            <p className="advanced-note">Advanced settings not available for this instrument.</p>
-                        )}
-                    </div>
-                )}
+                <AnimatePresence>
+                    {isAdvancedOpen && (
+                        <motion.div
+                            className="advanced-controls"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            style={{ overflow: 'hidden' }}
+                        >
+                            {instrument === 'GUITAR' && (
+                                <>
+                                    <div className="control-group">
+                                        <label htmlFor="string-count-select">Strings:</label>
+                                        <select
+                                            id="string-count-select"
+                                            value={stringCount}
+                                            onChange={(e) => handleStringCountChange(parseInt(e.target.value))}
+                                        >
+                                            <option value={6}>6 Strings</option>
+                                            <option value={7}>7 Strings</option>
+                                            <option value={8}>8 Strings</option>
+                                        </select>
+                                    </div>
+                                    <div className="control-group">
+                                        <label htmlFor="tuning-select">Tuning:</label>
+                                        <select
+                                            id="tuning-select"
+                                            value={getCurrentTuningKey()}
+                                            onChange={(e) => handleTuningChange(e.target.value)}
+                                        >
+                                            {Object.entries(availableTunings).map(([key, tuning]) => (
+                                                <option key={key} value={key}>
+                                                    {tuning.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+                            {instrument !== 'GUITAR' && (
+                                <p className="advanced-note">Advanced settings not available for this instrument.</p>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

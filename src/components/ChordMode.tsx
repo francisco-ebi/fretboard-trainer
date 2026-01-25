@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 import Fretboard, { type Orientation } from './Fretboard';
 import {
     CHROMATIC_SCALE,
@@ -178,32 +179,47 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
                 </div>
                 <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
                     <button className="advanced-toggle" onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}>
-                        {isAdvancedOpen ? '▼ ' : '▶ '}{t('controls.advanced')}
+                        <motion.span
+                            animate={{ rotate: isAdvancedOpen ? 90 : 0 }}
+                            style={{ display: 'inline-block', marginRight: '8px' }}
+                        >
+                            ▶
+                        </motion.span>
+                        {t('controls.advanced')}
                     </button>
-                    {isAdvancedOpen && (
-                        <div className="advanced-controls">
-                            {instrument === 'GUITAR' && (
-                                <>
-                                    <div className="control-group">
-                                        <label>{t('controls.strings')}:</label>
-                                        <select value={stringCount} onChange={(e) => handleStringCountChange(parseInt(e.target.value))}>
-                                            <option value={6}>6</option>
-                                            <option value={7}>7</option>
-                                            <option value={8}>8</option>
-                                        </select>
-                                    </div>
-                                    <div className="control-group">
-                                        <label>{t('controls.tuning')}:</label>
-                                        <select value={getCurrentTuningKey()} onChange={(e) => handleTuningChange(e.target.value)}>
-                                            {Object.entries(availableTunings).map(([key, tuning]) => (
-                                                <option key={key} value={key}>{tuning.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
+                    <AnimatePresence>
+                        {isAdvancedOpen && (
+                            <motion.div
+                                className="advanced-controls"
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                style={{ overflow: 'hidden' }}
+                            >
+                                {instrument === 'GUITAR' && (
+                                    <>
+                                        <div className="control-group">
+                                            <label>{t('controls.strings')}:</label>
+                                            <select value={stringCount} onChange={(e) => handleStringCountChange(parseInt(e.target.value))}>
+                                                <option value={6}>6</option>
+                                                <option value={7}>7</option>
+                                                <option value={8}>8</option>
+                                            </select>
+                                        </div>
+                                        <div className="control-group">
+                                            <label>{t('controls.tuning')}:</label>
+                                            <select value={getCurrentTuningKey()} onChange={(e) => handleTuningChange(e.target.value)}>
+                                                {Object.entries(availableTunings).map(([key, tuning]) => (
+                                                    <option key={key} value={key}>{tuning.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
@@ -230,20 +246,28 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
                             </button>
 
                             {/* Modifiers */}
-                            {hoveredChordIndex === index && modifiersVisible && (
-                                <div className="modifiers-container fade-in">
-                                    {modifiers.map(mod => (
-                                        <button
-                                            key={mod}
-                                            className={`modifier-btn ${activeModifier === mod ? 'selected' : ''}`}
-                                            onClick={(e) => handleModifierClick(mod, index, e)}
-                                            title={mod}
-                                        >
-                                            <span className="mod-label">{MODIFIER_DISPLAY_NAMES[mod]}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                            <AnimatePresence>
+                                {hoveredChordIndex === index && modifiersVisible && (
+                                    <motion.div
+                                        className="modifiers-container"
+                                        initial={{ opacity: 0, y: -10, x: "-50%" }}
+                                        animate={{ opacity: 1, y: 0, x: "-50%" }}
+                                        exit={{ opacity: 0, y: -10, x: "-50%" }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        {modifiers.map(mod => (
+                                            <button
+                                                key={mod}
+                                                className={`modifier-btn ${activeModifier === mod ? 'selected' : ''}`}
+                                                onClick={(e) => handleModifierClick(mod, index, e)}
+                                                title={mod}
+                                            >
+                                                <span className="mod-label">{MODIFIER_DISPLAY_NAMES[mod]}</span>
+                                            </button>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     );
                 })}
