@@ -13,6 +13,12 @@ function App() {
   const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
   const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
   const [instrument, setInstrument] = useState<Instrument>('GUITAR');
+  const [tuningOffsets, setTuningOffsets] = useState<number[]>([]);
+
+  const handleInstrumentChange = (newInstrument: Instrument) => {
+    setInstrument(newInstrument);
+    setTuningOffsets([]); // Reset to standard tuning when changing instrument
+  };
 
   // Auto-detect orientation on start and change
   const [orientation, setOrientation] = useState<Orientation>(() => {
@@ -65,7 +71,9 @@ function App() {
           namingSystem={namingSystem}
           onNamingSystemChange={setNamingSystem}
           instrument={instrument}
-          onInstrumentChange={setInstrument}
+          onInstrumentChange={handleInstrumentChange}
+          tuningOffsets={tuningOffsets}
+          onTuningChange={setTuningOffsets}
         />
 
         <HelpSection />
@@ -76,6 +84,7 @@ function App() {
             scaleNotes={scaleNotes}
             namingSystem={namingSystem}
             instrument={instrument}
+            tuningOffsets={tuningOffsets}
             orientation={orientation}
           />
         </div>

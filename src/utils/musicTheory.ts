@@ -78,11 +78,16 @@ export const getScale = (root: Note, scaleType: ScaleType = 'MAJOR'): Note[] => 
 // Instrument Configuration
 export type Instrument = 'GUITAR' | 'BASS';
 
+export interface Tuning {
+    name: string;
+    offsets: number[]; // Semitones relative to standard tuning (0 = no change)
+}
+
 interface InstrumentConfig {
     name: string;
     strings: number;
-    tuning: number[]; // Indices in CHROMATIC_SCALE
-    baseSemitones: number[]; // Semitones from C0
+    defaultTuning: number[]; // Indices in CHROMATIC_SCALE (Standard Tuning)
+    baseSemitones: number[]; // Semitones from C0 (Standard Tuning Reference)
     inlayCenterStringIndex: number; // String index to anchor center inlays
 }
 
@@ -90,34 +95,56 @@ export const INSTRUMENT_CONFIGS: Record<Instrument, InstrumentConfig> = {
     GUITAR: {
         name: 'Guitar',
         strings: 6,
-        tuning: [4, 9, 2, 7, 11, 4], // E, A, D, G, B, E
+        defaultTuning: [4, 9, 2, 7, 11, 4], // E, A, D, G, B, E
         baseSemitones: [28, 33, 38, 43, 47, 52], // E2-E4
         inlayCenterStringIndex: 3 // G string (index 3 from bottom 0)
     },
     BASS: {
         name: 'Bass',
         strings: 4,
-        tuning: [4, 9, 2, 7], // E, A, D, G
+        defaultTuning: [4, 9, 2, 7], // E, A, D, G
         baseSemitones: [16, 21, 26, 31], // E1-G2
         inlayCenterStringIndex: 2 // D string (index 2 from bottom 0)
     }
 };
 
+export const GUITAR_TUNINGS: Record<string, Tuning> = {
+    STANDARD: { name: 'Standard', offsets: [0, 0, 0, 0, 0, 0] },
+    DROP_D: { name: 'Drop D', offsets: [-2, 0, 0, 0, 0, 0] },
+    OPEN_G: { name: 'Open G', offsets: [-2, -2, 0, 0, 0, -2] }, // D G D G B D
+    DADGAD: { name: 'DADGAD', offsets: [-2, 0, 0, 0, -2, -2] }, // D A D G A D
+    HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1] }
+};
+
 /**
  * Returns the note at a specific string (0-based index) and fret (0-based index).
+ * Takes an optional tuningOffset array to adjust the open string notes.
  */
-export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, fretIndex: number): Note => {
+export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[]): Note => {
     const config = INSTRUMENT_CONFIGS[instrument];
-    const openStringNoteIndex = config.tuning[stringIndex];
-    const chromaticIndex = (openStringNoteIndex + fretIndex) % 12;
+    const openStringNoteIndex = config.defaultTuning[stringIndex];
+
+    let offset = 0;
+    if (tuningOffsets && tuningOffsets[stringIndex] !== undefined) {
+        offset = tuningOffsets[stringIndex];
+    }
+
+    // Ensure positive index for modulo
+    const chromaticIndex = (openStringNoteIndex + fretIndex + offset + 120) % 12; // +120 safely handles negative offsets
     return CHROMATIC_SCALE[chromaticIndex];
 };
 
 /**
  * Returns the octave for a specific string and fret.
+ * Takes an optional tuningOffset array to adjust the pitch.
  */
-export const getOctave = (instrument: Instrument, stringIndex: number, fretIndex: number): number => {
+export const getOctave = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[]): number => {
     const config = INSTRUMENT_CONFIGS[instrument];
-    const totalSemitones = config.baseSemitones[stringIndex] + fretIndex;
+    let totalSemitones = config.baseSemitones[stringIndex] + fretIndex;
+
+    if (tuningOffsets && tuningOffsets[stringIndex] !== undefined) {
+        totalSemitones += tuningOffsets[stringIndex];
+    }
+
     return Math.floor(totalSemitones / 12);
 };

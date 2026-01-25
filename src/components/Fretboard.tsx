@@ -10,6 +10,7 @@ interface FretboardProps {
     scaleNotes: Note[];
     namingSystem: NamingSystem;
     instrument: Instrument;
+    tuningOffsets: number[];
     orientation: Orientation;
 }
 
@@ -26,7 +27,7 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, orientation }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, orientation }) => {
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
 
@@ -53,11 +54,11 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
     const renderFrets = (stringIndex: number) => {
         const fretElements = [];
         for (let fret = 0; fret <= FRETS; fret++) {
-            const note = getNoteAtPosition(instrument, stringIndex, fret);
+            const note = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets);
             const isNoteInScale = scaleNotes.includes(note);
             const isRoot = note === selectedRoot;
             const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
-            const octave = getOctave(instrument, stringIndex, fret);
+            const octave = getOctave(instrument, stringIndex, fret, tuningOffsets);
 
             // Shake if context changed AND note was in previous scale
             const wasInScale = prevScaleNotes?.includes(note);

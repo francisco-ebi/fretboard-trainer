@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
+import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
 import './Controls.css';
 
 interface ControlsProps {
@@ -12,6 +12,8 @@ interface ControlsProps {
     onNamingSystemChange: (system: NamingSystem) => void;
     instrument: Instrument;
     onInstrumentChange: (instrument: Instrument) => void;
+    tuningOffsets: number[];
+    onTuningChange: (offsets: number[]) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -22,9 +24,32 @@ const Controls: React.FC<ControlsProps> = ({
     namingSystem,
     onNamingSystemChange,
     instrument,
-    onInstrumentChange
+    onInstrumentChange,
+    tuningOffsets,
+    onTuningChange
 }) => {
     const { t } = useTranslation();
+    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+    const getCurrentTuningKey = () => {
+        if (tuningOffsets.length === 0) return 'STANDARD'; // Default assume standard if empty
+
+        for (const [key, tuning] of Object.entries(GUITAR_TUNINGS)) {
+            // Simple array comparison
+            if (tuning.offsets.length === tuningOffsets.length &&
+                tuning.offsets.every((val, index) => val === tuningOffsets[index])) {
+                return key;
+            }
+        }
+        return 'CUSTOM'; // Fallback if no match
+    };
+
+    const handleTuningChange = (key: string) => {
+        const tuning = GUITAR_TUNINGS[key];
+        if (tuning) {
+            onTuningChange(tuning.offsets);
+        }
+    };
 
     return (
         <div className="controls">
@@ -83,6 +108,39 @@ const Controls: React.FC<ControlsProps> = ({
                     <option value="ENGLISH">{t('naming.ENGLISH')}</option>
                     <option value="SOLFEGE">{t('naming.SOLFEGE')}</option>
                 </select>
+            </div>
+
+            <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
+                <button
+                    className="advanced-toggle"
+                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                >
+                    {isAdvancedOpen ? '▼ ' : '▶ '}{t('controls.advanced') || 'Advanced'}
+                </button>
+
+                {isAdvancedOpen && (
+                    <div className="advanced-controls">
+                        {instrument === 'GUITAR' && (
+                            <div className="control-group">
+                                <label htmlFor="tuning-select">Tuning:</label>
+                                <select
+                                    id="tuning-select"
+                                    value={getCurrentTuningKey()}
+                                    onChange={(e) => handleTuningChange(e.target.value)}
+                                >
+                                    {Object.entries(GUITAR_TUNINGS).map(([key, tuning]) => (
+                                        <option key={key} value={key}>
+                                            {tuning.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {instrument !== 'GUITAR' && (
+                            <p className="advanced-note">Advanced settings not available for this instrument.</p>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
