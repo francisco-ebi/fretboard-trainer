@@ -83,7 +83,7 @@ export interface Tuning {
     offsets: number[]; // Semitones relative to standard tuning (0 = no change)
 }
 
-interface InstrumentConfig {
+export interface InstrumentConfig {
     name: string;
     strings: number;
     defaultTuning: number[]; // Indices in CHROMATIC_SCALE (Standard Tuning)
@@ -91,9 +91,10 @@ interface InstrumentConfig {
     inlayCenterStringIndex: number; // String index to anchor center inlays
 }
 
+// Base configurations (Defaults)
 export const INSTRUMENT_CONFIGS: Record<Instrument, InstrumentConfig> = {
     GUITAR: {
-        name: 'Guitar',
+        name: 'Guitar (6-String)',
         strings: 6,
         defaultTuning: [4, 9, 2, 7, 11, 4], // E, A, D, G, B, E
         baseSemitones: [28, 33, 38, 43, 47, 52], // E2-E4
@@ -108,6 +109,35 @@ export const INSTRUMENT_CONFIGS: Record<Instrument, InstrumentConfig> = {
     }
 };
 
+// Extended configurations for multi-string guitars
+export const GUITAR_CONFIGS: Record<number, InstrumentConfig> = {
+    6: INSTRUMENT_CONFIGS.GUITAR,
+    7: {
+        name: 'Guitar (7-String)',
+        strings: 7,
+        defaultTuning: [11, 4, 9, 2, 7, 11, 4], // B, E, A, D, G, B, E
+        baseSemitones: [23, 28, 33, 38, 43, 47, 52], // B1-E4
+        inlayCenterStringIndex: 3 // D string (index 3 from bottom 0, which is middle of 7)
+        // Note on center index: 7 strings 0..6. Middle is 3.
+    },
+    8: {
+        name: 'Guitar (8-String)',
+        strings: 8,
+        defaultTuning: [6, 11, 4, 9, 2, 7, 11, 4], // F#, B, E, A, D, G, B, E
+        baseSemitones: [18, 23, 28, 33, 38, 43, 47, 52], // F#1-E4
+        inlayCenterStringIndex: 4 // A string (index 4 from bottom 0)
+        // 8 strings 0..7. 3.5 is middle. 4 is the 5th string (A).
+        // Let's stick with specific string indices for visuals.
+    }
+};
+
+export const getInstrumentConfig = (instrument: Instrument, stringCount?: number): InstrumentConfig => {
+    if (instrument === 'GUITAR' && stringCount && GUITAR_CONFIGS[stringCount]) {
+        return GUITAR_CONFIGS[stringCount];
+    }
+    return INSTRUMENT_CONFIGS[instrument];
+};
+
 export const GUITAR_TUNINGS: Record<string, Tuning> = {
     STANDARD: { name: 'Standard', offsets: [0, 0, 0, 0, 0, 0] },
     DROP_D: { name: 'Drop D', offsets: [-2, 0, 0, 0, 0, 0] },
@@ -116,12 +146,27 @@ export const GUITAR_TUNINGS: Record<string, Tuning> = {
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1] }
 };
 
+export const GUITAR_TUNINGS_7: Record<string, Tuning> = {
+    STANDARD: { name: 'Standard (BEADGBE)', offsets: [0, 0, 0, 0, 0, 0, 0] },
+    DROP_A: { name: 'Drop A (AEADGBE)', offsets: [-2, 0, 0, 0, 0, 0, 0] },
+    HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1, -1] }
+};
+
+export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
+    STANDARD: { name: 'Standard (F#BEADGBE)', offsets: [0, 0, 0, 0, 0, 0, 0, 0] },
+    DROP_E: { name: 'Drop E (EBEADGBE)', offsets: [-2, 0, 0, 0, 0, 0, 0, 0] },
+    HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1, -1, -1] }
+};
+
 /**
  * Returns the note at a specific string (0-based index) and fret (0-based index).
  * Takes an optional tuningOffset array to adjust the open string notes.
  */
-export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[]): Note => {
-    const config = INSTRUMENT_CONFIGS[instrument];
+export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[], stringCount?: number): Note => {
+    const config = getInstrumentConfig(instrument, stringCount);
+    // Safety check for string index
+    if (stringIndex >= config.strings) return 'C';
+
     const openStringNoteIndex = config.defaultTuning[stringIndex];
 
     let offset = 0;
@@ -138,8 +183,10 @@ export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, f
  * Returns the octave for a specific string and fret.
  * Takes an optional tuningOffset array to adjust the pitch.
  */
-export const getOctave = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[]): number => {
-    const config = INSTRUMENT_CONFIGS[instrument];
+export const getOctave = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[], stringCount?: number): number => {
+    const config = getInstrumentConfig(instrument, stringCount);
+    if (stringIndex >= config.strings) return 0;
+
     let totalSemitones = config.baseSemitones[stringIndex] + fretIndex;
 
     if (tuningOffsets && tuningOffsets[stringIndex] !== undefined) {

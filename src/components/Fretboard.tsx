@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { getNoteAtPosition, getInterval, getOctave, type Note, type NamingSystem, type Instrument, INSTRUMENT_CONFIGS } from '../utils/musicTheory';
+import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '../utils/musicTheory';
 import NoteMarker from './NoteMarker';
 import './Fretboard.css';
 
@@ -12,6 +12,7 @@ interface FretboardProps {
     instrument: Instrument;
     tuningOffsets: number[];
     orientation: Orientation;
+    stringCount: number;
 }
 
 const FRETS = 18; // 0 (open) to 18
@@ -27,14 +28,14 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, orientation }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, orientation, stringCount }) => {
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
 
     // Check if the musical context actually changed (to prevent shaking on unrelated renders)
     const contextChanged = prevRoot !== selectedRoot || prevScaleNotes !== scaleNotes;
 
-    const config = INSTRUMENT_CONFIGS[instrument];
+    const config = getInstrumentConfig(instrument, stringCount);
     const STRINGS = config.strings;
 
     // Generate the fretboard data structure
@@ -54,11 +55,11 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
     const renderFrets = (stringIndex: number) => {
         const fretElements = [];
         for (let fret = 0; fret <= FRETS; fret++) {
-            const note = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets);
+            const note = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets, stringCount);
             const isNoteInScale = scaleNotes.includes(note);
             const isRoot = note === selectedRoot;
             const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
-            const octave = getOctave(instrument, stringIndex, fret, tuningOffsets);
+            const octave = getOctave(instrument, stringIndex, fret, tuningOffsets, stringCount);
 
             // Shake if context changed AND note was in previous scale
             const wasInScale = prevScaleNotes?.includes(note);
@@ -67,11 +68,29 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             // Inlay Logic
             const centerIndex = config.inlayCenterStringIndex;
             const isSingleInlay = INLAY_FRETS.includes(fret) && stringIndex === centerIndex;
-            // Double Inlay logic: +1 (Top) and -2 (Bottom) relative to center gap string (which is 'centerIndex')
-            // Guitar (Center=3): Top=4, Bottom=1.
-            // Bass (Center=2): Top=3, Bottom=0.
-            const isDoubleInlayTop = DOUBLE_INLAY_FRETS.includes(fret) && stringIndex === centerIndex + 1;
-            const isDoubleInlayBottom = DOUBLE_INLAY_FRETS.includes(fret) && stringIndex === centerIndex - 2;
+
+            // Double Inlay logic
+            let isDoubleInlayTop = false;
+            let isDoubleInlayBottom = false;
+
+            if (DOUBLE_INLAY_FRETS.includes(fret)) {
+
+                // Determine spacing based on total strings to keep dots proportional
+                // For 4 string bass (center=2): dots at 3 and 0 is too wide? No, 3 and 0 is fine.
+                // Standard logic: Top is +1 from center, Bottom is -2 from center?
+                // Guitar 6 (Center 3): Top 4 (B string), Bottom 1 (A string).
+                // Guitar 7 (Center 3): Top 4 (G), Bottom 1 (E).
+                // Guitar 8 (Center 4): Top 5 (G), Bottom 2 (A). 
+
+                // Let's generalize: Top is Center + 1, Bottom is Center - 2.
+                // Works for Guitar 6 (3+1=4, 3-2=1)
+                // Works for Bass 4 (2+1=3, 2-2=0) -> 0 is E string.
+                // Works for Guitar 7 (3+1=4, 3-2=1)
+                // Works for Guitar 8 (4+1=5, 4-2=2)
+
+                isDoubleInlayTop = stringIndex === centerIndex + 1;
+                isDoubleInlayBottom = stringIndex === centerIndex - 2;
+            }
 
             fretElements.push(
                 <div key={`fret-${stringIndex}-${fret}`} className={`fret ${fret === 0 ? 'open-string' : ''}`}>

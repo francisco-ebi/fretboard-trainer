@@ -133,6 +133,10 @@
     height: 0.094rem;
 }
 
+.string-row:nth-last-child(n+7) .string-line {
+    height: 0.09rem;
+}
+
 /* NoteMarker styles moved to NoteMarker.css */
 
 .fret-numbers-row {
@@ -254,6 +258,10 @@
 
 .fretboard-container.vertical .string-row:nth-last-child(6) .string-line {
     width: 0.094rem;
+}
+
+.fretboard-container.vertical .string-row:nth-last-child(n+7) .string-line {
+    width: 0.09rem;
 }
 
 /* Fret Numbers for Vertical */

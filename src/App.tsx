@@ -13,10 +13,16 @@ function App() {
   const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
   const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
   const [instrument, setInstrument] = useState<Instrument>('GUITAR');
+  const [stringCount, setStringCount] = useState<number>(6);
   const [tuningOffsets, setTuningOffsets] = useState<number[]>([]);
 
   const handleInstrumentChange = (newInstrument: Instrument) => {
     setInstrument(newInstrument);
+    if (newInstrument === 'BASS') {
+      setStringCount(4);
+    } else {
+      setStringCount(6);
+    }
     setTuningOffsets([]); // Reset to standard tuning when changing instrument
   };
 
@@ -74,6 +80,8 @@ function App() {
           onInstrumentChange={handleInstrumentChange}
           tuningOffsets={tuningOffsets}
           onTuningChange={setTuningOffsets}
+          stringCount={stringCount}
+          onStringCountChange={setStringCount}
         />
 
         <HelpSection />
@@ -86,6 +94,7 @@ function App() {
             instrument={instrument}
             tuningOffsets={tuningOffsets}
             orientation={orientation}
+            stringCount={stringCount}
           />
         </div>
       </main>

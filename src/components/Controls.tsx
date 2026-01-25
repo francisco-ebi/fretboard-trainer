@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
+import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '../utils/musicTheory';
 import './Controls.css';
 
 interface ControlsProps {
@@ -14,6 +14,8 @@ interface ControlsProps {
     onInstrumentChange: (instrument: Instrument) => void;
     tuningOffsets: number[];
     onTuningChange: (offsets: number[]) => void;
+    stringCount: number;
+    onStringCountChange: (count: number) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -26,15 +28,28 @@ const Controls: React.FC<ControlsProps> = ({
     instrument,
     onInstrumentChange,
     tuningOffsets,
-    onTuningChange
+    onTuningChange,
+    stringCount,
+    onStringCountChange
 }) => {
     const { t } = useTranslation();
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
+    const getAvailableTunings = (): Record<string, Tuning> => {
+        if (instrument === 'GUITAR') {
+            if (stringCount === 7) return GUITAR_TUNINGS_7;
+            if (stringCount === 8) return GUITAR_TUNINGS_8;
+            return GUITAR_TUNINGS;
+        }
+        return {}; // No custom tunings for Bass implemented here yet
+    };
+
+    const availableTunings = getAvailableTunings();
+
     const getCurrentTuningKey = () => {
         if (tuningOffsets.length === 0) return 'STANDARD'; // Default assume standard if empty
 
-        for (const [key, tuning] of Object.entries(GUITAR_TUNINGS)) {
+        for (const [key, tuning] of Object.entries(availableTunings)) {
             // Simple array comparison
             if (tuning.offsets.length === tuningOffsets.length &&
                 tuning.offsets.every((val, index) => val === tuningOffsets[index])) {
@@ -45,10 +60,15 @@ const Controls: React.FC<ControlsProps> = ({
     };
 
     const handleTuningChange = (key: string) => {
-        const tuning = GUITAR_TUNINGS[key];
+        const tuning = availableTunings[key];
         if (tuning) {
             onTuningChange(tuning.offsets);
         }
+    };
+
+    const handleStringCountChange = (count: number) => {
+        onStringCountChange(count);
+        onTuningChange([]); // Reset tuning when changing string count
     };
 
     return (
@@ -121,20 +141,34 @@ const Controls: React.FC<ControlsProps> = ({
                 {isAdvancedOpen && (
                     <div className="advanced-controls">
                         {instrument === 'GUITAR' && (
-                            <div className="control-group">
-                                <label htmlFor="tuning-select">Tuning:</label>
-                                <select
-                                    id="tuning-select"
-                                    value={getCurrentTuningKey()}
-                                    onChange={(e) => handleTuningChange(e.target.value)}
-                                >
-                                    {Object.entries(GUITAR_TUNINGS).map(([key, tuning]) => (
-                                        <option key={key} value={key}>
-                                            {tuning.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <>
+                                <div className="control-group">
+                                    <label htmlFor="string-count-select">Strings:</label>
+                                    <select
+                                        id="string-count-select"
+                                        value={stringCount}
+                                        onChange={(e) => handleStringCountChange(parseInt(e.target.value))}
+                                    >
+                                        <option value={6}>6 Strings</option>
+                                        <option value={7}>7 Strings</option>
+                                        <option value={8}>8 Strings</option>
+                                    </select>
+                                </div>
+                                <div className="control-group">
+                                    <label htmlFor="tuning-select">Tuning:</label>
+                                    <select
+                                        id="tuning-select"
+                                        value={getCurrentTuningKey()}
+                                        onChange={(e) => handleTuningChange(e.target.value)}
+                                    >
+                                        {Object.entries(availableTunings).map(([key, tuning]) => (
+                                            <option key={key} value={key}>
+                                                {tuning.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </>
                         )}
                         {instrument !== 'GUITAR' && (
                             <p className="advanced-note">Advanced settings not available for this instrument.</p>
