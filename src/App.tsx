@@ -1,30 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import './App.css'; // We might remove this if we use index.css for everything, but keeping for standard structure
-import Fretboard, { type Orientation } from './components/Fretboard';
-import Controls from './components/Controls';
-import HelpSection from './components/HelpSection';
+import './App.css';
 import TopBar from './components/TopBar';
-import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from './utils/musicTheory';
+import ScaleMode from './components/ScaleMode';
+import { type Orientation } from './components/Fretboard';
 
 function App() {
   const { t } = useTranslation();
-  const [selectedRoot, setSelectedRoot] = useState<Note>('C');
-  const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
-  const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
-  const [instrument, setInstrument] = useState<Instrument>('GUITAR');
-  const [stringCount, setStringCount] = useState<number>(6);
-  const [tuningOffsets, setTuningOffsets] = useState<number[]>([]);
-
-  const handleInstrumentChange = (newInstrument: Instrument) => {
-    setInstrument(newInstrument);
-    if (newInstrument === 'BASS') {
-      setStringCount(4);
-    } else {
-      setStringCount(6);
-    }
-    setTuningOffsets([]); // Reset to standard tuning when changing instrument
-  };
 
   // Auto-detect orientation on start and change
   const [orientation, setOrientation] = useState<Orientation>(() => {
@@ -55,8 +37,6 @@ function App() {
     };
   }, [orientation]);
 
-  const scaleNotes = getScale(selectedRoot, selectedScale);
-
   return (
     <div className="app-container">
       <TopBar
@@ -69,34 +49,7 @@ function App() {
       </header>
 
       <main>
-        <Controls
-          selectedRoot={selectedRoot}
-          onRootChange={setSelectedRoot}
-          selectedScale={selectedScale}
-          onScaleChange={setSelectedScale}
-          namingSystem={namingSystem}
-          onNamingSystemChange={setNamingSystem}
-          instrument={instrument}
-          onInstrumentChange={handleInstrumentChange}
-          tuningOffsets={tuningOffsets}
-          onTuningChange={setTuningOffsets}
-          stringCount={stringCount}
-          onStringCountChange={setStringCount}
-        />
-
-        <HelpSection />
-
-        <div className="fretboard-wrapper">
-          <Fretboard
-            selectedRoot={selectedRoot}
-            scaleNotes={scaleNotes}
-            namingSystem={namingSystem}
-            instrument={instrument}
-            tuningOffsets={tuningOffsets}
-            orientation={orientation}
-            stringCount={stringCount}
-          />
-        </div>
+        <ScaleMode orientation={orientation} />
       </main>
     </div>
   );
