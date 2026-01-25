@@ -1,10 +1,6 @@
 .help-section {
-    position: absolute;
-    top: -65px;
-    right: 0;
     width: auto;
     max-width: 600px;
-    z-index: 100;
     transition: all 1s;
 }
 

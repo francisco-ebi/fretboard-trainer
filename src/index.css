@@ -42,7 +42,12 @@ body {
 
 .app-header {
   text-align: center;
-  margin-bottom: 2rem;
+}
+
+@media (min-width: 600px) {
+  .app-header {
+    margin-bottom: 2rem;
+  }
 }
 
 .app-header h1 {
