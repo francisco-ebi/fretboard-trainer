@@ -45,6 +45,7 @@
 /* help-content-wrapper handled by Framer Motion */
 .help-content-wrapper {
     overflow: hidden;
+    max-height: 415px;
 }
 
 .help-content {
