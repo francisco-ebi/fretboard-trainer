@@ -3437,6 +3437,11 @@ picomatch@^4.0.2, picomatch@^4.0.3:
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-4.0.3.tgz#796c76136d1eead715db1e7bad785dedd695a042"
   integrity sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==
 
+pitchfinder@^2.3.4:
+  version "2.3.4"
+  resolved "https://registry.yarnpkg.com/pitchfinder/-/pitchfinder-2.3.4.tgz#14f8d5a0df32859f297117c84f8b23d90329e69a"
+  integrity sha512-GK1bWPaS1p2fB8ZUh1qXi/6iA55qxLoAS9NgqvReM5+tlUr1ch3dJvO9pikp7qpWLI7FlQBQhsl9eOwR6GAPwg==
+
 possible-typed-array-names@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/possible-typed-array-names/-/possible-typed-array-names-1.1.0.tgz#93e3582bc0e5426586d9d07b79ee40fc841de4ae"
