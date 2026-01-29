@@ -123,20 +123,7 @@ const Controls: React.FC<ControlsProps> = ({
                 </div>
             </div>
 
-            {/* 3. Secondary Preferences: Naming System */}
-            <div className="control-group secondary-group">
-                <label htmlFor="naming-select">{t('controls.noteNames')}:</label>
-                <select
-                    id="naming-select"
-                    value={namingSystem}
-                    onChange={(e) => onNamingSystemChange(e.target.value as NamingSystem)}
-                >
-                    <option value="ENGLISH">{t('naming.ENGLISH')}</option>
-                    <option value="SOLFEGE">{t('naming.SOLFEGE')}</option>
-                </select>
-            </div>
-
-            {/* 4. Advanced Settings */}
+            {/* 3. Setup & Preferences (Collapsed) */}
             <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
                 <button
                     className="advanced-toggle"
@@ -149,7 +136,7 @@ const Controls: React.FC<ControlsProps> = ({
                     >
                         ▶
                     </motion.span>
-                    {t('controls.advanced') || 'Advanced'}
+                    {t('controls.setup') || 'Setup & Preferences'}
                 </button>
 
                 <AnimatePresence>
@@ -160,8 +147,21 @@ const Controls: React.FC<ControlsProps> = ({
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.3, ease: "easeInOut" }}
-                            style={{ overflow: 'hidden' }}
+                            style={{ overflow: 'hidden', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}
                         >
+                            {/* Preference: Naming System */}
+                            <div className="control-group secondary-group">
+                                <label htmlFor="naming-select">{t('controls.noteNames')}:</label>
+                                <select
+                                    id="naming-select"
+                                    value={namingSystem}
+                                    onChange={(e) => onNamingSystemChange(e.target.value as NamingSystem)}
+                                >
+                                    <option value="ENGLISH">{t('naming.ENGLISH')}</option>
+                                    <option value="SOLFEGE">{t('naming.SOLFEGE')}</option>
+                                </select>
+                            </div>
+
                             {instrument === 'GUITAR' && (
                                 <>
                                     <div className="control-group">
@@ -191,9 +191,6 @@ const Controls: React.FC<ControlsProps> = ({
                                         </select>
                                     </div>
                                 </>
-                            )}
-                            {instrument !== 'GUITAR' && (
-                                <p className="advanced-note">Advanced settings not available for this instrument.</p>
                             )}
                         </motion.div>
                     )}

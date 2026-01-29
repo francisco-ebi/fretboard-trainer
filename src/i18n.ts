@@ -15,7 +15,8 @@ const resources = {
                 orientation: "Orientation",
                 advanced: "Advanced",
                 strings: "Strings",
-                tuning: "Tuning"
+                tuning: "Tuning",
+                setup: "Setup & Preferences"
             },
             instruments: {
                 GUITAR: "Guitar",
@@ -64,7 +65,8 @@ const resources = {
                 orientation: "Orientación",
                 advanced: "Avanzado",
                 strings: "Cuerdas",
-                tuning: "Afinación"
+                tuning: "Afinación",
+                setup: "Configuración & Preferencias"
             },
             instruments: {
                 GUITAR: "Guitarra",
