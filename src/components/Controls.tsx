@@ -137,6 +137,7 @@ const Controls: React.FC<ControlsProps> = ({
                     onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
                 >
                     <motion.span
+                        aria-hidden="true"
                         animate={{ rotate: isAdvancedOpen ? 90 : 0 }}
                         style={{ display: 'inline-block', marginRight: '8px' }}
                     >

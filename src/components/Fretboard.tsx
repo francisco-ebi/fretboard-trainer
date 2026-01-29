@@ -44,7 +44,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
         // Loop from Top (High Index) to Bottom (Low Index)
         for (let stringIndex = STRINGS - 1; stringIndex >= 0; stringIndex--) {
             stringElements.push(
-                <div key={`string-${stringIndex}`} className="string-row">
+                <div key={`string-${stringIndex}`} className="string-row" role="row" aria-label={`String ${stringIndex + 1}`}>
                     {renderFrets(stringIndex)}
                 </div>
             );
@@ -93,7 +93,12 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             }
 
             fretElements.push(
-                <div key={`fret-${stringIndex}-${fret}`} className={`fret ${fret === 0 ? 'open-string' : ''}`}>
+                <div
+                    key={`fret-${stringIndex}-${fret}`}
+                    className={`fret ${fret === 0 ? 'open-string' : ''}`}
+                    role="gridcell"
+                    aria-label={isNoteInScale ? `${note} at Fret ${fret}` : `Fret ${fret} (Empty)`}
+                >
                     {/* The string line itself */}
                     <div className="string-line"></div>
 
@@ -135,7 +140,11 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
 
     return (
         <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()}`}>
-            <div className={`fretboard ${orientation.toLowerCase()}`}>
+            <div
+                className={`fretboard ${orientation.toLowerCase()}`}
+                role="grid"
+                aria-label={`${instrument} fretboard`}
+            >
                 {renderStrings()}
             </div>
             {renderFretNumbers()}
