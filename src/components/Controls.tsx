@@ -74,7 +74,8 @@ const Controls: React.FC<ControlsProps> = ({
 
     return (
         <div className="controls">
-            <div className="control-group">
+            {/* 1. Context: Instrument (Top) */}
+            <div className="control-group instrument-group">
                 <label htmlFor="instrument-select">{t('controls.instrument')}:</label>
                 <select
                     id="instrument-select"
@@ -89,37 +90,41 @@ const Controls: React.FC<ControlsProps> = ({
                 </select>
             </div>
 
-            <div className="control-group">
-                <label htmlFor="root-select">{t('controls.key')}:</label>
-                <select
-                    id="root-select"
-                    value={selectedRoot}
-                    onChange={(e) => onRootChange(e.target.value as Note)}
-                >
-                    {CHROMATIC_SCALE.map((note) => (
-                        <option key={note} value={note}>
-                            {note}
-                        </option>
-                    ))}
-                </select>
+            {/* 2. Primary Actions: Key & Scale (Grouped) */}
+            <div className="primary-controls-group">
+                <div className="control-group">
+                    <label htmlFor="root-select">{t('controls.key')}:</label>
+                    <select
+                        id="root-select"
+                        value={selectedRoot}
+                        onChange={(e) => onRootChange(e.target.value as Note)}
+                    >
+                        {CHROMATIC_SCALE.map((note) => (
+                            <option key={note} value={note}>
+                                {note}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="control-group">
+                    <label htmlFor="scale-select">{t('controls.scale')}:</label>
+                    <select
+                        id="scale-select"
+                        value={selectedScale}
+                        onChange={(e) => onScaleChange(e.target.value as ScaleType)}
+                    >
+                        {(Object.keys(SCALES) as ScaleType[]).map((scale) => (
+                            <option key={scale} value={scale}>
+                                {scale.replace('_', ' ')}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
-            <div className="control-group">
-                <label htmlFor="scale-select">{t('controls.scale')}:</label>
-                <select
-                    id="scale-select"
-                    value={selectedScale}
-                    onChange={(e) => onScaleChange(e.target.value as ScaleType)}
-                >
-                    {(Object.keys(SCALES) as ScaleType[]).map((scale) => (
-                        <option key={scale} value={scale}>
-                            {scale.replace('_', ' ')}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="control-group">
+            {/* 3. Secondary Preferences: Naming System */}
+            <div className="control-group secondary-group">
                 <label htmlFor="naming-select">{t('controls.noteNames')}:</label>
                 <select
                     id="naming-select"
@@ -131,6 +136,7 @@ const Controls: React.FC<ControlsProps> = ({
                 </select>
             </div>
 
+            {/* 4. Advanced Settings */}
             <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
                 <button
                     className="advanced-toggle"
