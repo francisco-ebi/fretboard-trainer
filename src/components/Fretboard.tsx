@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '../utils/musicTheory';
 import NoteMarker from './NoteMarker';
 import './Fretboard.css';
@@ -74,23 +75,12 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             let isDoubleInlayBottom = false;
 
             if (DOUBLE_INLAY_FRETS.includes(fret)) {
-
-                // Determine spacing based on total strings to keep dots proportional
-                // For 4 string bass (center=2): dots at 3 and 0 is too wide? No, 3 and 0 is fine.
-                // Standard logic: Top is +1 from center, Bottom is -2 from center?
-                // Guitar 6 (Center 3): Top 4 (B string), Bottom 1 (A string).
-                // Guitar 7 (Center 3): Top 4 (G), Bottom 1 (E).
-                // Guitar 8 (Center 4): Top 5 (G), Bottom 2 (A). 
-
-                // Let's generalize: Top is Center + 1, Bottom is Center - 2.
-                // Works for Guitar 6 (3+1=4, 3-2=1)
-                // Works for Bass 4 (2+1=3, 2-2=0) -> 0 is E string.
-                // Works for Guitar 7 (3+1=4, 3-2=1)
-                // Works for Guitar 8 (4+1=5, 4-2=2)
-
                 isDoubleInlayTop = stringIndex === centerIndex + 1;
                 isDoubleInlayBottom = stringIndex === centerIndex - 2;
             }
+
+            // Stagger delay calculation: fret * 0.02s + string * 0.01s (ripple effect)
+            const staggerDelay = fret * 0.02 + (STRINGS - stringIndex) * 0.01;
 
             fretElements.push(
                 <div
@@ -107,16 +97,31 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                     {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
 
                     {/* The note marker */}
-                    {isNoteInScale && (
-                        <NoteMarker
-                            note={note}
-                            isRoot={isRoot}
-                            namingSystem={namingSystem}
-                            interval={interval}
-                            shouldShake={shouldShake}
-                            octave={octave}
-                        />
-                    )}
+                    <AnimatePresence>
+                        {isNoteInScale && (
+                            <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 400,
+                                    damping: 25,
+                                    delay: staggerDelay
+                                }}
+                                style={{ position: 'relative', zIndex: 2 }}
+                            >
+                                <NoteMarker
+                                    note={note}
+                                    isRoot={isRoot}
+                                    namingSystem={namingSystem}
+                                    interval={interval}
+                                    shouldShake={shouldShake}
+                                    octave={octave}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Fret wire */}
                 </div>

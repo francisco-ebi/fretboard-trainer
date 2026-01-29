@@ -183,6 +183,7 @@ body {
 /* Low E */
 
 /* Note Markers */
+/* Note Markers */
 .note-marker {
   width: 28px;
   height: 28px;
@@ -197,7 +198,7 @@ body {
   z-index: 2;
   /* On top of string */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* Animation handled by Framer Motion now */
 }
 
 .note-marker.root-note {
@@ -233,16 +234,4 @@ body {
 .fret-number:first-child {
   width: 40px;
   /* Match open string width */
-}
-
-@keyframes popIn {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
 }

@@ -146,7 +146,7 @@ const Controls: React.FC<ControlsProps> = ({
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
                             style={{ overflow: 'hidden', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}
                         >
                             {/* Preference: Naming System */}
