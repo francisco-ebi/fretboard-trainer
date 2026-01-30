@@ -1,4 +1,5 @@
 import { audioRecordingEngine } from '@/utils/audio/recording-engine';
+import { trainModel } from '@/utils/audio/model';
 import { useEffect } from 'react';
 
 const RecordingControls = () => {
@@ -18,6 +19,7 @@ const RecordingControls = () => {
             <button onClick={() => audioRecordingEngine.startRecording(5)}>Start Recording 5</button>
             <button onClick={() => audioRecordingEngine.stopRecording()}>Stop Recording</button>
             <button onClick={() => audioRecordingEngine.downloadDataset()}>Download Dataset</button>
+            <button onClick={() => trainModel()}>Train Model</button>
         </div>
     );
 };
