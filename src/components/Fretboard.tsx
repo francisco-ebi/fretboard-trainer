@@ -142,6 +142,22 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                                 exit="hidden"
                                 style={{ position: 'relative' }}
                             >
+                                {isPredicted && (
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '-6px',
+                                            left: '-6px',
+                                            right: '-6px',
+                                            bottom: '-6px',
+                                            borderRadius: '50%',
+                                            border: '2px dashed #34D399',
+                                            pointerEvents: 'none'
+                                        }}
+                                    />
+                                )}
                                 <NoteMarker
                                     note={note}
                                     isRoot={isRoot}
