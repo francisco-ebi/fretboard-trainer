@@ -11,16 +11,14 @@ import { OrientationProvider } from '@/context/OrientationContext';
 type AppMode = 'SCALE' | 'CHORD';
 
 function App() {
-  const [isEngineReady, setIsEngineReady] = useState(false);
+
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const { t } = useTranslation();
   const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
 
   useEffect(() => {
     if (guitarPredictionEngine) {
-      guitarPredictionEngine.fretPredicted$.subscribe((prediction) => {
-        setCurrentPrediction(prediction);
-      });
+      guitarPredictionEngine.fretPredicted$.subscribe(setCurrentPrediction);
     }
   }, [guitarPredictionEngine]);
 
@@ -46,13 +44,13 @@ function App() {
           </div>
         </header>
         <main>
-          <button onClick={() => guitarPredictionEngine.init().then(() => setIsEngineReady(true))}>Init</button>
+          <button onClick={() => guitarPredictionEngine.init()}>Init</button>
           <button onClick={() => guitarPredictionEngine.startRecording()}>Start</button>
           <button onClick={() => guitarPredictionEngine.stopRecording()}>Stop</button>
           {currentMode === 'SCALE' ? (
-            <ScaleMode />
+            <ScaleMode prediction={currentPrediction} />
           ) : (
-            <ChordMode />
+            <ChordMode prediction={currentPrediction} />
           )}
         </main>
       </div>

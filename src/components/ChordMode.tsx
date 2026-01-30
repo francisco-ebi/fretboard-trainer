@@ -18,7 +18,13 @@ import {
 } from '@/utils/musicTheory';
 import './ChordMode.css';
 
-const ChordMode: React.FC = () => {
+import { type PredictionResult } from '@/utils/audio/prediction-engine';
+
+interface ChordModeProps {
+    prediction?: PredictionResult | null;
+}
+
+const ChordMode: React.FC<ChordModeProps> = ({ prediction }) => {
     const { t } = useTranslation();
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScaleType, setSelectedScaleType] = useState<'MAJOR' | 'MINOR'>('MAJOR');
@@ -277,6 +283,7 @@ const ChordMode: React.FC = () => {
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
+                    prediction={prediction}
                 />
             </div>
         </div>

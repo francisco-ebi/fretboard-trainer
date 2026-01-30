@@ -4,7 +4,13 @@ import Controls from '@/components/Controls';
 import HelpSection from '@/components/HelpSection';
 import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 
-const ScaleMode: React.FC = () => {
+import { type PredictionResult } from '@/utils/audio/prediction-engine';
+
+interface ScaleModeProps {
+    prediction?: PredictionResult | null;
+}
+
+const ScaleMode: React.FC<ScaleModeProps> = ({ prediction }) => {
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
     const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
@@ -51,6 +57,7 @@ const ScaleMode: React.FC = () => {
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
+                    prediction={prediction}
                 />
             </div>
         </div>

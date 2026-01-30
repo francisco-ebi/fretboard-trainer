@@ -5,6 +5,8 @@ import { useOrientation } from '@/context/OrientationContext';
 import NoteMarker from '@/components/NoteMarker';
 import './Fretboard.css';
 
+import { type PredictionResult } from '@/utils/audio/prediction-engine';
+
 interface FretboardProps {
     selectedRoot: Note;
     scaleNotes: Note[];
@@ -12,6 +14,7 @@ interface FretboardProps {
     instrument: Instrument;
     tuningOffsets: number[];
     stringCount: number;
+    prediction?: PredictionResult | null;
 }
 
 const FRETS = 18; // 0 (open) to 18
@@ -27,7 +30,7 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, stringCount }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, stringCount, prediction }) => {
     const { orientation } = useOrientation();
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
@@ -60,6 +63,9 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             const isRoot = note === selectedRoot;
             const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
             const octave = getOctave(instrument, stringIndex, fret, tuningOffsets, stringCount);
+
+            // Prediction Match Logic
+            const isPredicted = prediction?.predictedStringNumber === stringIndex && prediction?.predictedFret === fret;
 
             // Shake if context changed AND note was in previous scale
             const wasInScale = prevScaleNotes?.includes(note);
@@ -95,20 +101,44 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                     {isSingleInlay && <div className="inlay-dot" style={{ top: '100%', transform: 'translate(-50%, -50%)' }} />}
                     {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
 
+                    {/* Prediction Highlight - Render BEHIND note if note exists, or standalone if not */}
+                    <AnimatePresence>
+                        {isPredicted && (
+                            <motion.div
+                                className="prediction-highlight"
+                                initial={{ scale: 1.5, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 0.6 }}
+                                exit={{ scale: 2, opacity: 0 }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'rgba(52, 211, 153, 0.6)', // Green glow
+                                    transform: 'translate(-50%, -50%)',
+                                    zIndex: 1,
+                                    boxShadow: '0 0 15px rgba(52, 211, 153, 0.8)'
+                                }}
+                            />
+                        )}
+                    </AnimatePresence>
+
                     {/* The note marker */}
                     <AnimatePresence>
                         {isNoteInScale && (
                             <motion.div
                                 initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
+                                animate={isPredicted ? { scale: 1.3, zIndex: 10 } : { scale: 1, opacity: 1, zIndex: 2 }}
                                 exit={{ scale: 0, opacity: 0 }}
                                 transition={{
                                     type: "spring",
                                     stiffness: 400,
                                     damping: 25,
-                                    delay: staggerDelay
+                                    delay: isPredicted ? 0 : staggerDelay
                                 }}
-                                style={{ position: 'relative', zIndex: 2 }}
+                                style={{ position: 'relative' }}
                             >
                                 <NoteMarker
                                     note={note}
