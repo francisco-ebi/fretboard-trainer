@@ -5,6 +5,7 @@ import TopBar from './components/TopBar';
 import ScaleMode from './components/ScaleMode';
 import ChordMode from './components/ChordMode';
 import { type Orientation } from './components/Fretboard';
+import RecordingControls from './components/RecordingControls';
 
 
 type AppMode = 'SCALE' | 'CHORD';
@@ -66,7 +67,7 @@ function App() {
         </div>
       </header>
       <main>
-
+        <RecordingControls />
         {currentMode === 'SCALE' ? (
           <ScaleMode orientation={orientation} />
         ) : (
