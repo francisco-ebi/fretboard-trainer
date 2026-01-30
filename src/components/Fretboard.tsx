@@ -104,43 +104,42 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                     {isSingleInlay && <div className="inlay-dot" style={{ top: '100%', transform: 'translate(-50%, -50%)' }} />}
                     {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
 
-                    {/* Prediction Highlight - Render BEHIND note if note exists, or standalone if not */}
-                    <AnimatePresence>
-                        {isPredicted && (
-                            <motion.div
-                                className="prediction-highlight"
-                                initial={{ scale: 1.5, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 0.6 }}
-                                exit={{ scale: 2, opacity: 0 }}
-                                style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    width: '40px',
-                                    height: '40px',
-                                    borderRadius: '50%',
-                                    backgroundColor: 'rgba(52, 211, 153, 0.6)', // Green glow
-                                    transform: 'translate(-50%, -50%)',
-                                    zIndex: 1,
-                                    boxShadow: '0 0 15px rgba(52, 211, 153, 0.8)'
-                                }}
-                            />
-                        )}
-                    </AnimatePresence>
-
                     {/* The note marker */}
                     <AnimatePresence>
                         {isNoteInScale && (
                             <motion.div
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={isPredicted ? { scale: 1.3, zIndex: 10 } : { scale: 1, opacity: 1, zIndex: 2 }}
-                                exit={{ scale: 0, opacity: 0 }}
-                                transition={{
-                                    type: "spring",
-                                    stiffness: 400,
-                                    damping: 25,
-                                    delay: isPredicted ? 0 : staggerDelay
+                                variants={{
+                                    hidden: { scale: 0, opacity: 0 },
+                                    visible: {
+                                        scale: 1,
+                                        opacity: 1,
+                                        zIndex: 2,
+                                        transition: {
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 25,
+                                            delay: staggerDelay
+                                        }
+                                    },
+                                    predicted: {
+                                        scale: 1.3,
+                                        opacity: 1,
+                                        zIndex: 10,
+                                        x: [0, -2, 2, -2, 2, 0],
+                                        transition: {
+                                            x: {
+                                                duration: 0.4,
+                                                repeat: Infinity,
+                                                repeatDelay: 1,
+                                                ease: "easeInOut"
+                                            },
+                                            scale: { duration: 0.2 }
+                                        }
+                                    }
                                 }}
+                                initial="hidden"
+                                animate={isPredicted ? "predicted" : "visible"}
+                                exit="hidden"
                                 style={{ position: 'relative' }}
                             >
                                 <NoteMarker
