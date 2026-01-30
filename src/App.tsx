@@ -5,6 +5,7 @@ import TopBar from './components/TopBar';
 import ScaleMode from './components/ScaleMode';
 import ChordMode from './components/ChordMode';
 import { type Orientation } from './components/Fretboard';
+import { audioEngine } from './utils/audio/engine';
 
 type AppMode = 'SCALE' | 'CHORD';
 
@@ -41,6 +42,12 @@ function App() {
     };
   }, [orientation]);
 
+  useEffect(() => {
+    audioEngine.onDataCaptured = (nota, total) => {
+      console.log(`Nota: ${nota} | Total muestras: ${total}`);
+    };
+  }, []);
+
   return (
     <div className="app-container">
       <TopBar
@@ -64,8 +71,13 @@ function App() {
           </button>
         </div>
       </header>
+      <button onClick={() => audioEngine.init()}>Init</button>
+      <button onClick={() => audioEngine.startRecording(0)}>Start Recording</button>
+      <button onClick={() => audioEngine.stopRecording()}>Stop Recording</button>
+      <button onClick={() => audioEngine.downloadDataset()}>Download Dataset</button>
 
       <main>
+
         {currentMode === 'SCALE' ? (
           <ScaleMode orientation={orientation} />
         ) : (

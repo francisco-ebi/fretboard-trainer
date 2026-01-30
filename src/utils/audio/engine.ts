@@ -6,8 +6,9 @@ import processorUrl from './recorder-processor.ts?url'; // Use .ts for import, V
 
 interface DatasetEntry {
     mfcc: number[];
-    nota_midi: number;
-    cuerda: number;
+    midiNote: number;
+    stringNum: number;
+    noteName: string;
 }
 
 class GuitarAudioEngine {
@@ -82,16 +83,12 @@ class GuitarAudioEngine {
         if (pitchHz) {
             const midiNote = this.hertzToMidi(pitchHz);
             // Basic range filter (Low E roughly 40, High E roughly 88 on 24th fret?)
-            // A standard guitar E2 is ~82Hz (Midi 40). E4 is ~329Hz.
-            // Let's broaden range: Low B (7 string) is ~30Hz. High note on 24th fret e string is ~1318Hz.
-            // Midi 40 is E2. Midi 90 is F#6. Range seems decent for standard guitar.
             if (midiNote < 40 || midiNote > 90) return;
 
             try {
                 const mfccs = Meyda.extract('mfcc', buffer);
                 if (mfccs) {
                     this.saveData(mfccs, midiNote);
-                    console.log({ mfccs, midiNote })
                 }
             } catch (e) {
                 // Ignore frame errors
@@ -100,10 +97,13 @@ class GuitarAudioEngine {
     }
 
     saveData(mfcc: number[] | Float32Array, note: number) {
+        const noteName = this.getNoteNameFromMidi(note);
+        console.log({ mfcc, note, noteName });
         this.dataset.push({
             mfcc: Array.from(mfcc),
-            nota_midi: note,
-            cuerda: this.currentLabel
+            midiNote: note,
+            stringNum: this.currentLabel,
+            noteName
         });
 
         if (this.onDataCaptured) {
@@ -113,6 +113,13 @@ class GuitarAudioEngine {
 
     hertzToMidi(hz: number): number {
         return Math.round(69 + 12 * Math.log2(hz / 440));
+    }
+
+    getNoteNameFromMidi(midi: number): string {
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const note = noteNames[midi % 12];
+        const octave = Math.floor(midi / 12) - 1;
+        return `${note}${octave}`;
     }
 
     startRecording(stringIndex: number) {
