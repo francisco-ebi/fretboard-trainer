@@ -54,7 +54,9 @@ const AppContent = () => {
         ) : (
           <ChordMode prediction={currentPrediction} />
         )}
-        <PredictionControls disabled={!isPredictionEnabled} />
+        {currentMode === 'SCALE' && (
+          <PredictionControls disabled={!isPredictionEnabled} />
+        )}
       </main>
     </div>
   );
