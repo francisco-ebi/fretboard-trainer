@@ -24,6 +24,10 @@ interface ChordModeProps {
     prediction?: PredictionResult | null;
 }
 
+import { useInstrument } from '@/context/InstrumentContext';
+
+// ... (other imports)
+
 const ChordMode: React.FC<ChordModeProps> = ({ prediction }) => {
     const { t } = useTranslation();
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
@@ -36,12 +40,17 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction }) => {
     const [modifiersVisible, setModifiersVisible] = useState(false);
     const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Independent state for instrument settings in this mode
-    // (Could be lifted to App if we want persistence across modes, but separate is fine for now)
+    // Context for instrument settings
     const [namingSystem] = useState<NamingSystem>('ENGLISH');
-    const [instrument, setInstrument] = useState<Instrument>('GUITAR');
-    const [stringCount, setStringCount] = useState<number>(6);
-    const [tuningOffsets, setTuningOffsets] = useState<number[]>([]);
+    const {
+        instrument,
+        setInstrument,
+        stringCount,
+        setStringCount,
+        tuningOffsets,
+        setTuningOffsets
+    } = useInstrument();
+
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
     // Handlers
@@ -74,12 +83,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction }) => {
 
     const handleInstrumentChange = (newInstrument: Instrument) => {
         setInstrument(newInstrument);
-        if (newInstrument === 'BASS') {
-            setStringCount(4);
-        } else {
-            setStringCount(6);
-        }
-        setTuningOffsets([]); // Reset to standard tuning
     };
 
     const handleStringCountChange = (count: number) => {

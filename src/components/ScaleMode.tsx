@@ -2,8 +2,9 @@ import { useState } from 'react';
 import Fretboard from '@/components/Fretboard';
 import Controls from '@/components/Controls';
 import HelpSection from '@/components/HelpSection';
-import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
+import { useInstrument } from '@/context/InstrumentContext';
 
+import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type PredictionResult } from '@/utils/audio/prediction-engine';
 
 interface ScaleModeProps {
@@ -14,18 +15,19 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ prediction }) => {
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
     const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
-    const [instrument, setInstrument] = useState<Instrument>('GUITAR');
-    const [stringCount, setStringCount] = useState<number>(6);
-    const [tuningOffsets, setTuningOffsets] = useState<number[]>([]);
+
+    // Use Context
+    const {
+        instrument,
+        setInstrument,
+        stringCount,
+        setStringCount,
+        tuningOffsets,
+        setTuningOffsets
+    } = useInstrument();
 
     const handleInstrumentChange = (newInstrument: Instrument) => {
         setInstrument(newInstrument);
-        if (newInstrument === 'BASS') {
-            setStringCount(4);
-        } else {
-            setStringCount(6);
-        }
-        setTuningOffsets([]); // Reset to standard tuning when changing instrument
     };
 
     const scaleNotes = getScale(selectedRoot, selectedScale);

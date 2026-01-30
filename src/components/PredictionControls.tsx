@@ -3,12 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { guitarPredictionEngine } from '@/utils/audio/prediction-engine';
 import './PredictionControls.css';
 
-const PredictionControls: React.FC = () => {
+interface PredictionControlsProps {
+    disabled?: boolean;
+}
+
+const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = false }) => {
     const { t } = useTranslation();
     const [isListening, setIsListening] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const toggleListening = async () => {
+        if (disabled) return;
+
         if (isListening) {
             // Stop
             guitarPredictionEngine.stopRecording();
@@ -35,7 +41,9 @@ const PredictionControls: React.FC = () => {
             <button
                 className={`control-btn ${isListening ? 'stop' : 'start'}`}
                 onClick={toggleListening}
-                disabled={isLoading}
+                disabled={isLoading || disabled}
+                style={disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                title={disabled ? "Only available for 6-string Guitar" : ""}
             >
                 {isLoading ? (
                     <div className="loading-spinner" />
