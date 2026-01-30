@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './App.css';
 import TopBar from '@/components/TopBar';
 import ScaleMode from '@/components/ScaleMode';
 import ChordMode from '@/components/ChordMode';
-import { guitarPredictionEngine } from '@/utils/audio/prediction-engine';
+import { guitarPredictionEngine, type PredictionResult } from '@/utils/audio/prediction-engine';
 import { OrientationProvider } from '@/context/OrientationContext';
 
 
 type AppMode = 'SCALE' | 'CHORD';
 
 function App() {
-
+  const [isEngineReady, setIsEngineReady] = useState(false);
+  const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const { t } = useTranslation();
   const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
+
+  useEffect(() => {
+    if (guitarPredictionEngine) {
+      guitarPredictionEngine.fretPredicted$.subscribe((prediction) => {
+        setCurrentPrediction(prediction);
+      });
+    }
+  }, [guitarPredictionEngine]);
 
   return (
     <OrientationProvider>
@@ -37,7 +46,7 @@ function App() {
           </div>
         </header>
         <main>
-          <button onClick={() => guitarPredictionEngine.init()}>Init</button>
+          <button onClick={() => guitarPredictionEngine.init().then(() => setIsEngineReady(true))}>Init</button>
           <button onClick={() => guitarPredictionEngine.startRecording()}>Start</button>
           <button onClick={() => guitarPredictionEngine.stopRecording()}>Stop</button>
           {currentMode === 'SCALE' ? (

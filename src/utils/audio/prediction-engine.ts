@@ -33,7 +33,7 @@ class GuitarAudioRecordingEngine {
 
     // RxJS Logic
     private rawPrediction$: Subject<PredictionResult>;
-    public prediction$: Observable<PredictionResult>;
+    public fretPredicted$: Observable<PredictionResult>;
 
     constructor() {
         this.audioContext = null;
@@ -47,7 +47,7 @@ class GuitarAudioRecordingEngine {
 
         // Window size 5, step 1 (rolling/sliding window)
         // Majority 75% of 5 = 3.75 -> 4
-        this.prediction$ = this.rawPrediction$.pipe(
+        this.fretPredicted$ = this.rawPrediction$.pipe(
             bufferCount(5, 1),
             map((window: PredictionResult[]) => {
                 const countMap = new Map<string, { count: number, value: PredictionResult }>();
@@ -69,7 +69,7 @@ class GuitarAudioRecordingEngine {
             filter((result): result is PredictionResult => result !== null)
         );
 
-        this.prediction$.subscribe(p => console.log('Emitted Prediction:', p));
+        this.fretPredicted$.subscribe(p => console.log('Emitted Prediction:', p));
     }
 
     async init() {
@@ -122,7 +122,7 @@ class GuitarAudioRecordingEngine {
         }
     }
 
-    processAudioBuffer(buffer: Float32Array) {
+    private processAudioBuffer(buffer: Float32Array) {
         if (!this.detectPitch) return;
 
         const pitchHz = this.detectPitch(buffer);
@@ -142,7 +142,7 @@ class GuitarAudioRecordingEngine {
         }
     }
 
-    makePrediction(mfcc: number[] | Float32Array, note: number) {
+    private makePrediction(mfcc: number[] | Float32Array, note: number) {
         const noteName = this.getNoteNameFromMidi(note);
 
         const dataset = {
@@ -174,32 +174,18 @@ class GuitarAudioRecordingEngine {
         }
     }
 
-    hertzToMidi(hz: number): number {
+    private hertzToMidi(hz: number): number {
         return Math.round(69 + 12 * Math.log2(hz / 440));
     }
 
-    getNoteNameFromMidi(midi: number): string {
+    private getNoteNameFromMidi(midi: number): string {
         const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         const note = noteNames[midi % 12];
         const octave = Math.floor(midi / 12) - 1;
         return `${note}${octave}`;
     }
 
-    startRecording() {
-        if (!this.audioContext) this.init();
-        if (this.audioContext?.state === 'suspended') this.audioContext.resume();
-
-        this.isRecording = true;
-
-        console.log("Recording started");
-    }
-
-    stopRecording() {
-        this.isRecording = false;
-        console.log("Recording stopped");
-    }
-
-    calculateLocation(midiNoteDetected: number, predictedStringNumber: number): PredictionResult | null {
+    private calculateLocation(midiNoteDetected: number, predictedStringNumber: number): PredictionResult | null {
         const noteBase = baseNotes[predictedStringNumber];
         const fret = midiNoteDetected - noteBase;
 
@@ -219,6 +205,22 @@ class GuitarAudioRecordingEngine {
             midiNoteDetected
         };
     }
+
+    startRecording() {
+        if (!this.audioContext) this.init();
+        if (this.audioContext?.state === 'suspended') this.audioContext.resume();
+
+        this.isRecording = true;
+
+        console.log("Recording started");
+    }
+
+    stopRecording() {
+        this.isRecording = false;
+        console.log("Recording stopped");
+    }
+
+
 }
 
 export const guitarPredictionEngine = new GuitarAudioRecordingEngine();
