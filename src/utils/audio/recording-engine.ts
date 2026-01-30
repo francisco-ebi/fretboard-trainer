@@ -1,9 +1,7 @@
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
 import { calculateStatistics, normalizeDataset } from './dataset-preparation';
-
-// Vite Worker Import
-import processorUrl from './recorder-processor.ts?url'; // Use .ts for import, Vite handles it. Actually, Vite expects strict worker imports. If we import ?url, it's just a string URL.
+import processorUrl from './recorder-processor.ts?url';
 
 export interface DatasetEntry {
     mfcc: number[];
@@ -144,11 +142,16 @@ class GuitarAudioRecordingEngine {
     downloadDataset() {
         const stats = calculateStatistics(this.dataset);
         const normalizedDataset = normalizeDataset(this.dataset, stats);
-        const blob = new Blob([JSON.stringify(normalizedDataset, null, 2)], { type: "application/json" });
+        this.saveJSONToFile(stats, `guitar_dataset_stats_${Date.now()}.json`);
+        this.saveJSONToFile(normalizedDataset, `guitar_dataset_${Date.now()}.json`);
+    }
+
+    saveJSONToFile(data: any, filename: string) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `guitar_dataset_${Date.now()}.json`;
+        a.download = filename;
         a.click();
         // Clean up
         setTimeout(() => URL.revokeObjectURL(url), 1000);
