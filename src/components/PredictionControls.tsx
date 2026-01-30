@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-// import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { guitarPredictionEngine } from '@/utils/audio/prediction-engine';
 import './PredictionControls.css';
 
 const PredictionControls: React.FC = () => {
-    // const { t } = useTranslation();
+    const { t } = useTranslation();
     const [isListening, setIsListening] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -42,7 +42,7 @@ const PredictionControls: React.FC = () => {
                 ) : (
                     <>
                         <div className={`status-dot ${isListening ? 'pulsing' : ''}`} />
-                        {isListening ? 'Stop Listening' : 'Start Listening'}
+                        {isListening ? t('controls.stopListening') : t('controls.startListening')}
                     </>
                 )}
             </button>

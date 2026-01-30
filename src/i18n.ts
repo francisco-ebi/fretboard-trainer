@@ -16,7 +16,9 @@ const resources = {
                 advanced: "Advanced",
                 strings: "Strings",
                 tuning: "Tuning",
-                setup: "Setup & Preferences"
+                setup: "Setup & Preferences",
+                startListening: "Start Listening",
+                stopListening: "Stop Listening"
             },
             instruments: {
                 GUITAR: "Guitar",
@@ -66,7 +68,9 @@ const resources = {
                 advanced: "Avanzado",
                 strings: "Cuerdas",
                 tuning: "Afinación",
-                setup: "Configuración & Preferencias"
+                setup: "Configuración & Preferencias",
+                startListening: "Comenzar a Escuchar",
+                stopListening: "Dejar de Escuchar"
             },
             instruments: {
                 GUITAR: "Guitarra",
