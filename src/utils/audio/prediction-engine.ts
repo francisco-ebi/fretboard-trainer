@@ -3,8 +3,16 @@ import { YIN } from 'pitchfinder';
 import * as tf from '@tensorflow/tfjs';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
-
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
+
+const baseNotes: Record<number, number> = {
+    0: 64,
+    1: 59,
+    2: 55,
+    3: 50,
+    4: 45,
+    5: 40
+};
 
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
@@ -105,20 +113,9 @@ class GuitarAudioRecordingEngine {
             const inputTensor = tf.tensor2d(normalizedDataset[0].normalizedFeatures);
             const prediction = this.model?.predict(inputTensor) as tf.Tensor;
             const predictedClass = prediction?.argMax(1).dataSync()[0];
-            console.log({ predictedClass });
+            const predicted = this.calculateLocation(note, predictedClass);
+            console.log(predicted);
         })
-        /* this.dataset.push({
-            mfcc: Array.from(mfcc),
-            midiNote: note,
-            stringNum: this.currentLabel,
-            noteName,
-            features: Array.from([...mfcc, note]),
-            normalizedFeatures: []
-        });
-
-        if (this.onDataCaptured) {
-            this.onDataCaptured(note, this.dataset.length);
-        } */
     }
 
     hertzToMidi(hz: number): number {
@@ -144,6 +141,23 @@ class GuitarAudioRecordingEngine {
     stopRecording() {
         this.isRecording = false;
         console.log("Recording stopped");
+    }
+
+    calculateLocation(midiNoteDetected: number, predictedStringNumber: number) {
+        const notaBase = baseNotes[predictedStringNumber];
+        const fret = midiNoteDetected - notaBase;
+        if (fret < 0) {
+            return "Error: La nota es más grave que la cuerda al aire (¿Predicción incorrecta?)";
+        }
+
+        if (fret > 24) {
+            return "Error: Traste fuera de rango (¿Predicción incorrecta?)";
+        }
+        return {
+            predictedStringNumber,
+            predictedFret: fret,
+            midiNoteDetected
+        };
     }
 }
 
