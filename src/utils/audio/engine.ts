@@ -1,5 +1,6 @@
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
+import { calculateStatistics, normalizeDataset } from './dataset-preparation';
 
 // Vite Worker Import
 import processorUrl from './recorder-processor.ts?url'; // Use .ts for import, Vite handles it. Actually, Vite expects strict worker imports. If we import ?url, it's just a string URL.
@@ -131,14 +132,19 @@ class GuitarAudioEngine {
 
         this.currentLabel = stringIndex;
         this.isRecording = true;
+
+        console.log("Recording started for string", stringIndex);
     }
 
     stopRecording() {
         this.isRecording = false;
+        console.log("Recording stopped");
     }
 
     downloadDataset() {
-        const blob = new Blob([JSON.stringify(this.dataset, null, 2)], { type: "application/json" });
+        const stats = calculateStatistics(this.dataset);
+        const normalizedDataset = normalizeDataset(this.dataset, stats);
+        const blob = new Blob([JSON.stringify(normalizedDataset, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
