@@ -1,10 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
+import { useOrientation } from '@/context/OrientationContext';
 import NoteMarker from '@/components/NoteMarker';
 import './Fretboard.css';
-
-export type Orientation = 'HORIZONTAL' | 'VERTICAL';
 
 interface FretboardProps {
     selectedRoot: Note;
@@ -12,7 +11,6 @@ interface FretboardProps {
     namingSystem: NamingSystem;
     instrument: Instrument;
     tuningOffsets: number[];
-    orientation: Orientation;
     stringCount: number;
 }
 
@@ -29,7 +27,8 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, orientation, stringCount }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, stringCount }) => {
+    const { orientation } = useOrientation();
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
 

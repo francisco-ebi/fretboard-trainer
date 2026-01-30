@@ -1,14 +1,10 @@
 import { useState } from 'react';
-import Fretboard, { type Orientation } from '@/components/Fretboard';
+import Fretboard from '@/components/Fretboard';
 import Controls from '@/components/Controls';
 import HelpSection from '@/components/HelpSection';
 import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 
-interface ScaleModeProps {
-    orientation: Orientation;
-}
-
-const ScaleMode: React.FC<ScaleModeProps> = ({ orientation }) => {
+const ScaleMode: React.FC = () => {
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
     const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
@@ -54,7 +50,6 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ orientation }) => {
                     namingSystem={namingSystem}
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}
-                    orientation={orientation}
                     stringCount={stringCount}
                 />
             </div>

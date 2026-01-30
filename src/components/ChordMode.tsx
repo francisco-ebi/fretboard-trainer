@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import Fretboard, { type Orientation } from '@/components/Fretboard';
+import Fretboard from '@/components/Fretboard';
 import {
     CHROMATIC_SCALE,
     INSTRUMENT_CONFIGS,
@@ -18,11 +18,7 @@ import {
 } from '@/utils/musicTheory';
 import './ChordMode.css';
 
-interface ChordModeProps {
-    orientation: Orientation;
-}
-
-const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
+const ChordMode: React.FC = () => {
     const { t } = useTranslation();
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScaleType, setSelectedScaleType] = useState<'MAJOR' | 'MINOR'>('MAJOR');
@@ -280,7 +276,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ orientation }) => {
                     namingSystem={namingSystem}
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}
-                    orientation={orientation}
                     stringCount={stringCount}
                 />
             </div>

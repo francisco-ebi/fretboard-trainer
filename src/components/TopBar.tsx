@@ -1,15 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Orientation } from '@/components/Fretboard';
+import { type Orientation, useOrientation } from '@/context/OrientationContext';
 import './TopBar.css';
 
-interface TopBarProps {
-    orientation: Orientation;
-    onOrientationChange: (orientation: Orientation) => void;
-}
-
-const TopBar: React.FC<TopBarProps> = ({ orientation, onOrientationChange }) => {
+const TopBar: React.FC = () => {
     const { t, i18n } = useTranslation();
+    const { orientation, setOrientation } = useOrientation();
 
     return (
         <div className="top-bar">
@@ -33,7 +29,7 @@ const TopBar: React.FC<TopBarProps> = ({ orientation, onOrientationChange }) => 
                 <select
                     id="top-orientation-select"
                     value={orientation}
-                    onChange={(e) => onOrientationChange(e.target.value as Orientation)}
+                    onChange={(e) => setOrientation(e.target.value as Orientation)}
                     className="top-bar-select"
                 >
                     <option value="HORIZONTAL">{t('orientations.HORIZONTAL')}</option>
