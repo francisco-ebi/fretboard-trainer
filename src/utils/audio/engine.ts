@@ -10,6 +10,7 @@ export interface DatasetEntry {
     stringNum: number;
     noteName: string;
     features: number[];
+    normalizedFeatures: number[];
 }
 
 class GuitarAudioEngine {
@@ -61,6 +62,7 @@ class GuitarAudioEngine {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const source = this.audioContext.createMediaStreamSource(stream);
             this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor');
+
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
 
@@ -103,7 +105,8 @@ class GuitarAudioEngine {
             midiNote: note,
             stringNum: this.currentLabel,
             noteName,
-            features: Array.from([...mfcc, note])
+            features: Array.from([...mfcc, note]),
+            normalizedFeatures: []
         });
 
         if (this.onDataCaptured) {

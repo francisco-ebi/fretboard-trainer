@@ -30,7 +30,7 @@ export function calculateStatistics(data: DatasetEntry[]): Statistics {
     return stats;
 }
 
-export function normalizeDataset(data: DatasetEntry[], stats: Statistics) {
+export function normalizeDataset(data: DatasetEntry[], stats: Statistics): DatasetEntry[] {
     return data.map(entry => {
         const normalizedFeatures = entry.features.map((val, i) => {
             return (val - stats.mean[i]) / (stats.std[i] || 1);
