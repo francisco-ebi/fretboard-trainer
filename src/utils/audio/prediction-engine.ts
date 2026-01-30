@@ -45,10 +45,13 @@ class GuitarAudioRecordingEngine {
 
         this.rawPrediction$ = new Subject<PredictionResult>();
 
-        // Window size 5, step 1 (rolling/sliding window)
-        // Majority 75% of 5 = 3.75 -> 4
+        const step = 1;
+        const windowSize = 10;
+        const majorityThreshold = windowSize * 0.7;
+        // Window size 10, step 1 (rolling/sliding window)
+        // Majority 70% of 10 = 7
         this.fretPredicted$ = this.rawPrediction$.pipe(
-            bufferCount(5, 1),
+            bufferCount(windowSize, step),
             map((window: PredictionResult[]) => {
                 const countMap = new Map<string, { count: number, value: PredictionResult }>();
 
@@ -60,7 +63,7 @@ class GuitarAudioRecordingEngine {
                 }
 
                 for (const { count, value } of countMap.values()) {
-                    if (count >= 4) { // 75% of 5 is 3.75, so we need 4
+                    if (count >= majorityThreshold) {
                         return value;
                     }
                 }
