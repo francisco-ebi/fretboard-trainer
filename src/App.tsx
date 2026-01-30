@@ -6,6 +6,7 @@ import ScaleMode from '@/components/ScaleMode';
 import ChordMode from '@/components/ChordMode';
 import { guitarPredictionEngine, type PredictionResult } from '@/utils/audio/prediction-engine';
 import { OrientationProvider } from '@/context/OrientationContext';
+import PredictionControls from '@/components/PredictionControls';
 
 
 type AppMode = 'SCALE' | 'CHORD';
@@ -44,14 +45,12 @@ function App() {
           </div>
         </header>
         <main>
-          <button onClick={() => guitarPredictionEngine.init()}>Init</button>
-          <button onClick={() => guitarPredictionEngine.startRecording()}>Start</button>
-          <button onClick={() => guitarPredictionEngine.stopRecording()}>Stop</button>
           {currentMode === 'SCALE' ? (
             <ScaleMode prediction={currentPrediction} />
           ) : (
             <ChordMode prediction={currentPrediction} />
           )}
+          <PredictionControls />
         </main>
       </div>
     </OrientationProvider>

@@ -153,7 +153,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                                             right: '-6px',
                                             bottom: '-6px',
                                             borderRadius: '50%',
-                                            border: '2px dashed #34D399',
+                                            border: '2px dashed #D3AF37',
                                             pointerEvents: 'none'
                                         }}
                                     />
