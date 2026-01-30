@@ -4,7 +4,7 @@ import * as tf from '@tensorflow/tfjs';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
-import { s } from 'framer-motion/client';
+
 
 const baseNotes: Record<number, number> = {
     0: 64,
@@ -114,13 +114,18 @@ class GuitarAudioRecordingEngine {
             normalizedFeatures: []
         }
         const normalizedDataset = normalizeDataset([dataset], statsData);
-        console.log({ normalizedDataset, statsData, predict: this.model?.predict });
-        const inputTensor = tf.tensor2d(normalizedDataset[0].normalizedFeatures);
-        const prediction = this.model?.predict(inputTensor) as tf.Tensor;
-        console.log({ prediction: prediction.dataSync() });
-        const predictedClass = prediction?.argMax(1).dataSync()[0];
-        const predicted = this.calculateLocation(note, predictedClass);
-        console.log({ predicted });
+        if (!this.model) {
+            console.warn("Model not loaded yet");
+            return;
+        }
+
+        const predicted = tf.tidy(() => {
+            const inputTensor = tf.tensor2d([normalizedDataset[0].normalizedFeatures]);
+            const prediction = this.model!.predict(inputTensor) as tf.Tensor;
+            const predictedClass = prediction.argMax(1).dataSync()[0];
+            return this.calculateLocation(note, predictedClass);
+        })
+        console.log(predicted);
     }
 
     hertzToMidi(hz: number): number {
@@ -149,8 +154,8 @@ class GuitarAudioRecordingEngine {
     }
 
     calculateLocation(midiNoteDetected: number, predictedStringNumber: number) {
-        const notaBase = baseNotes[predictedStringNumber];
-        const fret = midiNoteDetected - notaBase;
+        const noteBase = baseNotes[predictedStringNumber];
+        const fret = midiNoteDetected - noteBase;
         if (fret < 0) {
             return "Error: La nota es más grave que la cuerda al aire (¿Predicción incorrecta?)";
         }
