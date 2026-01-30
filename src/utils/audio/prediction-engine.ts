@@ -1,6 +1,8 @@
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
 import * as tf from '@tensorflow/tfjs';
+import { Subject, Observable } from 'rxjs';
+import { bufferCount, filter, map } from 'rxjs/operators';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
@@ -15,6 +17,12 @@ const baseNotes: Record<number, number> = {
     5: 40
 };
 
+export interface PredictionResult {
+    predictedStringNumber: number;
+    predictedFret: number;
+    midiNoteDetected: number;
+}
+
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
@@ -23,6 +31,10 @@ class GuitarAudioRecordingEngine {
     onNotePredicted: ((note: number, count: number) => void) | null;
     model: tf.LayersModel | null;
 
+    // RxJS Logic
+    private rawPrediction$: Subject<PredictionResult>;
+    public prediction$: Observable<PredictionResult>;
+
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
@@ -30,6 +42,34 @@ class GuitarAudioRecordingEngine {
         this.isRecording = false;
         this.onNotePredicted = null;
         this.model = null;
+
+        this.rawPrediction$ = new Subject<PredictionResult>();
+
+        // Window size 5, step 1 (rolling/sliding window)
+        // Majority 75% of 5 = 3.75 -> 4
+        this.prediction$ = this.rawPrediction$.pipe(
+            bufferCount(5, 1),
+            map((window: PredictionResult[]) => {
+                const countMap = new Map<string, { count: number, value: PredictionResult }>();
+
+                for (const prediction of window) {
+                    const key = `${prediction.predictedStringNumber}-${prediction.predictedFret}`;
+                    const current = countMap.get(key) || { count: 0, value: prediction };
+                    current.count++;
+                    countMap.set(key, current);
+                }
+
+                for (const { count, value } of countMap.values()) {
+                    if (count >= 4) { // 75% of 5 is 3.75, so we need 4
+                        return value;
+                    }
+                }
+                return null;
+            }),
+            filter((result): result is PredictionResult => result !== null)
+        );
+
+        this.prediction$.subscribe(p => console.log('Emitted Prediction:', p));
     }
 
     async init() {
@@ -104,7 +144,7 @@ class GuitarAudioRecordingEngine {
 
     makePrediction(mfcc: number[] | Float32Array, note: number) {
         const noteName = this.getNoteNameFromMidi(note);
-        console.log({ noteName });
+
         const dataset = {
             mfcc: Array.from(mfcc),
             midiNote: note,
@@ -114,18 +154,24 @@ class GuitarAudioRecordingEngine {
             normalizedFeatures: []
         }
         const normalizedDataset = normalizeDataset([dataset], statsData);
+
         if (!this.model) {
             console.warn("Model not loaded yet");
             return;
         }
 
-        const predicted = tf.tidy(() => {
+        const predictedClass = tf.tidy(() => {
             const inputTensor = tf.tensor2d([normalizedDataset[0].normalizedFeatures]);
             const prediction = this.model!.predict(inputTensor) as tf.Tensor;
-            const predictedClass = prediction.argMax(1).dataSync()[0];
-            return this.calculateLocation(note, predictedClass);
-        })
-        console.log(predicted);
+            return prediction.argMax(1).dataSync()[0];
+        });
+
+        const predicted = this.calculateLocation(note, predictedClass);
+
+        if (predicted) {
+            // console.log('Raw:', predicted); // Optional: verbose logging
+            this.rawPrediction$.next(predicted);
+        }
     }
 
     hertzToMidi(hz: number): number {
@@ -153,16 +199,20 @@ class GuitarAudioRecordingEngine {
         console.log("Recording stopped");
     }
 
-    calculateLocation(midiNoteDetected: number, predictedStringNumber: number) {
+    calculateLocation(midiNoteDetected: number, predictedStringNumber: number): PredictionResult | null {
         const noteBase = baseNotes[predictedStringNumber];
         const fret = midiNoteDetected - noteBase;
+
         if (fret < 0) {
-            return "Error: La nota es más grave que la cuerda al aire (¿Predicción incorrecta?)";
+            // console.warn("Error: Note lower than open string");
+            return null;
         }
 
         if (fret > 24) {
-            return "Error: Traste fuera de rango (¿Predicción incorrecta?)";
+            // console.warn("Error: Fret out of range");
+            return null;
         }
+
         return {
             predictedStringNumber,
             predictedFret: fret,
