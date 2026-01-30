@@ -1,5 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import type { DatasetEntry } from './engine';
+import dataset from './guitar_dataset.json';
 
 function createModel() {
     const model = tf.sequential();
@@ -15,7 +16,9 @@ function createModel() {
     return model;
 }
 
-export async function trainModel(data: DatasetEntry[]) {
+export async function trainModel() {
+    console.log('Training model...');
+    const data = dataset as DatasetEntry[];
     const model = createModel();
     const inputTensor = tf.tensor2d(data.map(d => d.normalizedFeatures));
     const labelsTensor = tf.tensor1d(data.map(d => d.stringNum), 'int32');
@@ -31,5 +34,6 @@ export async function trainModel(data: DatasetEntry[]) {
         }
     });
     console.log('Training completed');
+    await model.save('downloads://guitar-model');
     return model;
 }

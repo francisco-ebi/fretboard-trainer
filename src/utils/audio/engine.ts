@@ -14,7 +14,7 @@ export interface DatasetEntry {
     normalizedFeatures: number[];
 }
 
-class GuitarAudioEngine {
+class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
     detectPitch: ((buffer: Float32Array) => number | null) | null;
@@ -155,4 +155,4 @@ class GuitarAudioEngine {
     }
 }
 
-export const audioEngine = new GuitarAudioEngine();
+export const audioRecordingEngine = new GuitarAudioRecordingEngine();
