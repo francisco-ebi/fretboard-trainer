@@ -4,6 +4,7 @@ import * as tf from '@tensorflow/tfjs';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
+import { s } from 'framer-motion/client';
 
 const baseNotes: Record<number, number> = {
     0: 64,
@@ -48,7 +49,11 @@ class GuitarAudioRecordingEngine {
             return;
         }
 
-        this.model = await tf.loadLayersModel('/model/guitar-model.json');
+        try {
+            this.model = await tf.loadLayersModel('/model/guitar-model.json');
+        } catch (e) {
+            console.error("Error loading model", e);
+        }
 
         this.detectPitch = YIN({ sampleRate: this.audioContext.sampleRate });
 
@@ -99,23 +104,23 @@ class GuitarAudioRecordingEngine {
 
     makePrediction(mfcc: number[] | Float32Array, note: number) {
         const noteName = this.getNoteNameFromMidi(note);
-        console.log({ mfcc, note, noteName });
-        tf.tidy(() => {
-            const dataset = {
-                mfcc: Array.from(mfcc),
-                midiNote: note,
-                stringNum: -1,
-                noteName,
-                features: Array.from([...mfcc, note]),
-                normalizedFeatures: []
-            }
-            const normalizedDataset = normalizeDataset([dataset], statsData);
-            const inputTensor = tf.tensor2d(normalizedDataset[0].normalizedFeatures);
-            const prediction = this.model?.predict(inputTensor) as tf.Tensor;
-            const predictedClass = prediction?.argMax(1).dataSync()[0];
-            const predicted = this.calculateLocation(note, predictedClass);
-            console.log(predicted);
-        })
+        console.log({ noteName });
+        const dataset = {
+            mfcc: Array.from(mfcc),
+            midiNote: note,
+            stringNum: -1,
+            noteName,
+            features: Array.from([...mfcc, note]),
+            normalizedFeatures: []
+        }
+        const normalizedDataset = normalizeDataset([dataset], statsData);
+        console.log({ normalizedDataset, statsData, predict: this.model?.predict });
+        const inputTensor = tf.tensor2d(normalizedDataset[0].normalizedFeatures);
+        const prediction = this.model?.predict(inputTensor) as tf.Tensor;
+        console.log({ prediction: prediction.dataSync() });
+        const predictedClass = prediction?.argMax(1).dataSync()[0];
+        const predicted = this.calculateLocation(note, predictedClass);
+        console.log({ predicted });
     }
 
     hertzToMidi(hz: number): number {
@@ -161,4 +166,4 @@ class GuitarAudioRecordingEngine {
     }
 }
 
-export const audioRecordingEngine = new GuitarAudioRecordingEngine();
+export const guitarPredictionEngine = new GuitarAudioRecordingEngine();

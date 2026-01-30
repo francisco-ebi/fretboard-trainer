@@ -5,7 +5,7 @@ import TopBar from '@/components/TopBar';
 import ScaleMode from '@/components/ScaleMode';
 import ChordMode from '@/components/ChordMode';
 import { type Orientation } from '@/components/Fretboard';
-import RecordingControls from '@/components/RecordingControls';
+import { guitarPredictionEngine } from '@/utils/audio/prediction-engine';
 
 
 type AppMode = 'SCALE' | 'CHORD';
@@ -67,7 +67,9 @@ function App() {
         </div>
       </header>
       <main>
-        <RecordingControls />
+        <button onClick={() => guitarPredictionEngine.init()}>Init</button>
+        <button onClick={() => guitarPredictionEngine.startRecording()}>Start</button>
+        <button onClick={() => guitarPredictionEngine.stopRecording()}>Stop</button>
         {currentMode === 'SCALE' ? (
           <ScaleMode orientation={orientation} />
         ) : (
