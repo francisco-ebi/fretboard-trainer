@@ -4,11 +4,12 @@ import { YIN } from 'pitchfinder';
 // Vite Worker Import
 import processorUrl from './recorder-processor.ts?url'; // Use .ts for import, Vite handles it. Actually, Vite expects strict worker imports. If we import ?url, it's just a string URL.
 
-interface DatasetEntry {
+export interface DatasetEntry {
     mfcc: number[];
     midiNote: number;
     stringNum: number;
     noteName: string;
+    features: number[];
 }
 
 class GuitarAudioEngine {
@@ -59,9 +60,7 @@ class GuitarAudioEngine {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const source = this.audioContext.createMediaStreamSource(stream);
-
             this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor');
-
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
 
@@ -103,7 +102,8 @@ class GuitarAudioEngine {
             mfcc: Array.from(mfcc),
             midiNote: note,
             stringNum: this.currentLabel,
-            noteName
+            noteName,
+            features: Array.from([...mfcc, note])
         });
 
         if (this.onDataCaptured) {
