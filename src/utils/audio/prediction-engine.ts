@@ -1,8 +1,8 @@
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
 import * as tf from '@tensorflow/tfjs';
-import { Subject, Observable } from 'rxjs';
-import { bufferCount, filter, map } from 'rxjs/operators';
+import { Subject, Observable, merge, of, timer } from 'rxjs';
+import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
@@ -33,7 +33,7 @@ class GuitarAudioRecordingEngine {
 
     // RxJS Logic
     private rawPrediction$: Subject<PredictionResult>;
-    public fretPredicted$: Observable<PredictionResult>;
+    public fretPredicted$: Observable<PredictionResult | null>;
 
     constructor() {
         this.audioContext = null;
@@ -50,7 +50,8 @@ class GuitarAudioRecordingEngine {
         const majorityThreshold = windowSize * 0.7;
         // Window size 10, step 1 (rolling/sliding window)
         // Majority 70% of 10 = 7
-        this.fretPredicted$ = this.rawPrediction$.pipe(
+
+        const stableStream$ = this.rawPrediction$.pipe(
             bufferCount(windowSize, step),
             map((window: PredictionResult[]) => {
                 const countMap = new Map<string, { count: number, value: PredictionResult }>();
@@ -70,6 +71,15 @@ class GuitarAudioRecordingEngine {
                 return null;
             }),
             filter((result): result is PredictionResult => result !== null)
+        );
+
+        // SwitchMap to a merged observable of (value + null-timer)
+        // If a new value arrives, the previous timer is cancelled/switched away from.
+        this.fretPredicted$ = stableStream$.pipe(
+            switchMap(val => merge(
+                of(val),
+                timer(5000).pipe(map(() => null))
+            ))
         );
 
         this.fretPredicted$.subscribe(p => console.log('Emitted Prediction:', p));
