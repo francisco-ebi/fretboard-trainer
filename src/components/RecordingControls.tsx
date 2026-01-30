@@ -1,4 +1,4 @@
-import { audioRecordingEngine } from '@/utils/audio/engine';
+import { audioRecordingEngine } from '@/utils/audio/recording-engine';
 import { useEffect } from 'react';
 
 const RecordingControls = () => {

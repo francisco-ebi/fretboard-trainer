@@ -1,4 +1,4 @@
-import type { DatasetEntry } from "./engine";
+import type { DatasetEntry } from "./recording-engine";
 
 interface Statistics {
     mean: number[];

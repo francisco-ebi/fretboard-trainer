@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-import type { DatasetEntry } from './engine';
+import type { DatasetEntry } from './recording-engine';
 import dataset from './guitar_dataset.json';
 
 function createModel() {
