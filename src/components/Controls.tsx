@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '../utils/musicTheory';
+import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '@/utils/musicTheory';
 import './Controls.css';
 
 interface ControlsProps {

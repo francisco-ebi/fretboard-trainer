@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import Fretboard, { type Orientation } from './Fretboard';
+import Fretboard, { type Orientation } from '@/components/Fretboard';
 import {
     CHROMATIC_SCALE,
     INSTRUMENT_CONFIGS,
@@ -15,7 +15,7 @@ import {
     type Instrument,
     type Tuning,
     type ChordInfo,
-} from '../utils/musicTheory';
+} from '@/utils/musicTheory';
 import './ChordMode.css';
 
 interface ChordModeProps {

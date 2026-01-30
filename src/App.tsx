@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import './App.css';
-import TopBar from './components/TopBar';
-import ScaleMode from './components/ScaleMode';
-import ChordMode from './components/ChordMode';
-import { type Orientation } from './components/Fretboard';
-import RecordingControls from './components/RecordingControls';
+import TopBar from '@/components/TopBar';
+import ScaleMode from '@/components/ScaleMode';
+import ChordMode from '@/components/ChordMode';
+import { type Orientation } from '@/components/Fretboard';
+import RecordingControls from '@/components/RecordingControls';
 
 
 type AppMode = 'SCALE' | 'CHORD';

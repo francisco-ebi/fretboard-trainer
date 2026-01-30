@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import Fretboard, { type Orientation } from './Fretboard';
-import Controls from './Controls';
-import HelpSection from './HelpSection';
-import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from '../utils/musicTheory';
+import Fretboard, { type Orientation } from '@/components/Fretboard';
+import Controls from '@/components/Controls';
+import HelpSection from '@/components/HelpSection';
+import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 
 interface ScaleModeProps {
     orientation: Orientation;

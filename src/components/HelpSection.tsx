@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import './HelpSection.css';
-import NoteMarker from './NoteMarker';
+import NoteMarker from '@/components/NoteMarker';
 
 const HelpSection: React.FC = () => {
     const { t } = useTranslation();

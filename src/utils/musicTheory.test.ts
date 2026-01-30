@@ -4,7 +4,7 @@ import {
     getDiatonicChords,
     getChordNotes,
     getNoteAtPosition
-} from './musicTheory';
+} from '@/utils/musicTheory';
 
 describe('musicTheory', () => {
     describe('getScale', () => {

@@ -1,10 +1,10 @@
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
 import * as tf from '@tensorflow/tfjs';
-import statsData from './stats.json';
-import { normalizeDataset } from './dataset-preparation';
+import statsData from '@/utils/audio/stats.json';
+import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 
-import processorUrl from './recorder-processor.ts?url';
+import processorUrl from '@/utils/audio/recorder-processor.ts?url';
 
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;

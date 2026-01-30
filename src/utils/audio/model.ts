@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
-import type { DatasetEntry } from './recording-engine';
-import dataset from './guitar_dataset.json';
+import type { DatasetEntry } from '@/utils/audio/recording-engine';
+import dataset from '@/utils/audio/guitar_dataset.json';
 
 function createModel() {
     const model = tf.sequential();

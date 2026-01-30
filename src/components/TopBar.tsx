@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Orientation } from './Fretboard';
+import { type Orientation } from '@/components/Fretboard';
 import './TopBar.css';
 
 interface TopBarProps {

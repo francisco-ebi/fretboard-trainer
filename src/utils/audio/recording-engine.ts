@@ -1,7 +1,7 @@
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
-import { calculateStatistics, normalizeDataset } from './dataset-preparation';
-import processorUrl from './recorder-processor.ts?url';
+import { calculateStatistics, normalizeDataset } from '@/utils/audio/dataset-preparation';
+import processorUrl from '@/utils/audio/recorder-processor.ts?url';
 
 export interface DatasetEntry {
     mfcc: number[];

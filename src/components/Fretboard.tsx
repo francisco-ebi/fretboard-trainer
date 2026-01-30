@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '../utils/musicTheory';
-import NoteMarker from './NoteMarker';
+import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
+import NoteMarker from '@/components/NoteMarker';
 import './Fretboard.css';
 
 export type Orientation = 'HORIZONTAL' | 'VERTICAL';

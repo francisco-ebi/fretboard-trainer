@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getNoteName, type Note, type NamingSystem } from '../utils/musicTheory';
+import { getNoteName, type Note, type NamingSystem } from '@/utils/musicTheory';
 import './NoteMarker.css';
 
 export interface NoteMarkerProps {
