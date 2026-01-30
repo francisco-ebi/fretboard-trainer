@@ -96,16 +96,16 @@ export const INSTRUMENT_CONFIGS: Record<Instrument, InstrumentConfig> = {
     GUITAR: {
         name: 'Guitar (6-String)',
         strings: 6,
-        defaultTuning: [4, 9, 2, 7, 11, 4], // E, A, D, G, B, E
-        baseSemitones: [28, 33, 38, 43, 47, 52], // E2-E4
-        inlayCenterStringIndex: 3 // G string (index 3 from bottom 0)
+        defaultTuning: [4, 11, 7, 2, 9, 4], // E, B, G, D, A, E (High to Low)
+        baseSemitones: [52, 47, 43, 38, 33, 28], // E4, B3, G3, D3, A2, E2
+        inlayCenterStringIndex: 2 // G string is index 2 (from top 0)
     },
     BASS: {
         name: 'Bass',
         strings: 4,
-        defaultTuning: [4, 9, 2, 7], // E, A, D, G
-        baseSemitones: [16, 21, 26, 31], // E1-G2
-        inlayCenterStringIndex: 2 // D string (index 2 from bottom 0)
+        defaultTuning: [7, 2, 9, 4], // G, D, A, E (High to Low)
+        baseSemitones: [31, 26, 21, 16], // G2, D2, A1, E1
+        inlayCenterStringIndex: 1 // D string is index 1 (from top 0)
     }
 };
 
@@ -115,19 +115,16 @@ export const GUITAR_CONFIGS: Record<number, InstrumentConfig> = {
     7: {
         name: 'Guitar (7-String)',
         strings: 7,
-        defaultTuning: [11, 4, 9, 2, 7, 11, 4], // B, E, A, D, G, B, E
-        baseSemitones: [23, 28, 33, 38, 43, 47, 52], // B1-E4
-        inlayCenterStringIndex: 3 // D string (index 3 from bottom 0, which is middle of 7)
-        // Note on center index: 7 strings 0..6. Middle is 3.
+        defaultTuning: [4, 11, 7, 2, 9, 4, 11], // E, B, G, D, A, E, B (High to Low)
+        baseSemitones: [52, 47, 43, 38, 33, 28, 23], // E4 down to B1
+        inlayCenterStringIndex: 3 // D string is index 3
     },
     8: {
         name: 'Guitar (8-String)',
         strings: 8,
-        defaultTuning: [6, 11, 4, 9, 2, 7, 11, 4], // F#, B, E, A, D, G, B, E
-        baseSemitones: [18, 23, 28, 33, 38, 43, 47, 52], // F#1-E4
-        inlayCenterStringIndex: 4 // A string (index 4 from bottom 0)
-        // 8 strings 0..7. 3.5 is middle. 4 is the 5th string (A).
-        // Let's stick with specific string indices for visuals.
+        defaultTuning: [4, 11, 7, 2, 9, 4, 11, 6], // E, B, G, D, A, E, B, F# (High to Low)
+        baseSemitones: [52, 47, 43, 38, 33, 28, 23, 18], // E4 down to F#1
+        inlayCenterStringIndex: 3 // D string is still a decent center visual
     }
 };
 
@@ -140,21 +137,21 @@ export const getInstrumentConfig = (instrument: Instrument, stringCount?: number
 
 export const GUITAR_TUNINGS: Record<string, Tuning> = {
     STANDARD: { name: 'Standard', offsets: [0, 0, 0, 0, 0, 0] },
-    DROP_D: { name: 'Drop D', offsets: [-2, 0, 0, 0, 0, 0] },
-    OPEN_G: { name: 'Open G', offsets: [-2, -2, 0, 0, 0, -2] }, // D G D G B D
-    DADGAD: { name: 'DADGAD', offsets: [-2, 0, 0, 0, -2, -2] }, // D A D G A D
+    DROP_D: { name: 'Drop D', offsets: [0, 0, 0, 0, 0, -2] }, // Drop Low E (Last string)
+    OPEN_G: { name: 'Open G', offsets: [-2, 0, 0, 0, -2, -2] }, // D B G D G D (High to Low) -> Original High E to D (-2), Low E to D (-2), A to G (-2)
+    DADGAD: { name: 'DADGAD', offsets: [-2, -2, 0, 0, 0, -2] }, // D A G D A D (High to Low) -> High E to D (-2), B to A (-2), Low E to D (-2)
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1] }
 };
 
 export const GUITAR_TUNINGS_7: Record<string, Tuning> = {
-    STANDARD: { name: 'Standard (BEADGBE)', offsets: [0, 0, 0, 0, 0, 0, 0] },
-    DROP_A: { name: 'Drop A (AEADGBE)', offsets: [-2, 0, 0, 0, 0, 0, 0] },
+    STANDARD: { name: 'Standard (EBGDAEB)', offsets: [0, 0, 0, 0, 0, 0, 0] },
+    DROP_A: { name: 'Drop A (EBGDAEA)', offsets: [0, 0, 0, 0, 0, 0, -2] }, // Drop Low B (Index 6)
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1, -1] }
 };
 
 export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
-    STANDARD: { name: 'Standard (F#BEADGBE)', offsets: [0, 0, 0, 0, 0, 0, 0, 0] },
-    DROP_E: { name: 'Drop E (EBEADGBE)', offsets: [-2, 0, 0, 0, 0, 0, 0, 0] },
+    STANDARD: { name: 'Standard (EBGDAEBF#)', offsets: [0, 0, 0, 0, 0, 0, 0, 0] },
+    DROP_E: { name: 'Drop E (EBGDAEBE)', offsets: [0, 0, 0, 0, 0, 0, 0, -2] }, // Drop Low F#
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1, -1, -1] }
 };
 

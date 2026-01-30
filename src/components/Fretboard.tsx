@@ -44,8 +44,8 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
     // Generate the fretboard data structure
     const renderStrings = () => {
         const stringElements = [];
-        // Loop from Top (High Index) to Bottom (Low Index)
-        for (let stringIndex = STRINGS - 1; stringIndex >= 0; stringIndex--) {
+        // Loop from Top (High Index 0) to Bottom (Low Index STRINGS-1)
+        for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
             stringElements.push(
                 <div key={`string-${stringIndex}`} className="string-row" role="row" aria-label={`String ${stringIndex + 1}`}>
                     {renderFrets(stringIndex)}
@@ -66,6 +66,9 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
 
             // Prediction Match Logic
             const isPredicted = prediction?.predictedStringNumber === stringIndex && prediction?.predictedFret === fret;
+            if (isPredicted) {
+                console.log(`Predicted: ${note} at Fret ${fret}, String ${stringIndex}`);
+            }
 
             // Shake if context changed AND note was in previous scale
             const wasInScale = prevScaleNotes?.includes(note);
@@ -85,7 +88,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             }
 
             // Stagger delay calculation: fret * 0.02s + string * 0.01s (ripple effect)
-            const staggerDelay = fret * 0.02 + (STRINGS - stringIndex) * 0.01;
+            const staggerDelay = fret * 0.02 + stringIndex * 0.01;
 
             fretElements.push(
                 <div
