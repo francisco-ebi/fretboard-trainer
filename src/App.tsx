@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import './App.css';
 import TopBar from '@/components/TopBar';
@@ -12,7 +12,9 @@ import PredictionControls from '@/components/PredictionControls';
 type AppMode = 'SCALE' | 'CHORD';
 
 import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
-import RecordingControls from './components/RecordingControls';
+
+// Dynamic Import
+const RecordingControls = lazy(() => import('./components/RecordingControls'));
 
 // Logic component to access context
 const AppContent = () => {
@@ -83,7 +85,9 @@ const AppContent = () => {
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <button className="modal-close" onClick={() => setShowRecorder(false)}>×</button>
               <h2>Recording Studio</h2>
-              <RecordingControls />
+              <Suspense fallback={<div>Loading Recorder...</div>}>
+                <RecordingControls />
+              </Suspense>
             </div>
           </div>
         )}
