@@ -4,8 +4,7 @@ import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
-import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend';
-import { MeydaPitchfinderBackend } from '@/utils/audio/audio-backend';
+import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend-types';
 
 
 const baseNotes: Record<number, number> = {
@@ -26,7 +25,7 @@ export interface PredictionResult {
 class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
-    backend: AudioAnalysisBackend;
+    backend: AudioAnalysisBackend | null;
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
     model: tf.LayersModel | null;
@@ -38,7 +37,7 @@ class GuitarAudioPredictionEngine {
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
-        this.backend = new MeydaPitchfinderBackend(); // Default to Legacy
+        this.backend = null;
         this.isRecording = false;
         this.onNotePredicted = null;
         this.model = null;
@@ -108,6 +107,11 @@ class GuitarAudioPredictionEngine {
             console.error("Error loading model", e);
         }
 
+        // Initialize backend (default to Meyda)
+        if (!this.backend) {
+            const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
+            this.backend = new MeydaPitchfinderBackend();
+        }
         await this.backend.init(this.audioContext);
 
         try {
@@ -129,6 +133,7 @@ class GuitarAudioPredictionEngine {
     }
 
     private async processAudioBuffer(buffer: Float32Array) {
+        if (!this.backend) return;
         const result = await this.backend.process(buffer);
 
         if (result.pitch) {

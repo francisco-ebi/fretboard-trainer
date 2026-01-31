@@ -1,7 +1,6 @@
 import { calculateStatistics, normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
-import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend';
-import { MeydaPitchfinderBackend, EssentiaBackend } from '@/utils/audio/audio-backend';
+import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
@@ -24,7 +23,7 @@ export interface DatasetEntry {
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
-    backend: AudioAnalysisBackend;
+    backend: AudioAnalysisBackend | null;
     dataset: DatasetEntry[];
     isRecording: boolean;
     currentLabel: number;
@@ -33,22 +32,27 @@ class GuitarAudioRecordingEngine {
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
-        // Default to Legacy Backend (Meyda) for now, or Essentia if preferred
-        // We can expose a method to switch backends.
-        this.backend = new MeydaPitchfinderBackend();
+        this.backend = null;
         this.dataset = [];
         this.isRecording = false;
         this.currentLabel = 0; // Current String Index
         this.onDataCaptured = null;
     }
 
-    setBackendType(type: 'meyda' | 'essentia') {
+    async setBackendType(type: 'meyda' | 'essentia') {
         if (type === 'essentia') {
+            const { EssentiaBackend } = await import('@/utils/audio/essentia-backend');
             this.backend = new EssentiaBackend();
         } else {
+            const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
             this.backend = new MeydaPitchfinderBackend();
         }
         console.log(`Switched audio backend to: ${this.backend.name}`);
+
+        // Re-initialize if context exists
+        if (this.audioContext && this.backend) {
+            await this.backend.init(this.audioContext);
+        }
     }
 
     async init() {
@@ -69,8 +73,13 @@ class GuitarAudioRecordingEngine {
             return;
         }
 
-        // Initialize the selected backend (async, might load WASM)
-        await this.backend.init(this.audioContext);
+        // Initialize default backend if not set
+        if (!this.backend) {
+            await this.setBackendType('meyda');
+        } else {
+            // If backend was already set (e.g. via setBackendType calls before init), init it now
+            await this.backend.init(this.audioContext);
+        }
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -91,6 +100,7 @@ class GuitarAudioRecordingEngine {
     }
 
     async processAudioBuffer(buffer: Float32Array) {
+        if (!this.backend) return;
         // Use the backend to analyze audio
         const result = await this.backend.process(buffer);
 
@@ -116,7 +126,7 @@ class GuitarAudioRecordingEngine {
 
     saveData(mfcc: number[], note: number) {
         const noteName = this.getNoteNameFromMidi(note);
-        console.log({ mfcc, note, noteName, backend: this.backend.name });
+        console.log({ mfcc, note, noteName, backend: this.backend?.name });
         this.dataset.push({
             mfcc: Array.from(mfcc),
             midiNote: note,
