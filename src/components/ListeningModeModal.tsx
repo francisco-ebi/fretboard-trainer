@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import './ListeningModeModal.css'; // We'll create this next
+import ReactDOM from 'react-dom';
+import './ListeningModeModal.css';
 
 interface ListeningModeModalProps {
     isOpen: boolean;
@@ -28,7 +29,7 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
 
     if (!isOpen) return null;
 
-    return (
+    return ReactDOM.createPortal(
         <div className="listening-modal-overlay" onClick={onClose}>
             <div className="listening-modal-content" onClick={e => e.stopPropagation()}>
                 <div className="listening-modal-header">
@@ -69,7 +70,8 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
