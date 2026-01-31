@@ -1,6 +1,6 @@
 import { calculateStatistics, normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
-import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend-types';
+import type { AudioAnalysisBackend, AnalysisResult } from '@/utils/audio/audio-backend-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
@@ -119,14 +119,24 @@ class GuitarAudioRecordingEngine {
             }
 
             if (result.mfcc) {
-                this.saveData(result.mfcc, midiNote);
+                this.saveData(result.mfcc, midiNote, result);
             }
         }
     }
 
-    saveData(mfcc: number[], note: number) {
+    saveData(mfcc: number[], note: number, extraFeatures: Partial<AnalysisResult> = {}) {
         const noteName = this.getNoteNameFromMidi(note);
-        console.log({ mfcc, note, noteName, backend: this.backend?.name });
+        // Log basic info plus new spectral features
+        console.log({
+            mfcc,
+            note,
+            noteName,
+            backend: this.backend?.name,
+            centroid: extraFeatures.spectralCentroid,
+            flux: extraFeatures.spectralFlux,
+            rolloff: extraFeatures.spectralRolloff
+        });
+
         this.dataset.push({
             mfcc: Array.from(mfcc),
             midiNote: note,
