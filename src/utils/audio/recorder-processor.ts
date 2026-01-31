@@ -1,13 +1,15 @@
 class RecorderProcessor extends AudioWorkletProcessor {
     bufferSize: number;
+    hopSize: number;
     buffer: Float32Array;
-    byteIndex: number;
+    currentSize: number;
 
     constructor() {
         super();
-        this.bufferSize = 2048;
+        this.bufferSize = 2048; // Frame size
+        this.hopSize = 1024;    // 50% overlap
         this.buffer = new Float32Array(this.bufferSize);
-        this.byteIndex = 0;
+        this.currentSize = 0;
     }
 
     process(inputs: Float32Array[][], _outputs: Float32Array[][], _parameters: Record<string, Float32Array>): boolean {
@@ -15,30 +17,43 @@ class RecorderProcessor extends AudioWorkletProcessor {
         if (!input || input.length === 0) return true;
 
         const channelData = input[0]; // Mono channel
-
         if (!channelData || channelData.length === 0) return true;
 
+        // Efficiently copy input data to buffer
+        // Note: AudioWorklet input blocks are typically 128 samples
         for (let i = 0; i < channelData.length; i++) {
-            this.buffer[this.byteIndex] = channelData[i];
-            this.byteIndex++;
+            // If buffer is full (shouldn't happen directly if logic is correct, but safe guard)
+            if (this.currentSize >= this.bufferSize) {
+                this.shiftBuffer();
+            }
 
-            if (this.byteIndex >= this.bufferSize) {
-                // Clone and calculate RMS for Noise Gate
+            this.buffer[this.currentSize] = channelData[i];
+            this.currentSize++;
+
+            if (this.currentSize >= this.bufferSize) {
+                // Clone and process
                 const bufferToSend = new Float32Array(this.buffer);
                 const rms = this.calculateRMS(bufferToSend);
 
-                // Noise Threshold (adjustable)
+                // Noise Threshold
                 if (rms > 0.02) {
                     this.port.postMessage({
                         buffer: bufferToSend,
                         rms: rms
-                    });
+                    }, [bufferToSend.buffer]); // Transfer buffer ownership for performance
                 }
 
-                this.byteIndex = 0;
+                this.shiftBuffer();
             }
         }
+
         return true;
+    }
+
+    shiftBuffer() {
+        const overlapSize = this.bufferSize - this.hopSize;
+        this.buffer.copyWithin(0, this.hopSize);
+        this.currentSize = overlapSize;
     }
 
     calculateRMS(data: Float32Array): number {

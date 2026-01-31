@@ -74,13 +74,19 @@ class GuitarAudioRecordingEngine {
         }
         // Initialize default backend if not set
         if (!this.backend) {
-            await this.setBackendType('meyda');
+            await this.setBackendType('essentia');
         } else {
             // If backend was already set (e.g. via setBackendType calls before init), init it now
             await this.backend.init(this.audioContext);
         }
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: false,
+                    autoGainControl: false,
+                    noiseSuppression: false,
+                }
+            });
             const source = this.audioContext.createMediaStreamSource(stream);
             this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor');
 
@@ -100,7 +106,12 @@ class GuitarAudioRecordingEngine {
     async processAudioBuffer(buffer: Float32Array) {
         if (!this.backend) return;
         // Use the backend to analyze audio
-        const result = await this.backend.process(buffer);
+        let result: AnalysisResult = { pitch: null, mfcc: null };
+        try {
+            result = await this.backend.process(buffer);
+        } catch (e) {
+            // console.error("Error processing audio buffer", e);
+        }
 
         if (result.pitch) {
             const midiNote = this.hertzToMidi(result.pitch);
