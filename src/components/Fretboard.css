@@ -21,13 +21,13 @@
     }
 }
 
-/* --- HORIZONTAL GRID (Default) --- */
 .fretboard {
     display: grid;
-    /* Column 1: Open String, Columns 2-19: Frets 1-18 */
     /* Use minmax to allow scaling but enforce minimums */
     grid-template-columns: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
     /* Rows defined implicitly by content (strings) */
+    gap: 0;
+    /* Ensure no gaps between cells */
 
     background-color: var(--fretboard-wood);
     border: 0.25rem solid var(--bg-secondary);
@@ -58,17 +58,15 @@
     display: grid;
     grid-template-columns: subgrid;
     grid-column: 1 / -1;
-    /* Span all fret columns */
+    gap: 0;
 
     height: 4rem;
-    /* Fixed height for consistency */
     position: relative;
-    align-items: center;
 }
 
 .fret {
-    /* Height and Width handled by Grid/Subgrid */
     position: relative;
+    height: 100%;
     border-right: 0.25rem solid var(--fret-wire);
     display: flex;
     align-items: center;
@@ -78,7 +76,6 @@
 
 .fret.open-string {
     border-right: 0.375rem solid #fff;
-    /* Nut */
     background-color: rgba(0, 0, 0, 0.2);
     box-shadow: none;
 }
@@ -86,7 +83,7 @@
 .string-line {
     position: absolute;
     left: 0;
-    right: 0;
+    right: -0.25rem;
     height: 0.125rem;
     background-color: var(--string-color);
     top: 50%;
@@ -95,7 +92,6 @@
     box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.8);
 }
 
-/* String Thicknesses */
 .string-row:nth-last-child(1) .string-line {
     height: 0.25rem;
 }
@@ -131,7 +127,6 @@
     grid-template-columns: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
     margin-top: 0.5rem;
     min-width: 1120px;
-    /* Match fretboard min-width */
 }
 
 .fret-number {
@@ -141,7 +136,6 @@
     font-weight: 500;
 }
 
-/* Inlay Dots */
 .inlay-dot {
     position: absolute;
     width: 1.25rem;
@@ -168,10 +162,7 @@
 
 .fretboard.vertical {
     display: grid;
-    /* Swap axes */
-    /* Columns = Strings (e.g. 6) */
     grid-template-columns: repeat(6, 4rem);
-    /* Rows = Frets (Open + 18) */
     grid-template-rows: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
 
     min-width: unset;
