@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import './ListeningModeModal.css';
 
 interface ListeningModeModalProps {
@@ -9,6 +10,7 @@ interface ListeningModeModalProps {
 }
 
 const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose, onConfirm }) => {
+    const { t } = useTranslation();
     const [isWasmSupported, setIsWasmSupported] = useState(false);
 
     useEffect(() => {
@@ -33,12 +35,12 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
         <div className="listening-modal-overlay" onClick={onClose}>
             <div className="listening-modal-content" onClick={e => e.stopPropagation()}>
                 <div className="listening-modal-header">
-                    <h2>Select Listening Mode</h2>
+                    <h2>{t('listeningModal.title')}</h2>
                     <button className="listening-modal-close" onClick={onClose}>×</button>
                 </div>
 
                 <p className="listening-modal-description">
-                    Choose the audio processing engine that best fits your device.
+                    {t('listeningModal.description')}
                 </p>
 
                 <div className="listening-mode-options">
@@ -49,9 +51,9 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
                     >
                         <div className="mode-icon">⚡</div>
                         <div className="mode-info">
-                            <h3>Performance Mode</h3>
-                            <span className="mode-tag mobile">Recommended for Mobile</span>
-                            <p>Uses <strong>Meyda</strong>. Optimized for speed and lower battery usage. Best for smartphones or older devices.</p>
+                            <h3>{t('listeningModal.performance.title')}</h3>
+                            <span className="mode-tag mobile">{t('listeningModal.performance.tag')}</span>
+                            <p dangerouslySetInnerHTML={{ __html: t('listeningModal.performance.desc') }} />
                         </div>
                     </div>
 
@@ -62,10 +64,10 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
                     >
                         <div className="mode-icon">🎯</div>
                         <div className="mode-info">
-                            <h3>Precision Mode</h3>
-                            <span className="mode-tag desktop">Recommended for Desktop</span>
-                            <p>Uses <strong>Essentia.js</strong>. Offers higher accuracy but requires more processing power.</p>
-                            {!isWasmSupported && <div className="wasm-warning">⚠️ WebAssembly not supported</div>}
+                            <h3>{t('listeningModal.precision.title')}</h3>
+                            <span className="mode-tag desktop">{t('listeningModal.precision.tag')}</span>
+                            <p dangerouslySetInnerHTML={{ __html: t('listeningModal.precision.desc') }} />
+                            {!isWasmSupported && <div className="wasm-warning">{t('listeningModal.precision.warning')}</div>}
                         </div>
                     </div>
                 </div>

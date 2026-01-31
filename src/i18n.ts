@@ -7,6 +7,21 @@ const resources = {
         translation: {
             title: "Fretboard Trainer",
             subtitle: "Visualize scales and master the fretboard.",
+            listeningModal: {
+                title: "Select Listening Mode",
+                description: "Choose the audio processing engine that best fits your device.",
+                performance: {
+                    title: "Performance Mode",
+                    tag: "Recommended for Mobile",
+                    desc: "Optimized for speed and lower battery usage. Best for smartphones or older devices."
+                },
+                precision: {
+                    title: "Precision Mode",
+                    tag: "Recommended for Desktop",
+                    desc: "Offers higher accuracy but requires more processing power.",
+                    warning: "⚠️ WebAssembly not supported"
+                }
+            },
             controls: {
                 instrument: "Instrument",
                 key: "Key (Root Note)",
@@ -59,6 +74,21 @@ const resources = {
         translation: {
             title: "Entrenador de Diapasón",
             subtitle: "Visualiza escalas y domina el diapasón.",
+            listeningModal: {
+                title: "Seleccionar Modo de Escucha",
+                description: "Elige el motor de procesamiento de audio que mejor se adapte a tu dispositivo.",
+                performance: {
+                    title: "Modo Rendimiento",
+                    tag: "Recomendado para Móvil",
+                    desc: "Optimizado para velocidad y menor consumo de batería. Ideal para smartphones o dispositivos antiguos."
+                },
+                precision: {
+                    title: "Modo Precisión",
+                    tag: "Recomendado para Escritorio",
+                    desc: "Ofrece mayor precisión pero requiere más potencia de procesamiento.",
+                    warning: "⚠️ WebAssembly no soportado"
+                }
+            },
             controls: {
                 instrument: "Instrumento",
                 key: "Tonalidad (Nota Raíz)",
