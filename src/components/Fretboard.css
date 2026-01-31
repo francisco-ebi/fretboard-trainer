@@ -1,8 +1,7 @@
 .fretboard-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: var(--app-padding-desktop);
+    display: block;
+    width: 100%;
+    /* min-width: 1120px;  Ensure trigger scroll on mobile */
     background: rgba(30, 30, 35, 0.8);
     border-radius: 1rem;
     box-shadow: 0 0.5rem 2rem 0 rgba(0, 0, 0, 0.37);
@@ -10,9 +9,10 @@
     -webkit-backdrop-filter: blur(8px);
     border: 0.0625rem solid rgba(255, 255, 255, 0.1);
     margin-top: 2rem;
+    padding: 20px 0 0 0;
+    position: relative;
+    user-select: none;
     overflow-x: auto;
-    /* Handle overflow on small screens */
-    max-width: 100%;
 }
 
 @media (max-width: 600px) {
@@ -21,18 +21,21 @@
     }
 }
 
+/* --- HORIZONTAL GRID (Default) --- */
 .fretboard {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    /* Column 1: Open String, Columns 2-19: Frets 1-18 */
+    /* Use minmax to allow scaling but enforce minimums */
+    grid-template-columns: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
+    /* Rows defined implicitly by content (strings) */
+
     background-color: var(--fretboard-wood);
-    /* Dark wood-ish color */
     border: 0.25rem solid var(--bg-secondary);
     border-radius: 0.25rem;
-    padding-left: 0;
-    /* Open strings are handled inside */
     position: relative;
-    min-width: max-content;
-    /* Ensure enough space for frets */
+
+    /* Ensure nice minimum width on small screens to force scroll */
+    min-width: 1120px;
 }
 
 /* Wood texture gradient overlay */
@@ -48,42 +51,36 @@
             rgba(255, 255, 255, 0) 20%,
             rgba(0, 0, 0, 0.1) 100%);
     pointer-events: none;
+    z-index: 0;
 }
 
 .string-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+    /* Span all fret columns */
+
     height: 4rem;
-    /* Space between strings */
+    /* Fixed height for consistency */
     position: relative;
-    /* border-bottom: 1px solid red; Debug alignment */
+    align-items: center;
 }
 
 .fret {
-    width: 3.75rem;
-    /* Width of each fret */
-    height: 100%;
-    border-right: 0.25rem solid #c0c0c0;
-    /* Fret wire */
-    box-sizing: border-box;
+    /* Height and Width handled by Grid/Subgrid */
     position: relative;
+    border-right: 0.25rem solid var(--fret-wire);
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: inset -0.125rem 0 0.125rem rgba(0, 0, 0, 0.5);
 }
 
 .fret.open-string {
-    width: 3.75rem;
-    /* Match standard fret width or at least enough for marker */
-    border-right: 0.375rem solid #e0e0e0;
+    border-right: 0.375rem solid #fff;
     /* Nut */
-    background-color: #1a1a1a;
-    flex-shrink: 0;
-}
-
-/* Metallic fret effect */
-.fret:not(.open-string) {
-    border-right: 0.25rem solid var(--fret-wire);
-    box-shadow: inset -0.125rem 0 0.125rem rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.2);
+    box-shadow: none;
 }
 
 .string-line {
@@ -98,17 +95,7 @@
     box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.8);
 }
 
-/* Thicker low strings - Keeping px for stroke width precision/feel, or convert? 
-   User asked for 'rem unit instead of a fixed px size for string-row and fret elements'.
-   String THICKNESS is a visual detail.
-   But consistency is good. 
-   4px = 0.25rem
-   3.5px = 0.21875rem
-   3px = 0.1875rem
-   2.5px = 0.15625rem
-   2px = 0.125rem
-   1.5px = 0.09375rem
-*/
+/* String Thicknesses */
 .string-row:nth-last-child(1) .string-line {
     height: 0.25rem;
 }
@@ -137,30 +124,24 @@
     height: 0.09rem;
 }
 
-/* NoteMarker styles moved to NoteMarker.css */
 
+/* Fret Numbers Row */
 .fret-numbers-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
     margin-top: 0.5rem;
-    padding-left: 0;
-    min-width: max-content;
-    /* Match fretboard */
+    min-width: 1120px;
+    /* Match fretboard min-width */
 }
 
 .fret-number {
-    width: 3.75rem;
-    /* Match fret width */
     text-align: center;
     color: #888;
     font-size: 0.8rem;
     font-weight: 500;
 }
 
-.fret-number:first-child {
-    width: 3.75rem;
-    /* Match nut width */
-}
-
+/* Inlay Dots */
 .inlay-dot {
     position: absolute;
     width: 1.25rem;
@@ -168,74 +149,72 @@
     background: rgba(255, 255, 255, 0.15);
     border-radius: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    z-index: 0;
     top: 50%;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.3);
+    z-index: 0;
 }
 
-/* --- Vertical Mode Overrides --- */
 
+/* --- VERTICAL MODE --- */
 .fretboard-container.vertical {
+    display: flex;
     flex-direction: row;
-    /* Fretboard and Numbers side-by-side */
-    align-items: flex-start;
-    /* Align top */
+    /* Wrapper layout: Fretboard | Numbers */
     overflow-x: auto;
     overflow-y: auto;
     max-height: 80vh;
-    /* Scrollable vertically */
 }
 
 .fretboard.vertical {
-    flex-direction: row-reverse;
-    /* Strings as columns */
+    display: grid;
+    /* Swap axes */
+    /* Columns = Strings (e.g. 6) */
+    grid-template-columns: repeat(6, 4rem);
+    /* Rows = Frets (Open + 18) */
+    grid-template-rows: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
+
     min-width: unset;
-    min-height: max-content;
-    /* Ensure vertical space */
-    border-bottom: 0px;
+    min-height: 1120px;
 }
 
 .fretboard-container.vertical .string-row {
+    /* String Row becomes a Column visually */
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / -1;
+    /* Span all frets (rows) */
+
+    height: auto;
+    /* Let grid control height */
+    width: 4rem;
     flex-direction: column;
-    /* Frets as rows */
-    width: 3.75rem;
-    /* String spacing width (was 60px) */
-    height: 100%;
+    /* Internal stacking if needed */
 }
 
+/* Vertical Frets styling */
 .fretboard-container.vertical .fret {
-    width: 100%;
-    height: 3.75rem;
-    /* Fret height */
     border-right: none;
-    border-bottom: 0.25rem solid #c0c0c0;
-}
-
-.fretboard-container.vertical .fret:not(.open-string) {
-    border-bottom: 0.25rem solid #d4d4d4;
+    border-bottom: 0.25rem solid var(--fret-wire);
     box-shadow: inset 0 -0.125rem 0.125rem rgba(0, 0, 0, 0.5);
 }
 
 .fretboard-container.vertical .fret.open-string {
-    height: 3.75rem;
-    /* Nut height */
     border-bottom: 0.375rem solid #e0e0e0;
 }
 
-/* String Lines: Vertical */
+/* Vertical String Lines */
 .fretboard-container.vertical .string-line {
     height: 100% !important;
-    /* Override thickness-based height */
+    /* Override thickness-height interaction */
     top: 0;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    /* Center horizontally */
+    box-shadow: 0.0625rem 0 0.125rem rgba(0, 0, 0, 0.8);
 }
 
-/* Vertical String Thicknesses (Width) */
+/* Vertical String Thickness (Widths) */
 .fretboard-container.vertical .string-row:nth-last-child(1) .string-line {
     width: 0.25rem;
 }
@@ -264,18 +243,21 @@
     width: 0.09rem;
 }
 
-/* Fret Numbers for Vertical */
+/* Vertical Numbers */
 .fretboard-container.vertical .fret-numbers-row {
-    flex-direction: column;
-    min-width: unset;
-    min-height: max-content;
-    /* Match fretboard */
+    display: grid;
+    grid-template-rows: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
+    grid-template-columns: auto;
+
     margin-top: 0;
+    padding-left: 0.5rem;
+    min-width: unset;
+    min-height: 1120px;
+    height: 100%;
 }
 
 .fretboard-container.vertical .fret-number {
-    height: 3.75rem;
-    width: auto;
-    line-height: 3.75rem;
-    /* Center text vertically */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
