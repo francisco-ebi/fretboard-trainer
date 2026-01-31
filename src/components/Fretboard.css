@@ -173,8 +173,12 @@
     /* String Row becomes a Column visually */
     display: grid;
     grid-template-rows: subgrid;
+    grid-template-columns: unset;
+    /* Reset horizontal subgrid */
     grid-row: 1 / -1;
     /* Span all frets (rows) */
+    grid-column: auto;
+    /* Allow auto-placement into columns */
 
     height: auto;
     /* Let grid control height */
