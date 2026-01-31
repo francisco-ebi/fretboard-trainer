@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import './App.css';
 import TopBar from '@/components/TopBar';
@@ -12,6 +12,7 @@ import PredictionControls from '@/components/PredictionControls';
 type AppMode = 'SCALE' | 'CHORD';
 
 import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
+import RecordingControls from './components/RecordingControls';
 
 // Logic component to access context
 const AppContent = () => {
@@ -19,6 +20,33 @@ const AppContent = () => {
   const { instrument, stringCount } = useInstrument();
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
+
+  // Secret Recording Mode
+  const [showRecorder, setShowRecorder] = useState(false);
+  const keyBufferRef = useRef('');
+
+  // Cheat code listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // If modal is open, check for Escape
+      if (showRecorder && e.key === 'Escape') {
+        setShowRecorder(false);
+        return;
+      }
+
+      // Buffer logic
+      const newBuffer = (keyBufferRef.current + e.key).slice(-6).toLowerCase();
+      keyBufferRef.current = newBuffer;
+
+      if (newBuffer === 'record') {
+        setShowRecorder(true);
+        keyBufferRef.current = ''; // Reset buffer
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showRecorder]);
 
   useEffect(() => {
     if (guitarPredictionEngine) {
@@ -49,6 +77,17 @@ const AppContent = () => {
         </div>
       </header>
       <main>
+        {/* Secret Modal */}
+        {showRecorder && (
+          <div className="modal-overlay" onClick={() => setShowRecorder(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <button className="modal-close" onClick={() => setShowRecorder(false)}>×</button>
+              <h2>Recording Studio</h2>
+              <RecordingControls />
+            </div>
+          </div>
+        )}
+
         {currentMode === 'SCALE' ? (
           <ScaleMode prediction={currentPrediction} />
         ) : (
