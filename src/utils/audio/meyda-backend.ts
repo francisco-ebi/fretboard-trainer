@@ -28,7 +28,7 @@ export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
 
         try {
             // @ts-ignore
-            const features = Meyda.extract(['mfcc', 'spectralCentroid', 'spectralFlux', 'spectralRolloff'], buffer);
+            const features = Meyda.extract(['mfcc', 'spectralCentroid', 'spectralRolloff'], buffer);
             // @ts-ignore
             if (features) {
                 // @ts-ignore
@@ -41,7 +41,7 @@ export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
                 spectralRolloff = features.spectralRolloff;
             }
         } catch (e) {
-            // console.warn("Meyda extraction error", e);
+            console.warn("Meyda extraction error", e);
         }
 
         return { pitch, mfcc, spectralCentroid, spectralFlux, spectralRolloff };

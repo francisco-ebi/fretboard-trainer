@@ -72,7 +72,6 @@ class GuitarAudioRecordingEngine {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
         }
-
         // Initialize default backend if not set
         if (!this.backend) {
             await this.setBackendType('meyda');
@@ -80,7 +79,6 @@ class GuitarAudioRecordingEngine {
             // If backend was already set (e.g. via setBackendType calls before init), init it now
             await this.backend.init(this.audioContext);
         }
-
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const source = this.audioContext.createMediaStreamSource(stream);
