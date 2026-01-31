@@ -1,8 +1,14 @@
-import * as tf from '@tensorflow/tfjs';
 import type { DatasetEntry } from '@/utils/audio/recording-engine';
+// import * as tf from '@tensorflow/tfjs';
+import type { LayersModel } from '@tensorflow/tfjs';
 import dataset from '@/utils/audio/guitar_dataset.json';
 
-function createModel() {
+async function getTiF() {
+    return await import('@tensorflow/tfjs');
+}
+
+export async function createModel(): Promise<LayersModel> {
+    const tf = await getTiF();
     const model = tf.sequential();
     model.add(tf.layers.dense({ inputShape: [14], units: 32, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
@@ -16,24 +22,34 @@ function createModel() {
     return model;
 }
 
-export async function trainModel() {
+export async function trainModel(data: DatasetEntry[] = []) { // Keep data optional for now
     console.log('Training model...');
-    const data = dataset as DatasetEntry[];
-    const model = createModel();
+    const tf = await getTiF();
+
+    // Mock data if empty for testing
+    if (data.length === 0) {
+        console.warn("No data provided for training, using default dataset.");
+        data = dataset as DatasetEntry[];
+    }
+
+    const model = await createModel();
     const inputTensor = tf.tensor2d(data.map(d => d.normalizedFeatures));
     const labelsTensor = tf.tensor1d(data.map(d => d.stringNum), 'int32');
     const outputTensor = tf.oneHot(labelsTensor, 6);
+
     await model.fit(inputTensor, outputTensor, {
         epochs: 50,
         batchSize: 32,
         shuffle: true,
         callbacks: {
-            onEpochEnd: (epoch, logs) => {
-                console.log(`Epoch ${epoch}: loss = ${logs?.loss}, accuracy = ${logs?.acc}`);
-            }
+            onEpochEnd: (epoch, logs) => console.log(`Epoch ${epoch}: loss=${logs?.loss}, accuracy = ${logs?.acc}`)
         }
     });
     console.log('Training completed');
-    await model.save('downloads://guitar-model');
+    // Save model
+    // await model.save('downloads://guitar-model');
+    // For browser download:
+    await model.save('downloads://guitar-model-v2');
+
     return model;
 }

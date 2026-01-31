@@ -18,6 +18,18 @@ export default defineConfig({
     globals: true,
     setupFiles: './vitest.setup.ts',
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'framer-motion', 'i18next', 'react-i18next'],
+          tensorflow: ['@tensorflow/tfjs'],
+          essentia: ['essentia.js'],
+          audio: ['meyda', 'pitchfinder']
+        }
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({

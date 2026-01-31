@@ -1,4 +1,5 @@
-import * as tf from '@tensorflow/tfjs';
+// import * as tf from '@tensorflow/tfjs'; // Removed static import
+import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import statsData from '@/utils/audio/stats.json';
@@ -30,8 +31,9 @@ class GuitarAudioPredictionEngine {
     backend: AudioAnalysisBackend | null;
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
-    model: tf.LayersModel | null;
+    model: LayersModel | null;
     currentMode: PredictionMode;
+    private tf: any = null; // Store TFJS instance
 
     // RxJS Logic
     private rawPrediction$: Subject<PredictionResult>;
@@ -99,15 +101,20 @@ class GuitarAudioPredictionEngine {
     async loadResourcesForMode() {
         console.log(`Loading resources for mode: ${this.currentMode}`);
         try {
+            // Lazy load TensorFlow.js
+            if (!this.tf) {
+                this.tf = await import('@tensorflow/tfjs');
+            }
+
             if (this.currentMode === 'performance') {
                 const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
                 this.backend = new MeydaPitchfinderBackend();
-                this.model = await tf.loadLayersModel('/model/guitar-model-performance.json');
+                this.model = await this.tf.loadLayersModel('/model/guitar-model-performance.json');
             } else {
                 const { EssentiaBackend } = await import('@/utils/audio/essentia-backend');
                 this.backend = new EssentiaBackend();
                 try {
-                    this.model = await tf.loadLayersModel('/model/guitar-model-precision.json');
+                    this.model = await this.tf.loadLayersModel('/model/guitar-model-precision.json');
                 } catch (e) {
                     console.warn("Precision model not found. Predictions might be unavailable.");
                     this.model = null;
@@ -191,14 +198,14 @@ class GuitarAudioPredictionEngine {
         // @ts-ignore
         const normalizedDataset = normalizeDataset([dataset], statsData);
 
-        if (!this.model) {
-            console.warn("Model not loaded yet");
+        if (!this.model || !this.tf) {
+            console.warn("Model or TFJS not loaded yet");
             return;
         }
 
-        const predictedClass = tf.tidy(() => {
-            const inputTensor = tf.tensor2d([normalizedDataset[0].normalizedFeatures]);
-            const prediction = this.model!.predict(inputTensor) as tf.Tensor;
+        const predictedClass = this.tf.tidy(() => {
+            const inputTensor = this.tf.tensor2d([normalizedDataset[0].normalizedFeatures]);
+            const prediction = this.model!.predict(inputTensor) as Tensor;
             return prediction.argMax(1).dataSync()[0];
         });
 
