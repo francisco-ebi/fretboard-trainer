@@ -1,11 +1,11 @@
-import Meyda from 'meyda';
-import { YIN } from 'pitchfinder';
 import * as tf from '@tensorflow/tfjs';
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
+import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend';
+import { MeydaPitchfinderBackend } from '@/utils/audio/audio-backend';
 
 
 const baseNotes: Record<number, number> = {
@@ -23,10 +23,10 @@ export interface PredictionResult {
     midiNoteDetected: number;
 }
 
-class GuitarAudioRecordingEngine {
+class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
-    detectPitch: ((buffer: Float32Array) => number | null) | null;
+    backend: AudioAnalysisBackend;
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
     model: tf.LayersModel | null;
@@ -38,7 +38,7 @@ class GuitarAudioRecordingEngine {
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
-        this.detectPitch = null;
+        this.backend = new MeydaPitchfinderBackend(); // Default to Legacy
         this.isRecording = false;
         this.onNotePredicted = null;
         this.model = null;
@@ -108,13 +108,7 @@ class GuitarAudioRecordingEngine {
             console.error("Error loading model", e);
         }
 
-        this.detectPitch = YIN({ sampleRate: this.audioContext.sampleRate });
-
-        if (Meyda) {
-            Meyda.audioContext = this.audioContext;
-            Meyda.bufferSize = 2048;
-            Meyda.windowingFunction = "hamming";
-        }
+        await this.backend.init(this.audioContext);
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -123,7 +117,6 @@ class GuitarAudioRecordingEngine {
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
-
                 const { buffer } = event.data;
                 this.processAudioBuffer(buffer);
             };
@@ -135,22 +128,16 @@ class GuitarAudioRecordingEngine {
         }
     }
 
-    private processAudioBuffer(buffer: Float32Array) {
-        if (!this.detectPitch) return;
+    private async processAudioBuffer(buffer: Float32Array) {
+        const result = await this.backend.process(buffer);
 
-        const pitchHz = this.detectPitch(buffer);
-        if (pitchHz) {
-            const midiNote = this.hertzToMidi(pitchHz);
+        if (result.pitch) {
+            const midiNote = this.hertzToMidi(result.pitch);
             // Basic range filter (Low E roughly 40, High E roughly 88 on 24th fret?)
             if (midiNote < 40 || midiNote > 90) return;
 
-            try {
-                const mfccs = Meyda.extract('mfcc', buffer);
-                if (mfccs) {
-                    this.makePrediction(mfccs, midiNote);
-                }
-            } catch (e) {
-                // Ignore frame errors
+            if (result.mfcc) {
+                this.makePrediction(result.mfcc, midiNote);
             }
         }
     }
@@ -166,6 +153,7 @@ class GuitarAudioRecordingEngine {
             features: Array.from([...mfcc, note]),
             normalizedFeatures: []
         }
+        // @ts-ignore
         const normalizedDataset = normalizeDataset([dataset], statsData);
 
         if (!this.model) {
@@ -236,4 +224,4 @@ class GuitarAudioRecordingEngine {
 
 }
 
-export const guitarPredictionEngine = new GuitarAudioRecordingEngine();
+export const guitarPredictionEngine = new GuitarAudioPredictionEngine();

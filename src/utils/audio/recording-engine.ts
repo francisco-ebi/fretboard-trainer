@@ -1,7 +1,7 @@
-import Meyda from 'meyda';
-import { YIN } from 'pitchfinder';
 import { calculateStatistics, normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
+import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend';
+import { MeydaPitchfinderBackend, EssentiaBackend } from '@/utils/audio/audio-backend';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
@@ -24,7 +24,7 @@ export interface DatasetEntry {
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
-    detectPitch: ((buffer: Float32Array) => number | null) | null;
+    backend: AudioAnalysisBackend;
     dataset: DatasetEntry[];
     isRecording: boolean;
     currentLabel: number;
@@ -33,11 +33,22 @@ class GuitarAudioRecordingEngine {
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
-        this.detectPitch = null;
+        // Default to Legacy Backend (Meyda) for now, or Essentia if preferred
+        // We can expose a method to switch backends.
+        this.backend = new MeydaPitchfinderBackend();
         this.dataset = [];
         this.isRecording = false;
         this.currentLabel = 0; // Current String Index
         this.onDataCaptured = null;
+    }
+
+    setBackendType(type: 'meyda' | 'essentia') {
+        if (type === 'essentia') {
+            this.backend = new EssentiaBackend();
+        } else {
+            this.backend = new MeydaPitchfinderBackend();
+        }
+        console.log(`Switched audio backend to: ${this.backend.name}`);
     }
 
     async init() {
@@ -58,13 +69,8 @@ class GuitarAudioRecordingEngine {
             return;
         }
 
-        this.detectPitch = YIN({ sampleRate: this.audioContext.sampleRate });
-
-        if (Meyda) {
-            Meyda.audioContext = this.audioContext;
-            Meyda.bufferSize = 2048;
-            Meyda.windowingFunction = "hamming";
-        }
+        // Initialize the selected backend (async, might load WASM)
+        await this.backend.init(this.audioContext);
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -73,7 +79,6 @@ class GuitarAudioRecordingEngine {
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
-
                 const { buffer } = event.data;
                 this.processAudioBuffer(buffer);
             };
@@ -85,44 +90,33 @@ class GuitarAudioRecordingEngine {
         }
     }
 
+    async processAudioBuffer(buffer: Float32Array) {
+        // Use the backend to analyze audio
+        const result = await this.backend.process(buffer);
 
-
-    processAudioBuffer(buffer: Float32Array) {
-        if (!this.detectPitch) return;
-
-        const pitchHz = this.detectPitch(buffer);
-        if (pitchHz) {
-            const midiNote = this.hertzToMidi(pitchHz);
+        if (result.pitch) {
+            const midiNote = this.hertzToMidi(result.pitch);
 
             // String-specific Range Filter
-            // Get valid range for the currently selected string (currentLabel)
             const range = STRING_MIDI_RANGES[this.currentLabel];
 
-            // Safety check: if string index is somehow invalid, fallback to wide range
             if (range) {
                 if (midiNote < range.min || midiNote > range.max) {
-                    // console.log(`Ignored outlier: ${midiNote} for String ${this.currentLabel} (Allowed: ${range.min}-${range.max})`);
                     return;
                 }
             } else {
-                // Fallback if string index unknown (shouldn't happen)
                 if (midiNote < 40 || midiNote > 90) return;
             }
 
-            try {
-                const mfccs = Meyda.extract('mfcc', buffer);
-                if (mfccs) {
-                    this.saveData(mfccs, midiNote);
-                }
-            } catch (e) {
-                // Ignore frame errors
+            if (result.mfcc) {
+                this.saveData(result.mfcc, midiNote);
             }
         }
     }
 
-    saveData(mfcc: number[] | Float32Array, note: number) {
+    saveData(mfcc: number[], note: number) {
         const noteName = this.getNoteNameFromMidi(note);
-        console.log({ mfcc, note, noteName });
+        console.log({ mfcc, note, noteName, backend: this.backend.name });
         this.dataset.push({
             mfcc: Array.from(mfcc),
             midiNote: note,
@@ -177,7 +171,6 @@ class GuitarAudioRecordingEngine {
         a.href = url;
         a.download = filename;
         a.click();
-        // Clean up
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 }
