@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { guitarPredictionEngine } from '@/utils/audio/prediction-engine';
+import { guitarPredictionEngine, type PredictionMode } from '@/utils/audio/prediction-engine';
+import ListeningModeModal from './ListeningModeModal';
 import './PredictionControls.css';
 
 interface PredictionControlsProps {
@@ -11,28 +12,37 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
     const { t } = useTranslation();
     const [isListening, setIsListening] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showModeModal, setShowModeModal] = useState(false);
 
-    const toggleListening = async () => {
+    const handleStartClick = () => {
         if (disabled) return;
 
         if (isListening) {
-            // Stop
-            guitarPredictionEngine.stopRecording();
-            setIsListening(false);
+            // If already listening, just stop
+            stopListening();
         } else {
-            // Start
-            setIsLoading(true);
-            try {
-                // Determine if we need to init (naive check, engine handles idempotent init mostly, but let's just call it)
-                await guitarPredictionEngine.init();
-                await guitarPredictionEngine.startRecording();
-                setIsListening(true);
-            } catch (error) {
-                console.error("Failed to start prediction engine:", error);
-                // Could verify if we should show a toast here
-            } finally {
-                setIsLoading(false);
-            }
+            // If not listening, show modal to choose mode
+            setShowModeModal(true);
+        }
+    };
+
+    const stopListening = () => {
+        guitarPredictionEngine.stopRecording();
+        setIsListening(false);
+    };
+
+    const startListening = async (mode: PredictionMode) => {
+        setShowModeModal(false);
+        setIsLoading(true);
+        try {
+            await guitarPredictionEngine.setMode(mode);
+            await guitarPredictionEngine.init();
+            await guitarPredictionEngine.startRecording();
+            setIsListening(true);
+        } catch (error) {
+            console.error("Failed to start prediction engine:", error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -40,7 +50,7 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
         <div className="prediction-controls">
             <button
                 className={`control-btn ${isListening ? 'stop' : 'start'}`}
-                onClick={toggleListening}
+                onClick={handleStartClick}
                 disabled={isLoading || disabled}
                 style={disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                 title={disabled ? "Only available for 6-string Guitar" : ""}
@@ -54,6 +64,12 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
                     </>
                 )}
             </button>
+
+            <ListeningModeModal
+                isOpen={showModeModal}
+                onClose={() => setShowModeModal(false)}
+                onConfirm={startListening}
+            />
         </div>
     );
 };
