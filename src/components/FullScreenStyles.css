@@ -1,0 +1,103 @@
+/* Full Screen Mode Styles */
+#root.fullscreen-mode {
+    max-width: 100vw;
+    width: 100vw;
+    padding: 0;
+    margin: 0;
+}
+
+.app-container.fullscreen {
+    padding: 0;
+    margin: 0;
+    max-width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg-dark);
+    /* Ensure background is set */
+}
+
+/* Hide header and topbar when in fullscreen (controlled by React conditional render, 
+   but added here for completeness if needed or transition) */
+
+.fullscreen-exit-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 24px;
+    font-weight: 300;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+.fullscreen-exit-btn:hover {
+    background: rgba(255, 60, 60, 0.8);
+    transform: scale(1.1);
+    border-color: transparent;
+}
+
+.fullscreen-main {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 20px;
+    /* Padding for the fretboard */
+}
+
+/* Adjust ScaleMode and ChordMode in fullscreen */
+.scale-mode.fullscreen,
+.chord-mode.fullscreen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.scale-mode.fullscreen .fretboard-wrapper,
+.chord-mode.fullscreen .fretboard-wrapper {
+    width: 85%;
+    /* Use 85% of screen width as requested */
+    max-width: 85vw;
+    height: 90vh;
+    /* Take up most of screen */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    /* Center it */
+    padding: 0;
+    /* Ensure the fretboard itself scales properly */
+}
+
+/* Top Bar Icon Button */
+.top-bar-icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.top-bar-icon-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}

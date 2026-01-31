@@ -22,13 +22,12 @@ import { type PredictionResult } from '@/utils/audio/prediction-engine';
 
 interface ChordModeProps {
     prediction?: PredictionResult | null;
+    isFullScreen?: boolean;
 }
 
 import { useInstrument } from '@/context/InstrumentContext';
 
-// ... (other imports)
-
-const ChordMode: React.FC<ChordModeProps> = ({ prediction }) => {
+const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false }) => {
     const { t } = useTranslation();
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScaleType, setSelectedScaleType] = useState<'MAJOR' | 'MINOR'>('MAJOR');
@@ -135,9 +134,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction }) => {
             : diatonicChords[selectedChordIndex].notes)
         : [];
 
-    // Move this up or ensure it's defined before usage if we were executing sequentially, 
-    // but in a component function scope `const` must be defined before use.
-    // I will insert it before getFullChordName to be safe.
     const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
         'SUS2': 'sus2',
         'SUS4': 'sus4',
@@ -149,134 +145,138 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction }) => {
     const modifiers = ['SUS2', 'SUS4', 'ADD9', 'DOM7', 'MAJ7'];
 
     return (
-        <div className="chord-mode">
-            <div className="chord-controls">
-                <div className="control-group">
-                    <label>{t('controls.key')}:</label>
-                    <select value={selectedRoot} onChange={(e) => {
-                        setSelectedRoot(e.target.value as Note);
-                        setSelectedChordIndex(null);
-                        setChordModifiers({});
-                    }}>
-                        {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{note}</option>)}
-                    </select>
-                </div>
-                <div className="control-group">
-                    <label>{t('controls.scale')}:</label>
-                    <select value={selectedScaleType} onChange={(e) => {
-                        setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR');
-                        setSelectedChordIndex(null);
-                        setChordModifiers({});
-                    }}>
-                        <option value="MAJOR">Major</option>
-                        <option value="MINOR">Minor</option>
-                    </select>
-                </div>
+        <div className={`chord-mode ${isFullScreen ? 'fullscreen' : ''}`}>
+            {!isFullScreen && (
+                <div className="chord-controls">
+                    <div className="control-group">
+                        <label>{t('controls.key')}:</label>
+                        <select value={selectedRoot} onChange={(e) => {
+                            setSelectedRoot(e.target.value as Note);
+                            setSelectedChordIndex(null);
+                            setChordModifiers({});
+                        }}>
+                            {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{note}</option>)}
+                        </select>
+                    </div>
+                    <div className="control-group">
+                        <label>{t('controls.scale')}:</label>
+                        <select value={selectedScaleType} onChange={(e) => {
+                            setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR');
+                            setSelectedChordIndex(null);
+                            setChordModifiers({});
+                        }}>
+                            <option value="MAJOR">Major</option>
+                            <option value="MINOR">Minor</option>
+                        </select>
+                    </div>
 
-                {/* Instrument Controls (Mini version) */}
-                <div className="control-group">
-                    <label>{t('controls.instrument')}:</label>
-                    <select value={instrument} onChange={(e) => handleInstrumentChange(e.target.value as Instrument)}>
-                        {(Object.keys(INSTRUMENT_CONFIGS) as Instrument[]).map((inst) => (
-                            <option key={inst} value={inst}>{t(`instruments.${inst}`)}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
-                    <button className="advanced-toggle" onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}>
-                        <motion.span
-                            animate={{ rotate: isAdvancedOpen ? 90 : 0 }}
-                            style={{ display: 'inline-block', marginRight: '8px' }}
-                        >
-                            ▶
-                        </motion.span>
-                        {t('controls.advanced')}
-                    </button>
-                    <AnimatePresence>
-                        {isAdvancedOpen && (
-                            <motion.div
-                                className="advanced-controls"
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.3, ease: "easeInOut" }}
-                                style={{ overflow: 'hidden' }}
+                    {/* Instrument Controls (Mini version) */}
+                    <div className="control-group">
+                        <label>{t('controls.instrument')}:</label>
+                        <select value={instrument} onChange={(e) => handleInstrumentChange(e.target.value as Instrument)}>
+                            {(Object.keys(INSTRUMENT_CONFIGS) as Instrument[]).map((inst) => (
+                                <option key={inst} value={inst}>{t(`instruments.${inst}`)}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
+                        <button className="advanced-toggle" onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}>
+                            <motion.span
+                                animate={{ rotate: isAdvancedOpen ? 90 : 0 }}
+                                style={{ display: 'inline-block', marginRight: '8px' }}
                             >
-                                {instrument === 'GUITAR' && (
-                                    <>
-                                        <div className="control-group">
-                                            <label>{t('controls.strings')}:</label>
-                                            <select value={stringCount} onChange={(e) => handleStringCountChange(parseInt(e.target.value))}>
-                                                <option value={6}>6</option>
-                                                <option value={7}>7</option>
-                                                <option value={8}>8</option>
-                                            </select>
-                                        </div>
-                                        <div className="control-group">
-                                            <label>{t('controls.tuning')}:</label>
-                                            <select value={getCurrentTuningKey()} onChange={(e) => handleTuningChange(e.target.value)}>
-                                                {Object.entries(availableTunings).map(([key, tuning]) => (
-                                                    <option key={key} value={key}>{tuning.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </>
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                ▶
+                            </motion.span>
+                            {t('controls.advanced')}
+                        </button>
+                        <AnimatePresence>
+                            {isAdvancedOpen && (
+                                <motion.div
+                                    className="advanced-controls"
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                    style={{ overflow: 'hidden' }}
+                                >
+                                    {instrument === 'GUITAR' && (
+                                        <>
+                                            <div className="control-group">
+                                                <label>{t('controls.strings')}:</label>
+                                                <select value={stringCount} onChange={(e) => handleStringCountChange(parseInt(e.target.value))}>
+                                                    <option value={6}>6</option>
+                                                    <option value={7}>7</option>
+                                                    <option value={8}>8</option>
+                                                </select>
+                                            </div>
+                                            <div className="control-group">
+                                                <label>{t('controls.tuning')}:</label>
+                                                <select value={getCurrentTuningKey()} onChange={(e) => handleTuningChange(e.target.value)}>
+                                                    {Object.entries(availableTunings).map(([key, tuning]) => (
+                                                        <option key={key} value={key}>{tuning.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
-            </div>
+            )}
 
-            <div className="chord-list">
-                {diatonicChords.map((chord, index) => {
-                    const isSelected = selectedChordIndex === index;
-                    const activeModifier = chordModifiers[index];
+            {!isFullScreen && (
+                <div className="chord-list">
+                    {diatonicChords.map((chord, index) => {
+                        const isSelected = selectedChordIndex === index;
+                        const activeModifier = chordModifiers[index];
 
-                    return (
-                        <div
-                            key={index}
-                            className="chord-card-wrapper"
-                            onMouseEnter={() => handleMouseEnter(index)}
-                            onMouseLeave={handleMouseLeave}
-                        >
-                            <button
-                                className={`chord-card ${isSelected && !activeModifier ? 'selected' : ''}`}
-                                onClick={() => handleChordClick(index)}
+                        return (
+                            <div
+                                key={index}
+                                className="chord-card-wrapper"
+                                onMouseEnter={() => handleMouseEnter(index)}
+                                onMouseLeave={handleMouseLeave}
                             >
-                                <div className="roman">{chord.romanNumeral}</div>
-                                <div className="name">
-                                    {getFullChordName(chord, index)}
-                                </div>
-                            </button>
+                                <button
+                                    className={`chord-card ${isSelected && !activeModifier ? 'selected' : ''}`}
+                                    onClick={() => handleChordClick(index)}
+                                >
+                                    <div className="roman">{chord.romanNumeral}</div>
+                                    <div className="name">
+                                        {getFullChordName(chord, index)}
+                                    </div>
+                                </button>
 
-                            {/* Modifiers */}
-                            <AnimatePresence>
-                                {hoveredChordIndex === index && modifiersVisible && (
-                                    <motion.div
-                                        className="modifiers-container"
-                                        initial={{ opacity: 0, y: -10, x: "-50%" }}
-                                        animate={{ opacity: 1, y: 0, x: "-50%" }}
-                                        exit={{ opacity: 0, y: -10, x: "-50%" }}
-                                        transition={{ duration: 0.2 }}
-                                    >
-                                        {modifiers.map(mod => (
-                                            <button
-                                                key={mod}
-                                                className={`modifier-btn ${activeModifier === mod ? 'selected' : ''}`}
-                                                onClick={(e) => handleModifierClick(mod, index, e)}
-                                                title={mod}
-                                            >
-                                                <span className="mod-label">{MODIFIER_DISPLAY_NAMES[mod]}</span>
-                                            </button>
-                                        ))}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    );
-                })}
-            </div>
+                                {/* Modifiers */}
+                                <AnimatePresence>
+                                    {hoveredChordIndex === index && modifiersVisible && (
+                                        <motion.div
+                                            className="modifiers-container"
+                                            initial={{ opacity: 0, y: -10, x: "-50%" }}
+                                            animate={{ opacity: 1, y: 0, x: "-50%" }}
+                                            exit={{ opacity: 0, y: -10, x: "-50%" }}
+                                            transition={{ duration: 0.2 }}
+                                        >
+                                            {modifiers.map(mod => (
+                                                <button
+                                                    key={mod}
+                                                    className={`modifier-btn ${activeModifier === mod ? 'selected' : ''}`}
+                                                    onClick={(e) => handleModifierClick(mod, index, e)}
+                                                    title={mod}
+                                                >
+                                                    <span className="mod-label">{MODIFIER_DISPLAY_NAMES[mod]}</span>
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             <div className="fretboard-wrapper">
                 <Fretboard

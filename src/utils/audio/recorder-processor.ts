@@ -1,5 +1,3 @@
-// src/utils/audio/recorder-processor.ts (Must match filename in engine.ts import)
-
 class RecorderProcessor extends AudioWorkletProcessor {
     bufferSize: number;
     buffer: Float32Array;

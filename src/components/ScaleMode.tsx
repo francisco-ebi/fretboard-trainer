@@ -9,9 +9,10 @@ import { type PredictionResult } from '@/utils/audio/prediction-engine';
 
 interface ScaleModeProps {
     prediction?: PredictionResult | null;
+    isFullScreen?: boolean;
 }
 
-const ScaleMode: React.FC<ScaleModeProps> = ({ prediction }) => {
+const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false }) => {
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
     const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
@@ -33,23 +34,25 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ prediction }) => {
     const scaleNotes = getScale(selectedRoot, selectedScale);
 
     return (
-        <div className="scale-mode">
-            <Controls
-                selectedRoot={selectedRoot}
-                onRootChange={setSelectedRoot}
-                selectedScale={selectedScale}
-                onScaleChange={setSelectedScale}
-                namingSystem={namingSystem}
-                onNamingSystemChange={setNamingSystem}
-                instrument={instrument}
-                onInstrumentChange={handleInstrumentChange}
-                tuningOffsets={tuningOffsets}
-                onTuningChange={setTuningOffsets}
-                stringCount={stringCount}
-                onStringCountChange={setStringCount}
-            />
+        <div className={`scale-mode ${isFullScreen ? 'fullscreen' : ''}`}>
+            {!isFullScreen && (
+                <Controls
+                    selectedRoot={selectedRoot}
+                    onRootChange={setSelectedRoot}
+                    selectedScale={selectedScale}
+                    onScaleChange={setSelectedScale}
+                    namingSystem={namingSystem}
+                    onNamingSystemChange={setNamingSystem}
+                    instrument={instrument}
+                    onInstrumentChange={handleInstrumentChange}
+                    tuningOffsets={tuningOffsets}
+                    onTuningChange={setTuningOffsets}
+                    stringCount={stringCount}
+                    onStringCountChange={setStringCount}
+                />
+            )}
 
-            <HelpSection />
+            {!isFullScreen && <HelpSection />}
 
             <div className="fretboard-wrapper">
                 <Fretboard

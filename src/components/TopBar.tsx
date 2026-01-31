@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { type Orientation, useOrientation } from '@/context/OrientationContext';
 import './TopBar.css';
 
-const TopBar: React.FC = () => {
+interface TopBarProps {
+    onToggleFullScreen?: () => void;
+}
+
+const TopBar: React.FC<TopBarProps> = ({ onToggleFullScreen }) => {
     const { t, i18n } = useTranslation();
     const { orientation, setOrientation } = useOrientation();
 
@@ -35,6 +39,18 @@ const TopBar: React.FC = () => {
                     <option value="HORIZONTAL">{t('orientations.HORIZONTAL')}</option>
                     <option value="VERTICAL">{t('orientations.VERTICAL')}</option>
                 </select>
+            </div>
+
+            <div className="top-bar-divider"></div>
+
+            <div className="top-bar-item">
+                <button
+                    className="top-bar-icon-btn"
+                    onClick={onToggleFullScreen}
+                    title="Full Screen Mode"
+                >
+                    ⛶
+                </button>
             </div>
         </div>
     );

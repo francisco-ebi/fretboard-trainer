@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import './App.css';
+import '@/components/FullScreenStyles.css';
 import TopBar from '@/components/TopBar';
 import ScaleMode from '@/components/ScaleMode';
 import ChordMode from '@/components/ChordMode';
@@ -23,6 +24,8 @@ const AppContent = () => {
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
 
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
   // Secret Recording Mode
   const [showRecorder, setShowRecorder] = useState(false);
   const keyBufferRef = useRef('');
@@ -33,6 +36,11 @@ const AppContent = () => {
       // If modal is open, check for Escape
       if (showRecorder && e.key === 'Escape') {
         setShowRecorder(false);
+        return;
+      }
+      // If in full screen, Escape exits
+      if (isFullScreen && e.key === 'Escape') {
+        setIsFullScreen(false);
         return;
       }
 
@@ -48,7 +56,16 @@ const AppContent = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showRecorder]);
+  }, [showRecorder, isFullScreen]);
+
+  useEffect(() => {
+    const root = document.getElementById('root');
+    if (isFullScreen) {
+      root?.classList.add('fullscreen-mode');
+    } else {
+      root?.classList.remove('fullscreen-mode');
+    }
+  }, [isFullScreen]);
 
   useEffect(() => {
     if (guitarPredictionEngine) {
@@ -59,26 +76,42 @@ const AppContent = () => {
   const isPredictionEnabled = instrument === 'GUITAR' && stringCount === 6;
 
   return (
-    <div className="app-container">
-      <TopBar />
-      <header className="app-header">
-        <h1>{t('title')}</h1>
-        <div className="mode-selector">
-          <button
-            className={`mode-btn ${currentMode === 'SCALE' ? 'active' : ''}`}
-            onClick={() => setCurrentMode('SCALE')}
-          >
-            {t('modes.scale')}
-          </button>
-          <button
-            className={`mode-btn ${currentMode === 'CHORD' ? 'active' : ''}`}
-            onClick={() => setCurrentMode('CHORD')}
-          >
-            {t('modes.chord')}
-          </button>
-        </div>
-      </header>
-      <main>
+    <div className={`app-container ${isFullScreen ? 'fullscreen' : ''}`}>
+      {!isFullScreen && (
+        <TopBar onToggleFullScreen={() => setIsFullScreen(true)} />
+      )}
+      {!isFullScreen && (
+        <header className="app-header">
+          <h1>{t('title')}</h1>
+          <div className="mode-selector">
+            <button
+              className={`mode-btn ${currentMode === 'SCALE' ? 'active' : ''}`}
+              onClick={() => setCurrentMode('SCALE')}
+            >
+              {t('modes.scale')}
+            </button>
+            <button
+              className={`mode-btn ${currentMode === 'CHORD' ? 'active' : ''}`}
+              onClick={() => setCurrentMode('CHORD')}
+            >
+              {t('modes.chord')}
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* Full Screen Exit Button */}
+      {isFullScreen && (
+        <button
+          className="fullscreen-exit-btn"
+          onClick={() => setIsFullScreen(false)}
+          aria-label="Exit Full Screen"
+        >
+          ×
+        </button>
+      )}
+
+      <main className={isFullScreen ? 'fullscreen-main' : ''}>
         {/* Secret Modal */}
         {showRecorder && (
           <div className="modal-overlay" onClick={() => setShowRecorder(false)}>
@@ -93,11 +126,11 @@ const AppContent = () => {
         )}
 
         {currentMode === 'SCALE' ? (
-          <ScaleMode prediction={currentPrediction} />
+          <ScaleMode prediction={currentPrediction} isFullScreen={isFullScreen} />
         ) : (
-          <ChordMode prediction={currentPrediction} />
+          <ChordMode prediction={currentPrediction} isFullScreen={isFullScreen} />
         )}
-        {currentMode === 'SCALE' && (
+        {currentMode === 'SCALE' && !isFullScreen && (
           <PredictionControls disabled={!isPredictionEnabled} />
         )}
       </main>
