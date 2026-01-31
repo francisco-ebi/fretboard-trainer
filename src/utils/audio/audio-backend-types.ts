@@ -5,6 +5,7 @@ export interface AnalysisResult {
     spectralCentroid?: number;
     spectralFlux?: number;
     spectralRolloff?: number;
+    inharmonicity?: number;
 }
 
 export interface AudioAnalysisBackend {

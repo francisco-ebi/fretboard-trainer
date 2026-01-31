@@ -134,7 +134,8 @@ class GuitarAudioRecordingEngine {
             backend: this.backend?.name,
             centroid: extraFeatures.spectralCentroid,
             flux: extraFeatures.spectralFlux,
-            rolloff: extraFeatures.spectralRolloff
+            rolloff: extraFeatures.spectralRolloff,
+            inharmonicity: extraFeatures.inharmonicity
         });
 
         this.dataset.push({

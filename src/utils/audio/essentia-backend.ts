@@ -23,11 +23,6 @@ export class EssentiaBackend implements AudioAnalysisBackend {
 
         // Pitch
         const pitchResult = this.essentia.PitchYin(vectorSignal);
-        // PitchYin returns { pitch, pitchConfidence } where fields are float in JS bindings (not vector usually for single frame?)
-        // Standard EssentiaJS wrapper often un-vectors single values. 
-        // Let's verify by safety checking: if it has length, it's a vector. If number, it's a number.
-        // ACTUALLY, checking previous code, `const pitch = pitchResult.pitch` suggests it was treated as a value (or the interface allowed any).
-        // To be safe, let's treat it as potential vector.
         let pitch = pitchResult.pitch;
         if (pitch && typeof pitch.size === 'function') { // Check if it's a vector
             const vec = this.essentia.vectorToArray(pitch);
@@ -84,6 +79,32 @@ export class EssentiaBackend implements AudioAnalysisBackend {
         const spectrumArray = this.essentia.vectorToArray(spectrum.spectrum);
         this.previousSpectrum = this.essentia.arrayToVector(spectrumArray);
 
+        // Inharmonicity
+        // Requires Spectral Peaks first
+        // SpectralPeaks(spectrum) -> { frequencies, magnitudes }
+        const peaksResult = this.essentia.SpectralPeaks(spectrum.spectrum);
+
+        // Inharmonicity(frequencies, magnitudes, pitch)
+        // If pitch is 0/null, Inharmonicity might behave weirdly or return 0?
+        let inharmonicity = 0;
+        // Ensure pitch is a number and sensible (e.g. > 0)
+        if (typeof pitch === 'number' && pitch > 0) {
+            const inharmonicityResult = this.essentia.Inharmonicity(peaksResult.frequencies, peaksResult.magnitudes, pitch);
+            // Result is { inharmonicity } (likely scalar or vector?)
+            // Assuming same pattern: usually a single value for the frame
+            let inh = inharmonicityResult.inharmonicity;
+            if (inh && typeof inh.size === 'function') {
+                const vec = this.essentia.vectorToArray(inh);
+                inh = vec.length > 0 ? vec[0] : 0;
+                this.essentia.deleteVector(inharmonicityResult.inharmonicity);
+            }
+            inharmonicity = inh;
+        }
+
+        // Clean up peaks vectors
+        this.essentia.deleteVector(peaksResult.frequencies);
+        this.essentia.deleteVector(peaksResult.magnitudes);
+
 
         // Cleanup
         this.essentia.deleteVector(vectorSignal);
@@ -97,7 +118,8 @@ export class EssentiaBackend implements AudioAnalysisBackend {
             mfcc: Array.from(mfcc),
             spectralCentroid,
             spectralFlux,
-            spectralRolloff
+            spectralRolloff,
+            inharmonicity
         };
     }
 }
