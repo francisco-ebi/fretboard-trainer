@@ -8,7 +8,7 @@
     -webkit-backdrop-filter: blur(4px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     gap: 1rem;
-    position: absolute;
+    position: fixed;
     top: 0;
     z-index: 90;
     /* Below help section (100) */
