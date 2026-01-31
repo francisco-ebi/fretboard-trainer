@@ -3,6 +3,15 @@ import { YIN } from 'pitchfinder';
 import { calculateStatistics, normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
 
+const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
+    0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
+    1: { min: 59, max: 77 }, // B: B3 (59) - F5 (77)
+    2: { min: 55, max: 73 }, // G: G3 (55) - C#5 (73)
+    3: { min: 50, max: 68 }, // D: D3 (50) - G#4 (68)
+    4: { min: 45, max: 63 }, // A: A2 (45) - D#4 (63)
+    5: { min: 40, max: 58 }  // Low E: E2 (40) - A#3 (58)
+};
+
 export interface DatasetEntry {
     mfcc: number[];
     midiNote: number;
@@ -76,14 +85,29 @@ class GuitarAudioRecordingEngine {
         }
     }
 
+
+
     processAudioBuffer(buffer: Float32Array) {
         if (!this.detectPitch) return;
 
         const pitchHz = this.detectPitch(buffer);
         if (pitchHz) {
             const midiNote = this.hertzToMidi(pitchHz);
-            // Basic range filter (Low E roughly 40, High E roughly 88 on 24th fret?)
-            if (midiNote < 40 || midiNote > 90) return;
+
+            // String-specific Range Filter
+            // Get valid range for the currently selected string (currentLabel)
+            const range = STRING_MIDI_RANGES[this.currentLabel];
+
+            // Safety check: if string index is somehow invalid, fallback to wide range
+            if (range) {
+                if (midiNote < range.min || midiNote > range.max) {
+                    // console.log(`Ignored outlier: ${midiNote} for String ${this.currentLabel} (Allowed: ${range.min}-${range.max})`);
+                    return;
+                }
+            } else {
+                // Fallback if string index unknown (shouldn't happen)
+                if (midiNote < 40 || midiNote > 90) return;
+            }
 
             try {
                 const mfccs = Meyda.extract('mfcc', buffer);
