@@ -22,6 +22,8 @@ export interface PredictionResult {
     midiNoteDetected: number;
 }
 
+export type PredictionMode = 'performance' | 'precision';
+
 class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
@@ -29,6 +31,7 @@ class GuitarAudioPredictionEngine {
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
     model: tf.LayersModel | null;
+    currentMode: PredictionMode;
 
     // RxJS Logic
     private rawPrediction$: Subject<PredictionResult>;
@@ -41,6 +44,7 @@ class GuitarAudioPredictionEngine {
         this.isRecording = false;
         this.onNotePredicted = null;
         this.model = null;
+        this.currentMode = 'performance'; // Default
 
         this.rawPrediction$ = new Subject<PredictionResult>();
 
@@ -84,6 +88,40 @@ class GuitarAudioPredictionEngine {
         this.fretPredicted$.subscribe(p => console.log('Emitted Prediction:', p));
     }
 
+    async setMode(mode: PredictionMode) {
+        if (this.currentMode === mode && this.backend) return;
+        this.currentMode = mode;
+
+        // Reset and reload based on mode
+        await this.loadResourcesForMode();
+    }
+
+    async loadResourcesForMode() {
+        console.log(`Loading resources for mode: ${this.currentMode}`);
+        try {
+            if (this.currentMode === 'performance') {
+                const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
+                this.backend = new MeydaPitchfinderBackend();
+                this.model = await tf.loadLayersModel('/model/guitar-model-performance.json');
+            } else {
+                const { EssentiaBackend } = await import('@/utils/audio/essentia-backend');
+                this.backend = new EssentiaBackend();
+                try {
+                    this.model = await tf.loadLayersModel('/model/guitar-model-precision.json');
+                } catch (e) {
+                    console.warn("Precision model not found. Predictions might be unavailable.");
+                    this.model = null;
+                }
+            }
+
+            if (this.audioContext) {
+                await this.backend.init(this.audioContext);
+            }
+        } catch (e) {
+            console.error("Error loading resources", e);
+        }
+    }
+
     async init() {
         if (this.audioContext) return;
 
@@ -101,18 +139,10 @@ class GuitarAudioPredictionEngine {
             return;
         }
 
-        try {
-            this.model = await tf.loadLayersModel('/model/guitar-model.json');
-        } catch (e) {
-            console.error("Error loading model", e);
-        }
-
-        // Initialize backend (default to Meyda)
+        // Load resources (backend + model) if not loaded
         if (!this.backend) {
-            const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
-            this.backend = new MeydaPitchfinderBackend();
+            await this.loadResourcesForMode();
         }
-        await this.backend.init(this.audioContext);
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
