@@ -19,93 +19,138 @@ export class EssentiaBackend implements AudioAnalysisBackend {
     async process(buffer: Float32Array): Promise<AnalysisResult> {
         if (!this.essentia) return { pitch: null, mfcc: null };
 
-        const vectorSignal = this.essentia.arrayToVector(buffer);
+        try {
+            const vectorSignal = this.essentia.arrayToVector(buffer);
 
-        // Pitch
-        const pitchResult = this.essentia.PitchYin(vectorSignal);
-        let pitch = pitchResult.pitch;
-        if (pitch && typeof pitch.size === 'function') { // Check if it's a vector
-            const vec = this.essentia.vectorToArray(pitch);
-            pitch = vec.length > 0 ? vec[0] : 0;
-            // this.essentia.deleteVector(pitchResult.pitch); // Delete original vector
-        }
-        if (typeof pitchResult.pitchConfidence?.size === 'function') {
-            // this.essentia.deleteVector(pitchResult.pitchConfidence);
-        }
-
-        // Spectrum
-
-        const windowed = this.essentia.Windowing(vectorSignal, true, buffer.length, "hamming");
-
-        const spectrum = this.essentia.Spectrum(windowed.frame);
-
-        // MFCC
-        const mfccResult = this.essentia.MFCC(spectrum.spectrum);
-        const mfcc = this.essentia.vectorToArray(mfccResult.mfcc);
-
-        // Spectral Centroid
-        const centroidResult = this.essentia.Centroid(spectrum.spectrum);
-        let spectralCentroid = centroidResult.centroid;
-        if (spectralCentroid && typeof spectralCentroid.size === 'function') {
-            const vec = this.essentia.vectorToArray(spectralCentroid);
-            spectralCentroid = vec.length > 0 ? vec[0] : 0;
-            //this.essentia.deleteVector(centroidResult.centroid);
-        }
-
-        // Spectral Rolloff
-        const rolloffResult = this.essentia.RollOff(spectrum.spectrum);
-        let spectralRolloff = rolloffResult.rollOff;
-        if (spectralRolloff && typeof spectralRolloff.size === 'function') {
-            const vec = this.essentia.vectorToArray(spectralRolloff);
-            spectralRolloff = vec.length > 0 ? vec[0] : 0;
-            //this.essentia.deleteVector(rolloffResult.rollOff);
-        }
-
-        // Spectral Flux
-        const fluxResult = this.essentia.Flux(spectrum.spectrum);
-        let spectralFlux = fluxResult.flux;
-        if (spectralFlux && typeof spectralFlux.size === 'function') {
-            const vec = this.essentia.vectorToArray(spectralFlux);
-            spectralFlux = vec.length > 0 ? vec[0] : 0;
-            //this.essentia.deleteVector(fluxResult.flux);
-        }
-
-        // Inharmonicity
-        const peaksResult = this.essentia.SpectralPeaks(spectrum.spectrum);
-        let inharmonicity = 0;
-        // Ensure pitch is a number and sensible (e.g. > 0)
-        if (typeof pitch === 'number' && pitch > 0) {
-            const inharmonicityResult = this.essentia.Inharmonicity(peaksResult.frequencies, peaksResult.magnitudes);
-            // Result is { inharmonicity } (likely scalar or vector?)
-            // Assuming same pattern: usually a single value for the frame
-            let inh = inharmonicityResult.inharmonicity;
-            if (inh && typeof inh.size === 'function') {
-                const vec = this.essentia.vectorToArray(inh);
-                inh = vec.length > 0 ? vec[0] : 0;
-                // this.essentia.deleteVector(inharmonicityResult.inharmonicity);
+            // Pitch
+            let pitch = null;
+            try {
+                const pitchResult = this.essentia.PitchYin(vectorSignal);
+                pitch = pitchResult.pitch;
+                if (pitch && typeof pitch.size === 'function') { // Check if it's a vector
+                    const vec = this.essentia.vectorToArray(pitch);
+                    pitch = vec.length > 0 ? vec[0] : 0;
+                    if (pitchResult.pitch && typeof pitchResult.pitch.delete === 'function') pitchResult.pitch.delete(); // Delete original vector
+                }
+                if (pitchResult.pitchConfidence && typeof pitchResult.pitchConfidence.size === 'function') {
+                    if (pitchResult.pitchConfidence && typeof pitchResult.pitchConfidence.delete === 'function') pitchResult.pitchConfidence.delete();
+                }
+            } catch (e) {
+                console.warn("Essentia Pitch Error:", e);
             }
-            inharmonicity = inh;
+
+            // Spectrum
+            let spectrum = null;
+            let windowedFrame = null;
+            try {
+                const windowed = this.essentia.Windowing(vectorSignal, true, buffer.length, "hamming");
+                windowedFrame = windowed.frame;
+                spectrum = this.essentia.Spectrum(windowedFrame);
+            } catch (e) {
+                console.warn("Essentia Spectrum Error:", e);
+                if (vectorSignal && typeof vectorSignal.delete === 'function') vectorSignal.delete(); // Fail early cleanup
+                return { pitch, mfcc: null };
+            }
+
+            // MFCC
+            let mfcc = [];
+            try {
+                const mfccResult = this.essentia.MFCC(spectrum.spectrum);
+                mfcc = this.essentia.vectorToArray(mfccResult.mfcc);
+                if (mfccResult.mfcc && typeof mfccResult.mfcc.delete === 'function') mfccResult.mfcc.delete();
+                if (mfccResult.bands && typeof mfccResult.bands.delete === 'function') mfccResult.bands.delete();
+            } catch (e) {
+                console.warn("Essentia MFCC Error:", e);
+            }
+
+            // Spectral Centroid
+            let spectralCentroid = 0;
+            try {
+                const centroidResult = this.essentia.Centroid(spectrum.spectrum);
+                let sc = centroidResult.centroid;
+                if (sc && typeof sc.size === 'function') {
+                    const vec = this.essentia.vectorToArray(sc);
+                    sc = vec.length > 0 ? vec[0] : 0;
+                    if (centroidResult.centroid && typeof centroidResult.centroid.delete === 'function') centroidResult.centroid.delete();
+                }
+                spectralCentroid = sc;
+            } catch (e) {
+                console.warn("Essentia Centroid Error:", e);
+            }
+
+            // Spectral Rolloff
+            let spectralRolloff = 0;
+            try {
+                const rolloffResult = this.essentia.RollOff(spectrum.spectrum);
+                let sr = rolloffResult.rollOff;
+                if (sr && typeof sr.size === 'function') {
+                    const vec = this.essentia.vectorToArray(sr);
+                    sr = vec.length > 0 ? vec[0] : 0;
+                    if (rolloffResult.rollOff && typeof rolloffResult.rollOff.delete === 'function') rolloffResult.rollOff.delete();
+                }
+                spectralRolloff = sr;
+            } catch (e) {
+                console.warn("Essentia Rolloff Error:", e);
+            }
+
+            // Spectral Flux
+            let spectralFlux = 0;
+            try {
+                const fluxResult = this.essentia.Flux(spectrum.spectrum);
+                let sf = fluxResult.flux;
+                if (sf && typeof sf.size === 'function') {
+                    const vec = this.essentia.vectorToArray(sf);
+                    sf = vec.length > 0 ? vec[0] : 0;
+                    if (fluxResult.flux && typeof fluxResult.flux.delete === 'function') fluxResult.flux.delete();
+                }
+                spectralFlux = sf;
+            } catch (e) {
+                console.warn("Essentia Flux Error:", e);
+            }
+
+            // Inharmonicity
+            let inharmonicity = 0;
+            try {
+                const peaksResult = this.essentia.SpectralPeaks(spectrum.spectrum);
+
+                // Ensure pitch is a number and sensible (e.g. > 0)
+                if (typeof pitch === 'number' && pitch > 0) {
+                    const inharmonicityResult = this.essentia.Inharmonicity(peaksResult.frequencies, peaksResult.magnitudes);
+                    let inh = inharmonicityResult.inharmonicity;
+                    if (inh && typeof inh.size === 'function') {
+                        const vec = this.essentia.vectorToArray(inh);
+                        inh = vec.length > 0 ? vec[0] : 0;
+                        if (inharmonicityResult.inharmonicity && typeof inharmonicityResult.inharmonicity.delete === 'function') inharmonicityResult.inharmonicity.delete();
+                    }
+                    inharmonicity = inh;
+                }
+                if (peaksResult.frequencies && typeof peaksResult.frequencies.delete === 'function') peaksResult.frequencies.delete();
+                if (peaksResult.magnitudes && typeof peaksResult.magnitudes.delete === 'function') peaksResult.magnitudes.delete();
+            } catch (e) {
+                console.warn("Essentia Inharmonicity Error:", e);
+            }
+
+            // Cleanup
+            try {
+                if (vectorSignal && typeof vectorSignal.delete === 'function') vectorSignal.delete();
+                if (windowedFrame && typeof windowedFrame.delete === 'function') windowedFrame.delete();
+                if (spectrum.spectrum && typeof spectrum.spectrum.delete === 'function') spectrum.spectrum.delete();
+            } catch (e) {
+                console.warn("Essentia Cleanup Error:", e);
+            }
+
+            return {
+                pitch,
+                mfcc: Array.from(mfcc),
+                spectralCentroid,
+                spectralFlux,
+                spectralRolloff,
+                inharmonicity
+            };
+
+        } catch (e) {
+            console.error("Essentia Fatal Process Error:", e);
+            return { pitch: null, mfcc: null };
         }
-
-        // Clean up peaks vectors
-        // this.essentia.deleteVector(peaksResult.frequencies);
-        // this.essentia.deleteVector(peaksResult.magnitudes);
-
-
-        // Cleanup
-        // this.essentia.deleteVector(vectorSignal);
-        // this.essentia.deleteVector(windowed.frame);
-        // this.essentia.deleteVector(spectrum.spectrum);
-        // this.essentia.deleteVector(mfccResult.mfcc);
-        // this.essentia.deleteVector(mfccResult.bands);
-
-        return {
-            pitch, // Should be number or null
-            mfcc: Array.from(mfcc),
-            spectralCentroid,
-            spectralFlux,
-            spectralRolloff,
-            inharmonicity
-        };
     }
 }
