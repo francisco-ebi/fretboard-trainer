@@ -31,11 +31,11 @@ export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
             // @ts-ignore
             if (features) {
                 // @ts-ignore
-                mfcc = features.mfcc;
+                mfcc = features.mfcc || null;
                 // @ts-ignore
-                spectralCentroid = features.spectralCentroid;
+                spectralCentroid = features.spectralCentroid || null;
                 // @ts-ignore
-                spectralRolloff = features.spectralRolloff;
+                spectralRolloff = features.spectralRolloff || null;
             }
         } catch (e) {
             console.warn("Meyda extraction error", e);

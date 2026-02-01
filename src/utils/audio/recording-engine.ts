@@ -27,27 +27,23 @@ export interface DatasetEntry {
     normalizedFeatures: number[];
 }
 
-class FeatureAdapter {
-    static adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null {
-        // 1. Validate MFCC length
-        if (!mfcc || mfcc.length !== FEATURE_CONFIG.MFCC_COUNT) {
-            console.warn(`Invalid MFCC length: ${mfcc?.length}. Expected ${FEATURE_CONFIG.MFCC_COUNT}`);
-            return null;
-        }
+interface FeatureAdapter {
+    adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null;
+}
 
-        // 2. Validate Extra Features availability
-        // We require ALL extended features to be present for a valid strict dataset entry
+class EssentiaAdapter implements FeatureAdapter {
+    adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null {
+        // Strict validation: All features must be present and non-null
         if (
-            extra.spectralCentroid === undefined ||
-            extra.spectralFlux === undefined ||
-            extra.spectralRolloff === undefined ||
-            extra.inharmonicity === undefined
+            extra.spectralCentroid === null || extra.spectralCentroid === undefined ||
+            extra.spectralFlux === null || extra.spectralFlux === undefined ||
+            extra.spectralRolloff === null || extra.spectralRolloff === undefined ||
+            extra.inharmonicity === null || extra.inharmonicity === undefined
         ) {
-            console.warn("Missing required spectral features for adapter.");
+            console.warn("EssentiaAdapter: Missing required spectral features.", extra);
             return null;
         }
 
-        // 3. Construct fixed-length vector
         return [
             ...mfcc,
             note,
@@ -56,6 +52,36 @@ class FeatureAdapter {
             extra.spectralRolloff,
             extra.inharmonicity
         ];
+    }
+}
+
+class MeydaAdapter implements FeatureAdapter {
+    adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null {
+        // Validates what Meyda provides: Centroid and Rolloff
+        if (
+            extra.spectralCentroid === null || extra.spectralCentroid === undefined ||
+            extra.spectralRolloff === null || extra.spectralRolloff === undefined
+        ) {
+            console.warn("MeydaAdapter: Missing required spectral features.", extra);
+            return null;
+        }
+
+        return [
+            ...mfcc,
+            note,
+            extra.spectralCentroid,
+            extra.spectralRolloff,
+        ];
+    }
+}
+
+class AdapterFactory {
+    static getAdapter(backendName: string): FeatureAdapter {
+        if (backendName === 'essentia-wasm') {
+            return new EssentiaAdapter();
+        }
+        // Default to Meyda for 'meyda-pitchfinder' or others
+        return new MeydaAdapter();
     }
 }
 
@@ -173,11 +199,16 @@ class GuitarAudioRecordingEngine {
     }
 
     saveData(mfcc: number[], note: number, extraFeatures: Partial<AnalysisResult> = {}) {
-        // Attempt to adapt features to standard format
-        const features = FeatureAdapter.adapt(mfcc, note, extraFeatures);
+        if (!mfcc || mfcc.length !== FEATURE_CONFIG.MFCC_COUNT) {
+            console.warn(`Invalid MFCC length: ${mfcc?.length}. Expected ${FEATURE_CONFIG.MFCC_COUNT}`);
+            return;
+        }
+
+        const backendName = this.backend?.name || 'unknown';
+        const adapter = AdapterFactory.getAdapter(backendName);
+        const features = adapter.adapt(mfcc, note, extraFeatures);
 
         if (!features) {
-            // console.debug("Skipping data save: Incompatible feature set");
             return;
         }
 
@@ -187,7 +218,7 @@ class GuitarAudioRecordingEngine {
         console.log({
             note,
             noteName,
-            backend: this.backend?.name,
+            backend: backendName,
             featuresLength: features.length
         });
 
