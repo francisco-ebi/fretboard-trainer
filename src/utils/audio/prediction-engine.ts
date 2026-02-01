@@ -2,7 +2,6 @@
 import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
-import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
 import type { AudioAnalysisBackend, AnalysisResult } from '@/utils/audio/audio-backend-types';
@@ -29,6 +28,7 @@ class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
     backend: AudioAnalysisBackend | null;
+    statsData: any = null;
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
     model: LayersModel | null;
@@ -110,6 +110,7 @@ class GuitarAudioPredictionEngine {
                 const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
                 this.backend = new MeydaPitchfinderBackend();
                 this.model = await this.tf.loadLayersModel('/model/guitar-model-performance.json');
+                this.statsData = await import('@/utils/audio/datasets/meyda-initial/guitar_dataset_stats.json');
             } else {
                 const { EssentiaBackend } = await import('@/utils/audio/essentia-backend');
                 this.backend = new EssentiaBackend();
@@ -149,12 +150,20 @@ class GuitarAudioPredictionEngine {
         // Load resources (backend + model) if not loaded
         if (!this.backend) {
             await this.loadResourcesForMode();
+
         }
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: false,
+                    autoGainControl: false,
+                    noiseSuppression: false,
+                }
+            });
             const source = this.audioContext.createMediaStreamSource(stream);
             this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor');
+            await this.backend!.init(this.audioContext);
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
@@ -192,11 +201,15 @@ class GuitarAudioPredictionEngine {
         // Dynamically add extra features if stats model supports them
         // Order must match training: Centroid, Flux, Rolloff, Inharmonicity
         // We check if statsData has more columns than standard (14)
-        if (statsData.mean.length > 14 && extraFeatures) {
-            if (extraFeatures.spectralCentroid !== undefined) featuresList.push(extraFeatures.spectralCentroid);
-            if (extraFeatures.spectralFlux !== undefined) featuresList.push(extraFeatures.spectralFlux);
-            if (extraFeatures.spectralRolloff !== undefined) featuresList.push(extraFeatures.spectralRolloff);
-            if (extraFeatures.inharmonicity !== undefined) featuresList.push(extraFeatures.inharmonicity);
+        if (this.backend?.name === 'meyda-pitchfinder' && extraFeatures) {
+            featuresList.push(typeof extraFeatures.spectralCentroid === 'number' ? extraFeatures.spectralCentroid : 0);
+            featuresList.push(typeof extraFeatures.spectralRolloff === 'number' ? extraFeatures.spectralRolloff : 0);
+        }
+        if (this.backend?.name === 'essentia-backend' && extraFeatures) {
+            featuresList.push(typeof extraFeatures.spectralCentroid === 'number' ? extraFeatures.spectralCentroid : 0);
+            featuresList.push(typeof extraFeatures.spectralFlux === 'number' ? extraFeatures.spectralFlux : 0);
+            featuresList.push(typeof extraFeatures.spectralRolloff === 'number' ? extraFeatures.spectralRolloff : 0);
+            featuresList.push(typeof extraFeatures.inharmonicity === 'number' ? extraFeatures.inharmonicity : 0);
         }
 
         const dataset = {
@@ -208,7 +221,7 @@ class GuitarAudioPredictionEngine {
             normalizedFeatures: []
         }
         // @ts-ignore
-        const normalizedDataset = normalizeDataset([dataset], statsData);
+        const normalizedDataset = normalizeDataset([dataset], this.statsData);
 
         if (!this.model || !this.tf) {
             console.warn("Model or TFJS not loaded yet");
