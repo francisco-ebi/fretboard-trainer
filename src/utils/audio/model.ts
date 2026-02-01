@@ -1,7 +1,7 @@
 import type { DatasetEntry } from '@/utils/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
-import dataset from '@/utils/audio/guitar_dataset.json';
+import dataset from '@/utils/audio/datasets/meyda-initial/guitar_dataset.json';
 
 async function getTiF() {
     return await import('@tensorflow/tfjs');
@@ -38,7 +38,7 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
     const outputTensor = tf.oneHot(labelsTensor, 6);
 
     await model.fit(inputTensor, outputTensor, {
-        epochs: 50,
+        epochs: 30,
         batchSize: 32,
         shuffle: true,
         callbacks: {

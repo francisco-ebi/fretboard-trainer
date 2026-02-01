@@ -74,7 +74,7 @@ class GuitarAudioRecordingEngine {
         }
         // Initialize default backend if not set
         if (!this.backend) {
-            await this.setBackendType('essentia');
+            await this.setBackendType('meyda');
         } else {
             // If backend was already set (e.g. via setBackendType calls before init), init it now
             await this.backend.init(this.audioContext);
