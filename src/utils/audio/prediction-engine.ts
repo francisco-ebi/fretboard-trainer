@@ -5,7 +5,7 @@ import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import statsData from '@/utils/audio/stats.json';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
-import type { AudioAnalysisBackend } from '@/utils/audio/audio-backend-types';
+import type { AudioAnalysisBackend, AnalysisResult } from '@/utils/audio/audio-backend-types';
 
 
 const baseNotes: Record<number, number> = {
@@ -179,20 +179,32 @@ class GuitarAudioPredictionEngine {
             if (midiNote < 40 || midiNote > 90) return;
 
             if (result.mfcc) {
-                this.makePrediction(result.mfcc, midiNote);
+                this.makePrediction(result.mfcc, midiNote, result);
             }
         }
     }
 
-    private makePrediction(mfcc: number[] | Float32Array, note: number) {
+    private makePrediction(mfcc: number[] | Float32Array, note: number, extraFeatures?: Partial<AnalysisResult>) {
         const noteName = this.getNoteNameFromMidi(note);
+
+        const featuresList = [...mfcc, note];
+
+        // Dynamically add extra features if stats model supports them
+        // Order must match training: Centroid, Flux, Rolloff, Inharmonicity
+        // We check if statsData has more columns than standard (14)
+        if (statsData.mean.length > 14 && extraFeatures) {
+            if (extraFeatures.spectralCentroid !== undefined) featuresList.push(extraFeatures.spectralCentroid);
+            if (extraFeatures.spectralFlux !== undefined) featuresList.push(extraFeatures.spectralFlux);
+            if (extraFeatures.spectralRolloff !== undefined) featuresList.push(extraFeatures.spectralRolloff);
+            if (extraFeatures.inharmonicity !== undefined) featuresList.push(extraFeatures.inharmonicity);
+        }
 
         const dataset = {
             mfcc: Array.from(mfcc),
             midiNote: note,
             stringNum: -1,
             noteName,
-            features: Array.from([...mfcc, note]),
+            features: Array.from(featuresList),
             normalizedFeatures: []
         }
         // @ts-ignore
