@@ -11,6 +11,13 @@ const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     5: { min: 40, max: 58 }  // Low E: E2 (40) - A#3 (58)
 };
 
+// Standard feature set definition
+export const FEATURE_CONFIG = {
+    MFCC_COUNT: 13,
+    EXTRA_FEATURES: 4, // Centroid, Flux, Rolloff, Inharmonicity
+    TOTAL_FEATURES: 18 // 13 MFCC + 1 Note + 4 Spectral
+};
+
 export interface DatasetEntry {
     mfcc: number[];
     midiNote: number;
@@ -18,6 +25,38 @@ export interface DatasetEntry {
     noteName: string;
     features: number[];
     normalizedFeatures: number[];
+}
+
+class FeatureAdapter {
+    static adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null {
+        // 1. Validate MFCC length
+        if (!mfcc || mfcc.length !== FEATURE_CONFIG.MFCC_COUNT) {
+            console.warn(`Invalid MFCC length: ${mfcc?.length}. Expected ${FEATURE_CONFIG.MFCC_COUNT}`);
+            return null;
+        }
+
+        // 2. Validate Extra Features availability
+        // We require ALL extended features to be present for a valid strict dataset entry
+        if (
+            extra.spectralCentroid === undefined ||
+            extra.spectralFlux === undefined ||
+            extra.spectralRolloff === undefined ||
+            extra.inharmonicity === undefined
+        ) {
+            console.warn("Missing required spectral features for adapter.");
+            return null;
+        }
+
+        // 3. Construct fixed-length vector
+        return [
+            ...mfcc,
+            note,
+            extra.spectralCentroid,
+            extra.spectralFlux,
+            extra.spectralRolloff,
+            extra.inharmonicity
+        ];
+    }
 }
 
 class GuitarAudioRecordingEngine {
@@ -134,17 +173,22 @@ class GuitarAudioRecordingEngine {
     }
 
     saveData(mfcc: number[], note: number, extraFeatures: Partial<AnalysisResult> = {}) {
+        // Attempt to adapt features to standard format
+        const features = FeatureAdapter.adapt(mfcc, note, extraFeatures);
+
+        if (!features) {
+            // console.debug("Skipping data save: Incompatible feature set");
+            return;
+        }
+
         const noteName = this.getNoteNameFromMidi(note);
-        // Log basic info plus new spectral features
+
+        // Log verified data
         console.log({
-            mfcc,
             note,
             noteName,
             backend: this.backend?.name,
-            centroid: extraFeatures.spectralCentroid,
-            flux: extraFeatures.spectralFlux,
-            rolloff: extraFeatures.spectralRolloff,
-            inharmonicity: extraFeatures.inharmonicity
+            featuresLength: features.length
         });
 
         this.dataset.push({
@@ -152,7 +196,7 @@ class GuitarAudioRecordingEngine {
             midiNote: note,
             stringNum: this.currentLabel,
             noteName,
-            features: Array.from([...mfcc, note]),
+            features: features,
             normalizedFeatures: []
         });
 

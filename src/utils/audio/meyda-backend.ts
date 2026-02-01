@@ -22,9 +22,8 @@ export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
         let pitch = this.detectPitch(buffer);
 
         let mfcc: number[] | null = null;
-        let spectralCentroid: number | undefined;
-        let spectralFlux: number | undefined;
-        let spectralRolloff: number | undefined;
+        let spectralCentroid: number | null = null;
+        let spectralRolloff: number | null = null;
 
         try {
             // @ts-ignore
@@ -36,14 +35,12 @@ export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
                 // @ts-ignore
                 spectralCentroid = features.spectralCentroid;
                 // @ts-ignore
-                spectralFlux = features.spectralFlux;
-                // @ts-ignore
                 spectralRolloff = features.spectralRolloff;
             }
         } catch (e) {
             console.warn("Meyda extraction error", e);
         }
 
-        return { pitch, mfcc, spectralCentroid, spectralFlux, spectralRolloff };
+        return { pitch, mfcc, spectralCentroid, spectralRolloff };
     }
 }

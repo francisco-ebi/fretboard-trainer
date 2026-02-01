@@ -64,7 +64,7 @@ export class EssentiaBackend implements AudioAnalysisBackend {
             }
 
             // Spectral Centroid
-            let spectralCentroid = 0;
+            let spectralCentroid = null;
             try {
                 const centroidResult = this.essentia.Centroid(spectrum.spectrum);
                 let sc = centroidResult.centroid;
@@ -79,7 +79,7 @@ export class EssentiaBackend implements AudioAnalysisBackend {
             }
 
             // Spectral Rolloff
-            let spectralRolloff = 0;
+            let spectralRolloff = null;
             try {
                 const rolloffResult = this.essentia.RollOff(spectrum.spectrum);
                 let sr = rolloffResult.rollOff;
@@ -94,7 +94,7 @@ export class EssentiaBackend implements AudioAnalysisBackend {
             }
 
             // Spectral Flux
-            let spectralFlux = 0;
+            let spectralFlux = null;
             try {
                 const fluxResult = this.essentia.Flux(spectrum.spectrum);
                 let sf = fluxResult.flux;
@@ -109,7 +109,7 @@ export class EssentiaBackend implements AudioAnalysisBackend {
             }
 
             // Inharmonicity
-            let inharmonicity = 0;
+            let inharmonicity = null;
             try {
                 const peaksResult = this.essentia.SpectralPeaks(spectrum.spectrum);
 
