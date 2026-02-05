@@ -27,63 +27,7 @@ export interface DatasetEntry {
     normalizedFeatures: number[];
 }
 
-interface FeatureAdapter {
-    adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null;
-}
-
-class EssentiaAdapter implements FeatureAdapter {
-    adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null {
-        // Strict validation: All features must be present and non-null
-        if (
-            extra.spectralCentroid === null || extra.spectralCentroid === undefined ||
-            extra.spectralFlux === null || extra.spectralFlux === undefined ||
-            extra.spectralRolloff === null || extra.spectralRolloff === undefined ||
-            extra.inharmonicity === null || extra.inharmonicity === undefined
-        ) {
-            console.warn("EssentiaAdapter: Missing required spectral features.", extra);
-            return null;
-        }
-
-        return [
-            ...mfcc,
-            note,
-            extra.spectralCentroid,
-            extra.spectralFlux,
-            extra.spectralRolloff,
-            extra.inharmonicity
-        ];
-    }
-}
-
-class MeydaAdapter implements FeatureAdapter {
-    adapt(mfcc: number[], note: number, extra: Partial<AnalysisResult>): number[] | null {
-        // Validates what Meyda provides: Centroid and Rolloff
-        if (
-            extra.spectralCentroid === null || extra.spectralCentroid === undefined ||
-            extra.spectralRolloff === null || extra.spectralRolloff === undefined
-        ) {
-            console.warn("MeydaAdapter: Missing required spectral features.", extra);
-            return null;
-        }
-
-        return [
-            ...mfcc,
-            note,
-            extra.spectralCentroid,
-            extra.spectralRolloff,
-        ];
-    }
-}
-
-class AdapterFactory {
-    static getAdapter(backendName: string): FeatureAdapter {
-        if (backendName === 'essentia-wasm') {
-            return new EssentiaAdapter();
-        }
-        // Default to Meyda for 'meyda-pitchfinder' or others
-        return new MeydaAdapter();
-    }
-}
+// Adapters removed as logic is now handled in saveData with standardized Worklet output
 
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
@@ -105,18 +49,13 @@ class GuitarAudioRecordingEngine {
     }
 
     async setBackendType(type: 'meyda' | 'essentia') {
-        if (type === 'essentia') {
-            const { EssentiaBackend } = await import('@/utils/audio/essentia-backend');
-            this.backend = new EssentiaBackend();
+        if (this.workletNode) {
+            this.workletNode.port.postMessage({ command: 'setBackend', type });
+            console.log(`Switched audio backend to: ${type}`);
         } else {
-            const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
-            this.backend = new MeydaPitchfinderBackend();
-        }
-        console.log(`Switched audio backend to: ${this.backend.name}`);
-
-        // Re-initialize if context exists
-        if (this.audioContext && this.backend) {
-            await this.backend.init(this.audioContext);
+            // If worklet not ready, store preference or init default?
+            // For now just log
+            console.warn("Worklet not initialized, cannot switch backend yet.");
         }
     }
 
@@ -137,13 +76,7 @@ class GuitarAudioRecordingEngine {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
         }
-        // Initialize default backend if not set
-        if (!this.backend) {
-            await this.setBackendType('meyda');
-        } else {
-            // If backend was already set (e.g. via setBackendType calls before init), init it now
-            await this.backend.init(this.audioContext);
-        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
@@ -157,27 +90,21 @@ class GuitarAudioRecordingEngine {
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
-                const { buffer } = event.data;
-                this.processAudioBuffer(buffer);
+                const result = event.data as AnalysisResult;
+                this.handleAnalysisResult(result);
             };
 
             source.connect(this.workletNode);
             console.log("GuitarAudioEngine initialized");
+
+            // Set default backend
+            this.setBackendType('meyda');
         } catch (err) {
             console.error("Error accessing microphone:", err);
         }
     }
 
-    async processAudioBuffer(buffer: Float32Array) {
-        if (!this.backend) return;
-        // Use the backend to analyze audio
-        let result: AnalysisResult = { pitch: null, mfcc: null };
-        try {
-            result = await this.backend.process(buffer);
-        } catch (e) {
-            // console.error("Error processing audio buffer", e);
-        }
-
+    handleAnalysisResult(result: AnalysisResult) {
         if (result.pitch) {
             const midiNote = this.hertzToMidi(result.pitch);
 
@@ -200,36 +127,50 @@ class GuitarAudioRecordingEngine {
 
     saveData(mfcc: number[], note: number, extraFeatures: Partial<AnalysisResult> = {}) {
         if (!mfcc || mfcc.length !== FEATURE_CONFIG.MFCC_COUNT) {
-            console.warn(`Invalid MFCC length: ${mfcc?.length}. Expected ${FEATURE_CONFIG.MFCC_COUNT}`);
+            // console.warn(`Invalid MFCC length: ${mfcc?.length}. Expected ${FEATURE_CONFIG.MFCC_COUNT}`);
             return;
         }
 
-        const backendName = this.backend?.name || 'unknown';
-        const adapter = AdapterFactory.getAdapter(backendName);
-        const features = adapter.adapt(mfcc, note, extraFeatures);
-
-        if (!features) {
-            return;
-        }
-
-        const noteName = this.getNoteNameFromMidi(note);
-
-        // Log verified data
-        console.log({
+        const features = [
+            ...mfcc,
             note,
-            noteName,
-            backend: backendName,
-            featuresLength: features.length
-        });
+            extraFeatures.spectralCentroid || 0,
+            extraFeatures.spectralRolloff || 0
+        ];
 
-        this.dataset.push({
-            mfcc: Array.from(mfcc),
-            midiNote: note,
-            stringNum: this.currentLabel,
-            noteName,
-            features: features,
-            normalizedFeatures: []
-        });
+        // If we want to support the strict Essentia 18 features (MFCC+Note+Centroid+Flux+Rolloff+Inharm)
+        if (extraFeatures.inharmonicity !== undefined && extraFeatures.inharmonicity !== null) {
+            const extendedFeatures = [
+                ...mfcc,
+                note,
+                extraFeatures.spectralCentroid || 0,
+                extraFeatures.spectralFlux || 0,
+                extraFeatures.spectralRolloff || 0,
+                extraFeatures.inharmonicity || 0
+            ];
+
+            if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check
+
+            this.dataset.push({
+                mfcc: Array.from(mfcc),
+                midiNote: note,
+                stringNum: this.currentLabel,
+                noteName: this.getNoteNameFromMidi(note),
+                features: extendedFeatures,
+                normalizedFeatures: []
+            });
+
+        } else {
+            // Meyda style (MFCC + Note + Centroid + Rolloff)
+            this.dataset.push({
+                mfcc: Array.from(mfcc),
+                midiNote: note,
+                stringNum: this.currentLabel,
+                noteName: this.getNoteNameFromMidi(note),
+                features: features, // MFCC, Note, Centroid, Rolloff
+                normalizedFeatures: []
+            });
+        }
 
         if (this.onDataCaptured) {
             this.onDataCaptured(note, this.dataset.length);
