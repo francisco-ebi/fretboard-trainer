@@ -1,27 +1,41 @@
 import type { DatasetEntry } from "@/utils/audio/recording-engine";
+import * as tf from '@tensorflow/tfjs';
 
 interface Statistics {
     mean: number[];
     std: number[];
 }
 
+interface Dataset {
+    label: number;
+    frames: number[][]
+}
+
+
 export function calculateStatistics(data: DatasetEntry[]): Statistics {
-    const numFeatures = data[0].features.length;
+    if (data.length === 0) return { mean: [], std: [] };
+
+    // Check dimensions. Now features is number[][] (time x features)
+    // We assume all sequences have same inner feature dimension
+    const numFeatures = data[0].features[0].length;
     const stats = {
         mean: new Array(numFeatures).fill(0),
         std: new Array(numFeatures).fill(0)
     };
 
+    // Flatten all frames from all sequences into a single pool for stats
+    const allFrames = data.flatMap(entry => entry.features);
+
     // average calculation
     for (let col = 0; col < numFeatures; col++) {
-        const colValues = data.map(row => row.features[col]);
+        const colValues = allFrames.map(frame => frame[col]);
         const sum = colValues.reduce((a, b) => a + b, 0);
         stats.mean[col] = sum / colValues.length;
     }
 
     // standard deviation calculation
     for (let col = 0; col < numFeatures; col++) {
-        const colValues = data.map(row => row.features[col]);
+        const colValues = allFrames.map(frame => frame[col]);
         const mean = stats.mean[col];
         const sumSqDiff = colValues.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
         stats.std[col] = Math.sqrt(sumSqDiff / colValues.length);
@@ -32,12 +46,54 @@ export function calculateStatistics(data: DatasetEntry[]): Statistics {
 
 export function normalizeDataset(data: DatasetEntry[], stats: Statistics): DatasetEntry[] {
     return data.map(entry => {
-        const normalizedFeatures = entry.features.map((val, i) => {
-            return (val - stats.mean[i]) / (stats.std[i] || 1);
+        // Normalize each frame in the sequence
+        const normalizedFeatures = entry.features.map(frame => {
+            return frame.map((val, i) => {
+                return (val - stats.mean[i]) / (stats.std[i] || 1);
+            });
         });
+
         return {
             ...entry,
             normalizedFeatures
         };
     });
+}
+
+export function groupDataByString(data: DatasetEntry[]) {
+    const tempArr = data.map((entry) => ({
+        label: entry.stringNum,
+        frames: entry.normalizedFeatures
+    }));
+    const grouped = Object.groupBy(tempArr, entry => entry.label);
+    return Object.keys(grouped).map(key => ({
+        key,
+        frames: grouped[key].flatMap(val => val.frames)
+    }))
+}
+
+const SEQUENCE_LENGTH = 5;
+const NUM_FEATURES = 16;
+
+export function prepare3DDataset(allDatasets) {
+    let inputs = [];
+    let labels = [];
+
+    // Recorremos cada sesión de grabación (para no mezclar cuerdas)
+    for (const dataset of allDatasets) {
+        const rawFrames = dataset.frames; // Array de vectores normalizados
+        const label = dataset.label;
+        for (let i = 0; i <= rawFrames.length - SEQUENCE_LENGTH; i++) {
+            const window = rawFrames.slice(i, i + SEQUENCE_LENGTH);
+            if (window.length === SEQUENCE_LENGTH) {
+                inputs.push(window);
+                labels.push(label);
+            }
+        }
+    }
+
+    return {
+        x: tf.tensor3d(inputs, [inputs.length, SEQUENCE_LENGTH, NUM_FEATURES]),
+        y: tf.tensor1d(labels, 'int32')
+    };
 }
