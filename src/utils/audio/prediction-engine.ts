@@ -115,7 +115,8 @@ class GuitarAudioPredictionEngine {
                 const { EssentiaBackend } = await import('@/utils/audio/essentia-backend');
                 this.backend = new EssentiaBackend();
                 try {
-                    this.model = await this.tf.loadLayersModel('/model/guitar-model-precision.json');
+                    this.model = await this.tf.loadLayersModel('/model/guitar-essentia-model.json');
+                    this.statsData = await import('@/utils/audio/datasets/essentia_initial/guitar_dataset_stats.json');
                 } catch (e) {
                     console.warn("Precision model not found. Predictions might be unavailable.");
                     this.model = null;
@@ -205,7 +206,7 @@ class GuitarAudioPredictionEngine {
             featuresList.push(typeof extraFeatures.spectralCentroid === 'number' ? extraFeatures.spectralCentroid : 0);
             featuresList.push(typeof extraFeatures.spectralRolloff === 'number' ? extraFeatures.spectralRolloff : 0);
         }
-        if (this.backend?.name === 'essentia-backend' && extraFeatures) {
+        if (this.backend?.name === 'essentia-wasm' && extraFeatures) {
             featuresList.push(typeof extraFeatures.spectralCentroid === 'number' ? extraFeatures.spectralCentroid : 0);
             featuresList.push(typeof extraFeatures.spectralFlux === 'number' ? extraFeatures.spectralFlux : 0);
             featuresList.push(typeof extraFeatures.spectralRolloff === 'number' ? extraFeatures.spectralRolloff : 0);
