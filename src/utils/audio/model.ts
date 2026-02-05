@@ -10,9 +10,9 @@ async function getTiF() {
 export async function createModel(): Promise<LayersModel> {
     const tf = await getTiF();
     const model = tf.sequential();
-    model.add(tf.layers.dense({ inputShape: [18], units: 32, activation: 'relu' }));
-    model.add(tf.layers.dropout({ rate: 0.2 }));
-    model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+    model.add(tf.layers.lstm({ inputShape: [3, 16], units: 64, returnSequences: false }));
+    model.add(tf.layers.dropout({ rate: 0.3 }));
+    model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 6, activation: 'softmax' }));
     model.compile({
         optimizer: tf.train.adam(0.01),
