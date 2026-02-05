@@ -19,15 +19,13 @@ export const FEATURE_CONFIG = {
 };
 
 export interface DatasetEntry {
-    mfcc: number[];
+    mfcc: number[][];
     midiNote: number;
     stringNum: number;
     noteName: string;
-    features: number[];
-    normalizedFeatures: number[];
+    features: number[][];
+    normalizedFeatures: number[][];
 }
-
-// Adapters removed as logic is now handled in saveData with standardized Worklet output
 
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
@@ -37,6 +35,7 @@ class GuitarAudioRecordingEngine {
     isRecording: boolean;
     currentLabel: number;
     onDataCaptured: ((note: number, count: number) => void) | null;
+    private frameBuffer: { mfcc: number[], features: number[] }[] = [];
 
     constructor() {
         this.audioContext = null;
@@ -46,6 +45,7 @@ class GuitarAudioRecordingEngine {
         this.isRecording = false;
         this.currentLabel = 0; // Current String Index
         this.onDataCaptured = null;
+        this.frameBuffer = [];
     }
 
     async setBackendType(type: 'meyda' | 'essentia') {
@@ -127,16 +127,11 @@ class GuitarAudioRecordingEngine {
 
     saveData(mfcc: number[], note: number, extraFeatures: Partial<AnalysisResult> = {}) {
         if (!mfcc || mfcc.length !== FEATURE_CONFIG.MFCC_COUNT) {
-            // console.warn(`Invalid MFCC length: ${mfcc?.length}. Expected ${FEATURE_CONFIG.MFCC_COUNT}`);
             return;
         }
+        // console.log({ note, noteName: this.getNoteNameFromMidi(note) })
 
-        const features = [
-            ...mfcc,
-            note,
-            extraFeatures.spectralCentroid || 0,
-            extraFeatures.spectralRolloff || 0
-        ];
+        let currentFrameFeatures: number[] = [];
 
         // If we want to support the strict Essentia 18 features (MFCC+Note+Centroid+Flux+Rolloff+Inharm)
         if (extraFeatures.inharmonicity !== undefined && extraFeatures.inharmonicity !== null) {
@@ -150,30 +145,46 @@ class GuitarAudioRecordingEngine {
             ];
 
             if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check
-
-            this.dataset.push({
-                mfcc: Array.from(mfcc),
-                midiNote: note,
-                stringNum: this.currentLabel,
-                noteName: this.getNoteNameFromMidi(note),
-                features: extendedFeatures,
-                normalizedFeatures: []
-            });
+            currentFrameFeatures = extendedFeatures;
 
         } else {
             // Meyda style (MFCC + Note + Centroid + Rolloff)
-            this.dataset.push({
-                mfcc: Array.from(mfcc),
-                midiNote: note,
-                stringNum: this.currentLabel,
-                noteName: this.getNoteNameFromMidi(note),
-                features: features, // MFCC, Note, Centroid, Rolloff
-                normalizedFeatures: []
-            });
+            currentFrameFeatures = [
+                ...mfcc,
+                note,
+                extraFeatures.spectralCentroid || 0,
+                extraFeatures.spectralRolloff || 0
+            ];
         }
 
-        if (this.onDataCaptured) {
-            this.onDataCaptured(note, this.dataset.length);
+        // Buffer the frame
+        this.frameBuffer.push({
+            mfcc: Array.from(mfcc),
+            features: currentFrameFeatures
+        });
+
+        // Check if buffer is full
+        if (this.frameBuffer.length >= 5) {
+            // Create sequence entry
+            const sequenceEntry: DatasetEntry = {
+                mfcc: this.frameBuffer.map(f => f.mfcc),
+                midiNote: note, // Using the note of the last frame (or could check consistency)
+                stringNum: this.currentLabel,
+                noteName: this.getNoteNameFromMidi(note),
+                features: this.frameBuffer.map(f => f.features),
+                normalizedFeatures: []
+            };
+
+            this.dataset.push(sequenceEntry);
+            if (this.onDataCaptured) {
+                this.onDataCaptured(note, this.dataset.length);
+                console.log(`Captured sequence. Total sequences: ${this.dataset.length}`);
+            }
+
+            // Clear buffer to start next sequence
+            // Note: This implements non-overlapping windows. 
+            // For overlapping, we would shift/slice instead.
+            this.frameBuffer = [];
         }
     }
 
@@ -194,6 +205,7 @@ class GuitarAudioRecordingEngine {
 
         this.currentLabel = stringIndex;
         this.isRecording = true;
+        this.frameBuffer = []; // Reset buffer
 
         console.log("Recording started for string", stringIndex);
     }
