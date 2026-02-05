@@ -165,7 +165,7 @@ class MeydaBackend implements AudioBackend {
 
         try {
             // @ts-ignore
-            const features = Meyda.extract(['mfcc', 'spectralCentroid', 'spectralRolloff', 'spectralFlux'], buffer);
+            const features = Meyda.extract(['mfcc', 'spectralCentroid', 'spectralRolloff'], buffer);
             // @ts-ignore
             if (features) {
                 // @ts-ignore
@@ -174,8 +174,6 @@ class MeydaBackend implements AudioBackend {
                 spectralCentroid = features.spectralCentroid || null;
                 // @ts-ignore
                 spectralRolloff = features.spectralRolloff || null;
-                // @ts-ignore
-                spectralFlux = features.spectralFlux || null;
             }
         } catch (e) {
             // console.warn("Meyda extraction error", e);
