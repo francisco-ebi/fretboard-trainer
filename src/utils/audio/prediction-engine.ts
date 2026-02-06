@@ -224,8 +224,10 @@ class GuitarAudioPredictionEngine {
 
             if (this.currentMode === 'performance') {
                 // Expecting 16
-                featuresList.push(frame.spectralCentroid || 0);
+                const spectralCentroid = frame.spectralCentroid || 0;
+                featuresList.push(spectralCentroid);
                 featuresList.push(frame.spectralRolloff || 0);
+                featuresList.push((spectralCentroid / midiNote || 1) || 0);
             } else {
                 // Expecting 18
                 featuresList.push(frame.spectralCentroid || 0);

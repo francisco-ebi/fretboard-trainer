@@ -1,7 +1,7 @@
 import type { DatasetEntry } from '@/utils/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
-import dataset from '@/utils/audio/datasets/meyda-timeseries/guitar_dataset.json';
+import dataset from '@/utils/audio/datasets/meyda-ts-plus/synthetic_guitar_dataset.json';
 import { prepare3DDataset, groupDataByString } from './dataset-preparation';
 
 async function getTiF() {
@@ -11,7 +11,7 @@ async function getTiF() {
 export async function createModel(): Promise<LayersModel> {
     const tf = await getTiF();
     const model = tf.sequential();
-    model.add(tf.layers.conv1d({ inputShape: [5, 16], filters: 32, kernelSize: 3, activation: "relu" }));
+    model.add(tf.layers.conv1d({ inputShape: [5, 17], filters: 64, kernelSize: 3, activation: "relu" }));
     model.add(tf.layers.flatten());
     model.add(tf.layers.dropout({ rate: 0.3 }));
     model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
