@@ -19,7 +19,6 @@ export const FEATURE_CONFIG = {
 };
 
 export interface DatasetEntry {
-    mfcc: number[][];
     midiNote: number;
     stringNum: number;
     noteName: string;
@@ -35,7 +34,7 @@ class GuitarAudioRecordingEngine {
     isRecording: boolean;
     currentLabel: number;
     onDataCaptured: ((note: number, count: number) => void) | null;
-    private frameBuffer: { mfcc: number[], features: number[] }[] = [];
+    private frameBuffer: { features: number[] }[] = [];
 
     constructor() {
         this.audioContext = null;
@@ -159,7 +158,6 @@ class GuitarAudioRecordingEngine {
 
         // Buffer the frame
         this.frameBuffer.push({
-            mfcc: Array.from(mfcc),
             features: currentFrameFeatures
         });
 
@@ -167,7 +165,6 @@ class GuitarAudioRecordingEngine {
         if (this.frameBuffer.length >= 5) {
             // Create sequence entry
             const sequenceEntry: DatasetEntry = {
-                mfcc: this.frameBuffer.map(f => f.mfcc),
                 midiNote: note, // Using the note of the last frame (or could check consistency)
                 stringNum: this.currentLabel,
                 noteName: this.getNoteNameFromMidi(note),
