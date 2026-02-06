@@ -10,12 +10,13 @@ import { OrientationProvider } from '@/context/OrientationContext';
 import PredictionControls from '@/components/PredictionControls';
 
 
-type AppMode = 'SCALE' | 'CHORD';
+type AppMode = 'SCALE' | 'CHORD' | 'VISUAL';
 
 import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
 
 // Dynamic Import
 const RecordingControls = lazy(() => import('./components/RecordingControls'));
+const VisualAnalysis = lazy(() => import('./components/VisualAnalysis'));
 
 // Logic component to access context
 const AppContent = () => {
@@ -96,6 +97,12 @@ const AppContent = () => {
             >
               {t('modes.chord')}
             </button>
+            <button
+              className={`mode-btn ${currentMode === 'VISUAL' ? 'active' : ''}`}
+              onClick={() => setCurrentMode('VISUAL')}
+            >
+              Visual
+            </button>
           </div>
         </header>
       )}
@@ -127,9 +134,14 @@ const AppContent = () => {
 
         {currentMode === 'SCALE' ? (
           <ScaleMode prediction={currentPrediction} isFullScreen={isFullScreen} />
-        ) : (
+        ) : currentMode === 'CHORD' ? (
           <ChordMode prediction={currentPrediction} isFullScreen={isFullScreen} />
+        ) : (
+          <Suspense fallback={<div>Loading Analytics...</div>}>
+            <VisualAnalysis />
+          </Suspense>
         )}
+
         {currentMode === 'SCALE' && !isFullScreen && (
           <PredictionControls disabled={!isPredictionEnabled} />
         )}
