@@ -53,7 +53,7 @@ class GuitarAudioPredictionEngine {
         this.rawPrediction$ = new Subject<PredictionResult>();
 
         const step = 1;
-        const windowSize = 10;
+        const windowSize = 3;
         const majorityThreshold = windowSize * 0.7;
         // Window size 10, step 1 (rolling/sliding window)
         // Majority 70% of 10 = 7
@@ -110,8 +110,8 @@ class GuitarAudioPredictionEngine {
 
             // Load Model & Stats
             if (this.currentMode === 'performance') {
-                this.model = await this.tf.loadLayersModel('/model/guitar-model-performance.json');
-                this.statsData = await import('@/utils/audio/datasets/meyda-initial/guitar_dataset_stats.json');
+                this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-model.json');
+                this.statsData = await import('@/utils/audio/datasets/meyda-timeseries/guitar_dataset_stats.json');
             } else {
                 try {
                     this.model = await this.tf.loadLayersModel('/model/guitar-essentia-model.json');
@@ -189,17 +189,15 @@ class GuitarAudioPredictionEngine {
             const midiNote = this.hertzToMidi(result.pitch);
             // Basic range filter
             if (midiNote < 40 || midiNote > 90) return;
-
             if (result.mfcc) {
                 // Buffer frames
                 this.frameBuffer.push(result);
 
-                if (this.frameBuffer.length >= this.SEQUENCE_LENGTH) {
+                if (this.frameBuffer.length > this.SEQUENCE_LENGTH) {
+                    this.frameBuffer.shift();
+                }
+                if (this.frameBuffer.length === this.SEQUENCE_LENGTH) {
                     this.makeSequencePrediction(this.frameBuffer);
-                    // Clear buffer (non-overlapping / distinct prediction windows?
-                    // Or overlapping?
-                    // Plan said: "When buffer size == 5, call... Clear frameBuffer (start new sequence)"
-                    this.frameBuffer = [];
                 }
             }
         }
@@ -216,7 +214,6 @@ class GuitarAudioPredictionEngine {
         if (!lastFrame.pitch) return;
         const paramsMidiNote = this.hertzToMidi(lastFrame.pitch);
         const noteName = this.getNoteNameFromMidi(paramsMidiNote);
-
 
         // Construct Sequence Features
         const sequenceFeatures: number[][] = buffer.map(frame => {
@@ -250,8 +247,8 @@ class GuitarAudioPredictionEngine {
         };
 
         // Normalize
-        // @ts-ignore
         const normalizedDataset = normalizeDataset([datasetEntry], this.statsData);
+
 
         // Tensor Input: [1, 5, 16] or [1, 5, 18]
         const inputSequence = normalizedDataset[0].normalizedFeatures; // number[][]

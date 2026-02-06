@@ -63,8 +63,6 @@ export function groupDataByString(data: DatasetEntry[]) {
         if (!groups[entry.stringNum]) {
             groups[entry.stringNum] = [];
         }
-        // entry.normalizedFeatures is number[][] (sequence of frames)
-        // We want a long flat list of frames for the string, preserving time order within entry
         groups[entry.stringNum].push(...entry.normalizedFeatures);
     }
 
@@ -82,7 +80,7 @@ export function prepare3DDataset(allDatasets: { label: number, frames: number[][
     const labels: number[] = [];
 
     for (const dataset of allDatasets) {
-        const rawFrames = dataset.frames; // Array de vectores normalizados
+        const rawFrames = dataset.frames;
         const label = dataset.label;
         for (let i = 0; i <= rawFrames.length - SEQUENCE_LENGTH; i++) {
             const window = rawFrames.slice(i, i + SEQUENCE_LENGTH);
