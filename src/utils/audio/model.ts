@@ -11,12 +11,13 @@ async function getTiF() {
 export async function createModel(): Promise<LayersModel> {
     const tf = await getTiF();
     const model = tf.sequential();
-    model.add(tf.layers.lstm({ inputShape: [5, 16], units: 64, returnSequences: false }));
+    model.add(tf.layers.conv1d({ inputShape: [5, 16], filters: 32, kernelSize: 3, activation: "relu" }));
+    model.add(tf.layers.flatten());
     model.add(tf.layers.dropout({ rate: 0.3 }));
     model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 6, activation: 'softmax' }));
     model.compile({
-        optimizer: tf.train.adam(0.01),
+        optimizer: "adam",
         loss: 'categoricalCrossentropy',
         metrics: ['accuracy']
     });
@@ -41,7 +42,7 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
 
 
     await model.fit(x, yHot, {
-        epochs: 30,
+        epochs: 15,
         batchSize: 32,
         shuffle: true,
         validationSplit: 0.2,
@@ -50,11 +51,7 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
         }
     });
     console.log('Training completed');
-    // Save model
-    // await model.save('downloads://guitar-model');
-    // For browser download:
-
-    await model.save('downloads://guitar-essentia-model');
+    await model.save('downloads://guitar-meyda-ts-model');
 
     return model;
 }
