@@ -4,7 +4,7 @@ import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import processorUrl from '@/utils/audio/recorder-processor.ts?url';
-import type { AudioAnalysisBackend, AnalysisResult } from '@/utils/audio/audio-backend-types';
+import type { AnalysisResult } from '@/utils/audio/audio-backend-types';
 
 
 const baseNotes: Record<number, number> = {
@@ -27,13 +27,16 @@ export type PredictionMode = 'performance' | 'precision';
 class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
-    backend: AudioAnalysisBackend | null;
     statsData: any = null;
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
     model: LayersModel | null;
     currentMode: PredictionMode;
     private tf: any = null; // Store TFJS instance
+
+    // Buffering
+    private frameBuffer: AnalysisResult[] = [];
+    private readonly SEQUENCE_LENGTH = 5;
 
     // RxJS Logic
     private rawPrediction$: Subject<PredictionResult>;
@@ -42,7 +45,6 @@ class GuitarAudioPredictionEngine {
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
-        this.backend = null;
         this.isRecording = false;
         this.onNotePredicted = null;
         this.model = null;
@@ -91,7 +93,7 @@ class GuitarAudioPredictionEngine {
     }
 
     async setMode(mode: PredictionMode) {
-        if (this.currentMode === mode && this.backend) return;
+        if (this.currentMode === mode && this.model) return;
         this.currentMode = mode;
 
         // Reset and reload based on mode
@@ -106,14 +108,11 @@ class GuitarAudioPredictionEngine {
                 this.tf = await import('@tensorflow/tfjs');
             }
 
+            // Load Model & Stats
             if (this.currentMode === 'performance') {
-                const { MeydaPitchfinderBackend } = await import('@/utils/audio/meyda-backend');
-                this.backend = new MeydaPitchfinderBackend();
                 this.model = await this.tf.loadLayersModel('/model/guitar-model-performance.json');
                 this.statsData = await import('@/utils/audio/datasets/meyda-initial/guitar_dataset_stats.json');
             } else {
-                const { EssentiaBackend } = await import('@/utils/audio/essentia-backend');
-                this.backend = new EssentiaBackend();
                 try {
                     this.model = await this.tf.loadLayersModel('/model/guitar-essentia-model.json');
                     this.statsData = await import('@/utils/audio/datasets/essentia_initial/guitar_dataset_stats.json');
@@ -123,9 +122,13 @@ class GuitarAudioPredictionEngine {
                 }
             }
 
-            if (this.audioContext) {
-                await this.backend.init(this.audioContext);
+            // Switch Worklet Backend
+            if (this.workletNode) {
+                const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
+                this.workletNode.port.postMessage({ command: 'setBackend', type: backendType });
+                console.log(`[PredictionEngine] Switched worklet backend to ${backendType}`);
             }
+
         } catch (e) {
             console.error("Error loading resources", e);
         }
@@ -148,10 +151,9 @@ class GuitarAudioPredictionEngine {
             return;
         }
 
-        // Load resources (backend + model) if not loaded
-        if (!this.backend) {
+        // Load resources (model) if not loaded
+        if (!this.model) {
             await this.loadResourcesForMode();
-
         }
 
         try {
@@ -164,12 +166,15 @@ class GuitarAudioPredictionEngine {
             });
             const source = this.audioContext.createMediaStreamSource(stream);
             this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor');
-            await this.backend!.init(this.audioContext);
+
+            // Set initial backend
+            const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
+            this.workletNode.port.postMessage({ command: 'setBackend', type: backendType });
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
-                const { buffer } = event.data;
-                this.processAudioBuffer(buffer);
+                const result = event.data as AnalysisResult;
+                this.handleAnalysisResult(result);
             };
 
             source.connect(this.workletNode);
@@ -179,66 +184,88 @@ class GuitarAudioPredictionEngine {
         }
     }
 
-    private async processAudioBuffer(buffer: Float32Array) {
-        if (!this.backend) return;
-        const result = await this.backend.process(buffer);
-
+    private handleAnalysisResult(result: AnalysisResult) {
         if (result.pitch) {
             const midiNote = this.hertzToMidi(result.pitch);
-            // Basic range filter (Low E roughly 40, High E roughly 88 on 24th fret?)
+            // Basic range filter
             if (midiNote < 40 || midiNote > 90) return;
 
             if (result.mfcc) {
-                this.makePrediction(result.mfcc, midiNote, result);
+                // Buffer frames
+                this.frameBuffer.push(result);
+
+                if (this.frameBuffer.length >= this.SEQUENCE_LENGTH) {
+                    this.makeSequencePrediction(this.frameBuffer);
+                    // Clear buffer (non-overlapping / distinct prediction windows?
+                    // Or overlapping?
+                    // Plan said: "When buffer size == 5, call... Clear frameBuffer (start new sequence)"
+                    this.frameBuffer = [];
+                }
             }
         }
     }
 
-    private makePrediction(mfcc: number[] | Float32Array, note: number, extraFeatures?: Partial<AnalysisResult>) {
-        const noteName = this.getNoteNameFromMidi(note);
 
-        const featuresList = [...mfcc, note];
-
-        // Dynamically add extra features if stats model supports them
-        // Order must match training: Centroid, Flux, Rolloff, Inharmonicity
-        // We check if statsData has more columns than standard (14)
-        if (this.backend?.name === 'meyda-pitchfinder' && extraFeatures) {
-            featuresList.push(typeof extraFeatures.spectralCentroid === 'number' ? extraFeatures.spectralCentroid : 0);
-            featuresList.push(typeof extraFeatures.spectralRolloff === 'number' ? extraFeatures.spectralRolloff : 0);
-        }
-        if (this.backend?.name === 'essentia-wasm' && extraFeatures) {
-            featuresList.push(typeof extraFeatures.spectralCentroid === 'number' ? extraFeatures.spectralCentroid : 0);
-            featuresList.push(typeof extraFeatures.spectralFlux === 'number' ? extraFeatures.spectralFlux : 0);
-            featuresList.push(typeof extraFeatures.spectralRolloff === 'number' ? extraFeatures.spectralRolloff : 0);
-            featuresList.push(typeof extraFeatures.inharmonicity === 'number' ? extraFeatures.inharmonicity : 0);
-        }
-
-        const dataset = {
-            mfcc: Array.from(mfcc),
-            midiNote: note,
-            stringNum: -1,
-            noteName,
-            features: Array.from(featuresList),
-            normalizedFeatures: []
-        }
-        // @ts-ignore
-        const normalizedDataset = normalizeDataset([dataset], this.statsData);
-
-        if (!this.model || !this.tf) {
-            console.warn("Model or TFJS not loaded yet");
+    private makeSequencePrediction(buffer: AnalysisResult[]) {
+        if (!this.model || !this.tf || !this.statsData) {
+            // console.warn("Model, TFJS or Stats not loaded yet");
             return;
         }
+        // Let's use the last valid pitch.
+        const lastFrame = buffer[buffer.length - 1];
+        if (!lastFrame.pitch) return;
+        const paramsMidiNote = this.hertzToMidi(lastFrame.pitch);
+        const noteName = this.getNoteNameFromMidi(paramsMidiNote);
+
+
+        // Construct Sequence Features
+        const sequenceFeatures: number[][] = buffer.map(frame => {
+            const midiNote = frame.pitch ? this.hertzToMidi(frame.pitch) : 0;
+            const mfcc = frame.mfcc || new Array(13).fill(0);
+
+            const featuresList = [...mfcc, midiNote];
+
+            if (this.currentMode === 'performance') {
+                // Expecting 16
+                featuresList.push(frame.spectralCentroid || 0);
+                featuresList.push(frame.spectralRolloff || 0);
+            } else {
+                // Expecting 18
+                featuresList.push(frame.spectralCentroid || 0);
+                featuresList.push(frame.spectralFlux || 0);
+                featuresList.push(frame.spectralRolloff || 0);
+                featuresList.push(frame.inharmonicity || 0);
+            }
+            return featuresList;
+        });
+
+        // Construct a mock DatasetEntry for normalization
+        const datasetEntry = {
+            mfcc: [],
+            midiNote: paramsMidiNote,
+            stringNum: -1,
+            noteName,
+            features: sequenceFeatures,
+            normalizedFeatures: []
+        };
+
+        // Normalize
+        // @ts-ignore
+        const normalizedDataset = normalizeDataset([datasetEntry], this.statsData);
+
+        // Tensor Input: [1, 5, 16] or [1, 5, 18]
+        const inputSequence = normalizedDataset[0].normalizedFeatures; // number[][]
 
         const predictedClass = this.tf.tidy(() => {
-            const inputTensor = this.tf.tensor2d([normalizedDataset[0].normalizedFeatures]);
+            // Create 3D tensor: [batch_size, time_steps, features] -> [1, 5, F]
+            const inputTensor = this.tf.tensor([inputSequence]);
             const prediction = this.model!.predict(inputTensor) as Tensor;
             return prediction.argMax(1).dataSync()[0];
         });
 
-        const predicted = this.calculateLocation(note, predictedClass);
+        const predicted = this.calculateLocation(paramsMidiNote, predictedClass);
 
         if (predicted) {
-            // console.log('Raw:', predicted); // Optional: verbose logging
             this.rawPrediction$.next(predicted);
         }
     }
@@ -280,6 +307,7 @@ class GuitarAudioPredictionEngine {
         if (this.audioContext?.state === 'suspended') this.audioContext.resume();
 
         this.isRecording = true;
+        this.frameBuffer = []; // Reset buffer
 
         console.log("Recording started");
     }

@@ -39,7 +39,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024 // 10 MB
+        maximumFileSizeToCacheInBytes: 40 * 1024 * 1024 // 40 MB
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {

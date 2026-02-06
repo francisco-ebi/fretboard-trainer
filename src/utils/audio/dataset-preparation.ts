@@ -6,10 +6,6 @@ interface Statistics {
     std: number[];
 }
 
-interface Dataset {
-    label: number;
-    frames: number[][]
-}
 
 
 export function calculateStatistics(data: DatasetEntry[]): Statistics {
@@ -61,25 +57,30 @@ export function normalizeDataset(data: DatasetEntry[], stats: Statistics): Datas
 }
 
 export function groupDataByString(data: DatasetEntry[]) {
-    const tempArr = data.map((entry) => ({
-        label: entry.stringNum,
-        frames: entry.normalizedFeatures
+    const groups: Record<number, number[][]> = {};
+
+    for (const entry of data) {
+        if (!groups[entry.stringNum]) {
+            groups[entry.stringNum] = [];
+        }
+        // entry.normalizedFeatures is number[][] (sequence of frames)
+        // We want a long flat list of frames for the string, preserving time order within entry
+        groups[entry.stringNum].push(...entry.normalizedFeatures);
+    }
+
+    return Object.keys(groups).map(key => ({
+        label: Number(key),
+        frames: groups[Number(key)]
     }));
-    const grouped = Object.groupBy(tempArr, entry => entry.label);
-    return Object.keys(grouped).map(key => ({
-        key,
-        frames: grouped[key].flatMap(val => val.frames)
-    }))
 }
 
 const SEQUENCE_LENGTH = 5;
 const NUM_FEATURES = 16;
 
-export function prepare3DDataset(allDatasets) {
-    let inputs = [];
-    let labels = [];
+export function prepare3DDataset(allDatasets: { label: number, frames: number[][] }[]) {
+    const inputs: number[][][] = [];
+    const labels: number[] = [];
 
-    // Recorremos cada sesión de grabación (para no mezclar cuerdas)
     for (const dataset of allDatasets) {
         const rawFrames = dataset.frames; // Array de vectores normalizados
         const label = dataset.label;
