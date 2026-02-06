@@ -11,9 +11,10 @@ async function getTiF() {
 export async function createModel(): Promise<LayersModel> {
     const tf = await getTiF();
     const model = tf.sequential();
-    model.add(tf.layers.conv1d({ inputShape: [5, 17], filters: 64, kernelSize: 3, activation: "relu" }));
-    model.add(tf.layers.flatten());
-    model.add(tf.layers.dropout({ rate: 0.3 }));
+    model.add(tf.layers.conv1d({ inputShape: [5, 17], filters: 32, kernelSize: 3, activation: "relu" }));
+    model.add(tf.layers.globalAveragePooling1d());
+    // model.add(tf.layers.flatten());
+    // model.add(tf.layers.dropout({ rate: 0.3 }));
     model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 6, activation: 'softmax' }));
     model.compile({
@@ -42,7 +43,7 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
 
 
     await model.fit(x, yHot, {
-        epochs: 15,
+        epochs: 50,
         batchSize: 32,
         shuffle: true,
         validationSplit: 0.2,

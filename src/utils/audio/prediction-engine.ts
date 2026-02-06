@@ -53,7 +53,7 @@ class GuitarAudioPredictionEngine {
         this.rawPrediction$ = new Subject<PredictionResult>();
 
         const step = 1;
-        const windowSize = 3;
+        const windowSize = 10;
         const majorityThreshold = windowSize * 0.7;
         // Window size 10, step 1 (rolling/sliding window)
         // Majority 70% of 10 = 7
