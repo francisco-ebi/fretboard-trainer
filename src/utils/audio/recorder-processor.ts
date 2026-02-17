@@ -2,6 +2,7 @@ import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
 import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
+import { getMinFreqByString } from './essentia';
 
 declare const sampleRate: number;
 
@@ -18,7 +19,7 @@ interface AnalysisResult {
 interface AudioBackend {
     name: string;
     init(sampleRate: number): Promise<void>;
-    process(buffer: Float32Array): AnalysisResult;
+    process(buffer: Float32Array, stringIndex: number): AnalysisResult;
 }
 
 class EssentiaBackend implements AudioBackend {
@@ -32,7 +33,7 @@ class EssentiaBackend implements AudioBackend {
         }
     }
 
-    process(buffer: Float32Array): AnalysisResult {
+    process(buffer: Float32Array, stringIndex: number): AnalysisResult {
         if (!this.essentia) return { pitch: null, mfcc: null };
 
         let vectorSignal;
@@ -115,16 +116,45 @@ class EssentiaBackend implements AudioBackend {
 
         // Inharmonicity
         if (pitch && pitch > 0) {
+            let peaksResult;
             try {
-                const peaksResult = this.essentia.SpectralPeaks(spectrum.spectrum);
-                const result = this.essentia.Inharmonicity(peaksResult.frequencies, peaksResult.magnitudes);
-                if (typeof result.inharmonicity === 'number') {
-                    inharmonicity = result.inharmonicity;
+                peaksResult = this.essentia.SpectralPeaks(
+                    spectrum.spectrum,
+                    0,
+                    5000,
+                    100,
+                    getMinFreqByString(stringIndex)
+                );
+
+                // Validation to minimize exceptions in Inharmonicity
+                // It requires non-empty vectors and no 0Hz peak (or negative)
+                let validInputs = false;
+                if (peaksResult.frequencies && peaksResult.magnitudes && peaksResult.frequencies.size() > 0) {
+                    const firstFreq = peaksResult.frequencies.get(0);
+                    if (firstFreq > 0.0001) {
+                        validInputs = true;
+                    }
                 }
-                if (peaksResult.frequencies) peaksResult.frequencies.delete();
-                if (peaksResult.magnitudes) peaksResult.magnitudes.delete();
+
+                if (validInputs) {
+                    const result = this.essentia.Inharmonicity(peaksResult.frequencies, peaksResult.magnitudes);
+                    if (typeof result.inharmonicity === 'number') {
+                        inharmonicity = result.inharmonicity;
+                    }
+                    if (result.inharmonicity && typeof result.inharmonicity !== 'number') {
+                        // In case it returned a vector/object unexpectedly in future versions, handle cleanup if needed.
+                        // But we expect number here as per previous fix.
+                        // For now, based on previous fix, it's a number.
+                    }
+                }
+
             } catch (e) {
-                console.error('Inharmonicity err', e);
+                console.error('Inharmonicity:', e);
+            } finally {
+                if (peaksResult) {
+                    if (peaksResult.frequencies) peaksResult.frequencies.delete();
+                    if (peaksResult.magnitudes) peaksResult.magnitudes.delete();
+                }
             }
         }
 
@@ -157,7 +187,7 @@ class MeydaBackend implements AudioBackend {
         }
     }
 
-    process(buffer: Float32Array): AnalysisResult {
+    process(buffer: Float32Array, stringIndex: number): AnalysisResult {
         if (!this.detectPitch) return { pitch: null, mfcc: null };
 
         const pitch = this.detectPitch(buffer);
@@ -194,6 +224,7 @@ class RecorderProcessor extends AudioWorkletProcessor {
     currentSize: number;
     activeBackend: AudioBackend | null = null;
     backends: Map<string, AudioBackend> = new Map();
+    stringIndex: number = 0;
 
     constructor() {
         super();
@@ -213,6 +244,10 @@ class RecorderProcessor extends AudioWorkletProcessor {
             if (event.data.command === 'setBackend') {
                 this.setBackend(event.data.type);
             }
+            if (event.data.command === 'setString') {
+                console.log("Setting string", event.data.stringIndex);
+                this.setString(event.data.stringIndex);
+            }
         };
     }
 
@@ -226,6 +261,10 @@ class RecorderProcessor extends AudioWorkletProcessor {
         } else {
             console.warn(`[AudioWorklet] Backend ${type} not found`);
         }
+    }
+
+    async setString(stringIndex: number) {
+        this.stringIndex = stringIndex;
     }
 
     process(inputs: Float32Array[][], _outputs: Float32Array[][], _parameters: Record<string, Float32Array>): boolean {
@@ -249,7 +288,7 @@ class RecorderProcessor extends AudioWorkletProcessor {
 
                 if (rms > 0.02 && this.activeBackend) {
                     try {
-                        const result = this.activeBackend.process(bufferToSend);
+                        const result = this.activeBackend.process(bufferToSend, this.stringIndex);
                         result.rms = rms;
                         this.port.postMessage(result);
                     } catch (err) {

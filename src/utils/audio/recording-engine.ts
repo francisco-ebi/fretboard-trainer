@@ -147,12 +147,14 @@ class GuitarAudioRecordingEngine {
             currentFrameFeatures = extendedFeatures;
 
         } else {
-            // Meyda style (MFCC + Note + Centroid + Rolloff)
+            // Meyda style (MFCC + Note + Centroid + Rolloff + brightnessPerNote)
+            const brightnessPerNote = (note / (extraFeatures?.spectralCentroid || 1)) || 0;
             currentFrameFeatures = [
                 ...mfcc,
                 note,
                 extraFeatures.spectralCentroid || 0,
-                extraFeatures.spectralRolloff || 0
+                extraFeatures.spectralRolloff || 0,
+                brightnessPerNote
             ];
         }
 
@@ -175,6 +177,7 @@ class GuitarAudioRecordingEngine {
             this.dataset.push(sequenceEntry);
             if (this.onDataCaptured) {
                 this.onDataCaptured(note, this.dataset.length);
+                console.log({ midiNote: note, noteName: this.getNoteNameFromMidi(note) });
                 console.log(`Captured sequence. Total sequences: ${this.dataset.length}`);
             }
 
@@ -205,6 +208,10 @@ class GuitarAudioRecordingEngine {
         this.frameBuffer = []; // Reset buffer
 
         console.log("Recording started for string", stringIndex);
+
+        if (this.workletNode) {
+            this.workletNode.port.postMessage({ command: 'setString', stringIndex });
+        }
     }
 
     stopRecording() {
