@@ -110,8 +110,8 @@ class GuitarAudioPredictionEngine {
 
             // Load Model & Stats
             if (this.currentMode === 'performance') {
-                this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-model.json');
-                this.statsData = await import('@/utils/audio/datasets/meyda-timeseries/guitar_dataset_stats.json');
+                this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-brightness-model.json');
+                this.statsData = await import('@/utils/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
             } else {
                 try {
                     this.model = await this.tf.loadLayersModel('/model/guitar-essentia-model.json');
@@ -223,7 +223,7 @@ class GuitarAudioPredictionEngine {
             const featuresList = [...mfcc, midiNote];
 
             if (this.currentMode === 'performance') {
-                // Expecting 16
+                // Expecting 17
                 const spectralCentroid = frame.spectralCentroid || 0;
                 featuresList.push(spectralCentroid);
                 featuresList.push(frame.spectralRolloff || 0);

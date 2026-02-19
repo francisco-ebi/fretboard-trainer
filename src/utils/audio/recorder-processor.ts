@@ -2,7 +2,6 @@ import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
 import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
 import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
-import { getMinFreqByString } from './essentia';
 
 declare const sampleRate: number;
 
@@ -33,7 +32,7 @@ class EssentiaBackend implements AudioBackend {
         }
     }
 
-    process(buffer: Float32Array, stringIndex: number): AnalysisResult {
+    process(buffer: Float32Array): AnalysisResult {
         if (!this.essentia) return { pitch: null, mfcc: null };
 
         let vectorSignal;
@@ -122,8 +121,7 @@ class EssentiaBackend implements AudioBackend {
                     spectrum.spectrum,
                     0,
                     5000,
-                    100,
-                    getMinFreqByString(stringIndex)
+                    100
                 );
 
                 // Validation to minimize exceptions in Inharmonicity
@@ -187,7 +185,7 @@ class MeydaBackend implements AudioBackend {
         }
     }
 
-    process(buffer: Float32Array, stringIndex: number): AnalysisResult {
+    process(buffer: Float32Array): AnalysisResult {
         if (!this.detectPitch) return { pitch: null, mfcc: null };
 
         const pitch = this.detectPitch(buffer);

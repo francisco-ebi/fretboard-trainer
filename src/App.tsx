@@ -7,12 +7,11 @@ import ScaleMode from '@/components/ScaleMode';
 import ChordMode from '@/components/ChordMode';
 import { guitarPredictionEngine, type PredictionResult } from '@/utils/audio/prediction-engine';
 import { OrientationProvider } from '@/context/OrientationContext';
-import PredictionControls from '@/components/PredictionControls';
 
 
 type AppMode = 'SCALE' | 'CHORD' | 'VISUAL';
 
-import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
+import { InstrumentProvider } from '@/context/InstrumentContext';
 
 // Dynamic Import
 const RecordingControls = lazy(() => import('./components/RecordingControls'));
@@ -21,7 +20,7 @@ const VisualAnalysis = lazy(() => import('./components/VisualAnalysis'));
 // Logic component to access context
 const AppContent = () => {
   const { t } = useTranslation();
-  const { instrument, stringCount } = useInstrument();
+  // const { instrument, stringCount } = useInstrument();
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
 
@@ -74,7 +73,7 @@ const AppContent = () => {
     }
   }, []);
 
-  const isPredictionEnabled = instrument === 'GUITAR' && stringCount === 6;
+  // const isPredictionEnabled = instrument === 'GUITAR' && stringCount === 6;
 
   return (
     <div className={`app-container ${isFullScreen ? 'fullscreen' : ''}`}>
@@ -97,12 +96,12 @@ const AppContent = () => {
             >
               {t('modes.chord')}
             </button>
-            <button
+            {/*  <button
               className={`mode-btn ${currentMode === 'VISUAL' ? 'active' : ''}`}
               onClick={() => setCurrentMode('VISUAL')}
             >
               Visual
-            </button>
+            </button> */}
           </div>
         </header>
       )}
@@ -140,10 +139,6 @@ const AppContent = () => {
           <Suspense fallback={<div>Loading Analytics...</div>}>
             <VisualAnalysis />
           </Suspense>
-        )}
-
-        {currentMode === 'SCALE' && !isFullScreen && (
-          <PredictionControls disabled={!isPredictionEnabled} />
         )}
       </main>
     </div>
