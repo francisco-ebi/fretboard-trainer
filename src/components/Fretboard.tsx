@@ -10,6 +10,7 @@ import { type PredictionResult } from '@/utils/audio/prediction-engine';
 interface FretboardProps {
     selectedRoot: Note;
     scaleNotes: Note[];
+    characteristicInterval: string | undefined;
     namingSystem: NamingSystem;
     instrument: Instrument;
     tuningOffsets: number[];
@@ -30,7 +31,7 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingSystem, instrument, tuningOffsets, stringCount, prediction }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, tuningOffsets, stringCount, prediction }) => {
     const { orientation } = useOrientation();
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
@@ -62,6 +63,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
             const isNoteInScale = scaleNotes.includes(note);
             const isRoot = note === selectedRoot;
             const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
+            const isCharacteristic = !!(interval && characteristicInterval && interval === characteristicInterval);
             const octave = getOctave(instrument, stringIndex, fret, tuningOffsets, stringCount);
 
             // Prediction Match Logic
@@ -163,6 +165,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, namingS
                                     isRoot={isRoot}
                                     namingSystem={namingSystem}
                                     interval={interval}
+                                    isCharacteristic={isCharacteristic}
                                     shouldShake={shouldShake}
                                     octave={octave}
                                 />

@@ -4,7 +4,7 @@ import Controls from '@/components/Controls';
 import HelpSection from '@/components/HelpSection';
 import { useInstrument } from '@/context/InstrumentContext';
 
-import { getScale, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
+import { getScale, CHARACTERISTIC_INTERVALS, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type PredictionResult } from '@/utils/audio/prediction-engine';
 
 interface ScaleModeProps {
@@ -53,6 +53,7 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false 
     };
 
     const scaleNotes = getScale(selectedRoot, selectedScale);
+    const characteristicInterval = CHARACTERISTIC_INTERVALS[selectedScale];
 
     return (
         <div className={`scale-mode ${isFullScreen ? 'fullscreen' : ''}`}>
@@ -79,6 +80,7 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false 
                 <Fretboard
                     selectedRoot={selectedRoot}
                     scaleNotes={scaleNotes}
+                    characteristicInterval={characteristicInterval}
                     namingSystem={namingSystem}
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}

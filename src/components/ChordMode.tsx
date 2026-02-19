@@ -283,6 +283,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                     selectedRoot={selectedChordIndex !== null ? diatonicChords[selectedChordIndex].root : selectedRoot} // Highlight root of chord
                     scaleNotes={notesToDisplay}
                     namingSystem={namingSystem}
+                    characteristicInterval={undefined}
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}

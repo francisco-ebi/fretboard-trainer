@@ -54,6 +54,7 @@ const HelpSection: React.FC = () => {
                                             isRoot={false}
                                             namingSystem="ENGLISH"
                                             interval="3"
+                                            isCharacteristic={false}
                                             shouldShake={false}
                                             octave={3}
                                         />

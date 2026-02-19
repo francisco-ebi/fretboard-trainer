@@ -43,14 +43,33 @@ export const CHROMATIC_SCALE: Note[] = [
 ];
 
 export const SCALES = {
-    MAJOR: [0, 2, 4, 5, 7, 9, 11], // Intervals from root: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
-    MINOR: [0, 2, 3, 5, 7, 8, 10], // Natural Minor: Root, Maj 2nd, Min 3rd, Perf 4th, Perf 5th, Min 6th, Min 7th
+    MAJOR: [0, 2, 4, 5, 7, 9, 11], // Ionian: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
+    MINOR: [0, 2, 3, 5, 7, 8, 10], // Aeolian/Natural Minor: Root, Maj 2nd, Min 3rd, Perf 4th, Perf 5th, Min 6th, Min 7th
     PENTATONIC_MAJOR: [0, 2, 4, 7, 9], // Root, Maj 2nd, Maj 3rd, Perf 5th, Maj 6th
     PENTATONIC_MINOR: [0, 3, 5, 7, 10], // Root, Min 3rd, Perf 4th, Perf 5th, Min 7th
-    BLUES: [0, 3, 5, 6, 7, 10] // Root, Min 3rd, Perf 4th, Dim 5th, Perf 5th, Min 7th
+    BLUES: [0, 3, 5, 6, 7, 10], // Root, Min 3rd, Perf 4th, Dim 5th, Perf 5th, Min 7th
+
+    // Church Modes
+    IONIAN: [0, 2, 4, 5, 7, 9, 11], // Same as Major
+    DORIAN: [0, 2, 3, 5, 7, 9, 10], // Mode 2 (Minor with natural 6)
+    PHRYGIAN: [0, 1, 3, 5, 7, 8, 10], // Mode 3 (Minor with flat 2)
+    LYDIAN: [0, 2, 4, 6, 7, 9, 11], // Mode 4 (Major with sharp 4)
+    MIXOLYDIAN: [0, 2, 4, 5, 7, 9, 10], // Mode 5 (Major with flat 7)
+    AEOLIAN: [0, 2, 3, 5, 7, 8, 10], // Mode 6 (Same as Natural Minor)
+    LOCRIAN: [0, 1, 3, 5, 6, 8, 10]  // Mode 7 (Diminished)
 };
 
 export type ScaleType = keyof typeof SCALES;
+
+// Characteristic intervals (the flavor notes) for the Church Modes
+export const CHARACTERISTIC_INTERVALS: Partial<Record<ScaleType, string>> = {
+    DORIAN: '6', // Major 6th in a minor context
+    PHRYGIAN: 'b2', // Minor 2nd
+    LYDIAN: 'b5', // Augmented 4th (mapped to b5 physically)
+    MIXOLYDIAN: 'b7', // Minor 7th in a major context
+    AEOLIAN: 'b6', // Minor 6th
+    LOCRIAN: 'b5' // Diminished 5th
+};
 
 /**
  * Rotates the chromatic scale so it starts with the given root note.

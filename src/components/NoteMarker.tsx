@@ -7,11 +7,12 @@ export interface NoteMarkerProps {
     isRoot: boolean;
     namingSystem: NamingSystem;
     interval: string | null;
+    isCharacteristic: boolean;
     shouldShake: boolean;
     octave: number;
 }
 
-const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, shouldShake, octave }) => {
+const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, isCharacteristic, shouldShake, octave }) => {
     const [shaking, setShaking] = useState(false);
 
     useEffect(() => {
@@ -31,7 +32,7 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, int
     }
 
     return (
-        <div className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${shaking ? 'shake' : ''}`}>
+        <div className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${shaking ? 'shake' : ''}`}>
             <span className="note-name">{getNoteName(note, namingSystem)}<sub className="note-octave">{octave}</sub></span>
             <hr className="note-separator" />
             <span className="note-interval">{interval}</span>

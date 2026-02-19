@@ -116,7 +116,7 @@ const Controls: React.FC<ControlsProps> = ({
                     >
                         {(Object.keys(SCALES) as ScaleType[]).map((scale) => (
                             <option key={scale} value={scale}>
-                                {scale.replace('_', ' ')}
+                                {t(`scales.${scale}`)}
                             </option>
                         ))}
                     </select>

@@ -24,7 +24,6 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'framer-motion', 'i18next', 'react-i18next'],
           tensorflow: ['@tensorflow/tfjs'],
-          essentia: ['essentia.js'],
           audio: ['meyda', 'pitchfinder']
         }
       }
@@ -39,7 +38,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 40 * 1024 * 1024 // 40 MB
+        maximumFileSizeToCacheInBytes: 100 * 1024 * 1024 // 100 MB
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {

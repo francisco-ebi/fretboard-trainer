@@ -76,6 +76,12 @@
     border: 2px solid white;
 }
 
+.note-marker.characteristic-note {
+    border: 3px solid #ffeb3b;
+    box-shadow: 0 0 12px rgba(255, 235, 59, 0.8), inset 0 0 5px rgba(255, 235, 59, 0.5);
+    transform: scale(1.05);
+}
+
 @keyframes shake {
     0% {
         transform: translateX(0);

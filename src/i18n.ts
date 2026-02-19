@@ -39,6 +39,20 @@ const resources = {
                 GUITAR: "Guitar",
                 BASS: "Bass"
             },
+            scales: {
+                MAJOR: "Major (Ionian)",
+                MINOR: "Minor (Aeolian)",
+                PENTATONIC_MAJOR: "Major Pentatonic",
+                PENTATONIC_MINOR: "Minor Pentatonic",
+                BLUES: "Blues",
+                IONIAN: "Ionian (Mode 1)",
+                DORIAN: "Dorian (Mode 2)",
+                PHRYGIAN: "Phrygian (Mode 3)",
+                LYDIAN: "Lydian (Mode 4)",
+                MIXOLYDIAN: "Mixolydian (Mode 5)",
+                AEOLIAN: "Aeolian (Mode 6)",
+                LOCRIAN: "Locrian (Mode 7)"
+            },
             modes: {
                 scale: "Scale Explorer",
                 chord: "Chord Viewer"
@@ -105,6 +119,20 @@ const resources = {
             instruments: {
                 GUITAR: "Guitarra",
                 BASS: "Bajo"
+            },
+            scales: {
+                MAJOR: "Mayor (Jónico)",
+                MINOR: "Menor (Eólico)",
+                PENTATONIC_MAJOR: "Pentatónica Mayor",
+                PENTATONIC_MINOR: "Pentatónica Menor",
+                BLUES: "Blues",
+                IONIAN: "Jónico (Modo 1)",
+                DORIAN: "Dórico (Modo 2)",
+                PHRYGIAN: "Frigio (Modo 3)",
+                LYDIAN: "Lidio (Modo 4)",
+                MIXOLYDIAN: "Mixolidio (Modo 5)",
+                AEOLIAN: "Eólico (Modo 6)",
+                LOCRIAN: "Locrio (Modo 7)"
             },
             modes: {
                 scale: "Explorador de Escalas",
