@@ -1,7 +1,7 @@
 import type { DatasetEntry } from '@/utils/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
-import dataset from '@/utils/audio/datasets/meyda-ts-plus/synthetic_guitar_dataset.json';
+import dataset from '@/utils/audio/datasets/meyda-ts-with-brightness/guitar_dataset.json';
 import { prepare3DDataset, groupDataByString } from './dataset-preparation';
 
 async function getTiF() {
@@ -41,18 +41,29 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
     const yHot = tf.oneHot(y, 6);
     console.log(`Input Shape: ${x.shape}`);
 
+    const earlyStopping = tf.callbacks.earlyStopping({
+        monitor: 'val_acc',
+        patience: 5,
+        minDelta: 0.005
+    });
+
 
     await model.fit(x, yHot, {
-        epochs: 50,
-        batchSize: 32,
+        epochs: 100,
+        batchSize: 64,
         shuffle: true,
         validationSplit: 0.2,
-        callbacks: {
-            onEpochEnd: (epoch, logs) => console.log(`Epoch ${epoch}: loss=${logs?.loss}, accuracy = ${logs?.acc}`)
-        }
+        callbacks: [
+            earlyStopping,
+            new tf.CustomCallback({
+                onEpochEnd: (epoch, logs) => {
+                    console.log(`Epoch ${epoch + 1}: Precisión Entrenamiento = ${(logs!.acc * 100).toFixed(1)}% | Precisión Validación = ${(logs!.val_acc * 100).toFixed(1)}%`);
+                }
+            })
+        ]
     });
     console.log('Training completed');
-    await model.save('downloads://guitar-meyda-ts-model');
+    await model.save('downloads://guitar-meyda-ts-brightness-model');
 
     return model;
 }
