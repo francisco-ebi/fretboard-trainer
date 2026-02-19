@@ -11,7 +11,9 @@ import { OrientationProvider } from '@/context/OrientationContext';
 
 type AppMode = 'SCALE' | 'CHORD' | 'VISUAL';
 
-import { InstrumentProvider } from '@/context/InstrumentContext';
+import PredictionControls from '@/components/PredictionControls';
+
+import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
 
 // Dynamic Import
 const RecordingControls = lazy(() => import('./components/RecordingControls'));
@@ -20,7 +22,7 @@ const VisualAnalysis = lazy(() => import('./components/VisualAnalysis'));
 // Logic component to access context
 const AppContent = () => {
   const { t } = useTranslation();
-  // const { instrument, stringCount } = useInstrument();
+  const { instrument, stringCount } = useInstrument();
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
 
@@ -73,8 +75,8 @@ const AppContent = () => {
     }
   }, []);
 
-  // const isPredictionEnabled = instrument === 'GUITAR' && stringCount === 6;
-
+  const isPredictionEnabled = instrument === 'GUITAR' && stringCount === 6;
+  const showPredictionControls = import.meta.env.VITE_ENABLE_PREDICTION_CONTROLS === 'true';
   return (
     <div className={`app-container ${isFullScreen ? 'fullscreen' : ''}`}>
       {!isFullScreen && (
@@ -139,6 +141,10 @@ const AppContent = () => {
           <Suspense fallback={<div>Loading Analytics...</div>}>
             <VisualAnalysis />
           </Suspense>
+        )}
+
+        {showPredictionControls && currentMode === 'SCALE' && !isFullScreen && (
+          <PredictionControls disabled={!isPredictionEnabled} />
         )}
       </main>
     </div>
