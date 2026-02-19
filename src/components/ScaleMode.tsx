@@ -13,9 +13,30 @@ interface ScaleModeProps {
 }
 
 const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false }) => {
-    const [selectedRoot, setSelectedRoot] = useState<Note>('C');
-    const [selectedScale, setSelectedScale] = useState<ScaleType>('MAJOR');
-    const [namingSystem, setNamingSystem] = useState<NamingSystem>('ENGLISH');
+    const [selectedRoot, setSelectedRootState] = useState<Note>(() => {
+        return (localStorage.getItem('scalemode-root') as Note) || 'C';
+    });
+    const [selectedScale, setSelectedScaleState] = useState<ScaleType>(() => {
+        return (localStorage.getItem('scalemode-scale') as ScaleType) || 'MAJOR';
+    });
+    const [namingSystem, setNamingSystemState] = useState<NamingSystem>(() => {
+        return (localStorage.getItem('scalemode-naming') as NamingSystem) || 'ENGLISH';
+    });
+
+    const setSelectedRoot = (root: Note) => {
+        setSelectedRootState(root);
+        localStorage.setItem('scalemode-root', root);
+    };
+
+    const setSelectedScale = (scale: ScaleType) => {
+        setSelectedScaleState(scale);
+        localStorage.setItem('scalemode-scale', scale);
+    };
+
+    const setNamingSystem = (system: NamingSystem) => {
+        setNamingSystemState(system);
+        localStorage.setItem('scalemode-naming', system);
+    };
 
     // Use Context
     const {

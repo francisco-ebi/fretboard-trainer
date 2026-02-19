@@ -13,12 +13,32 @@ interface InstrumentContextType {
 const InstrumentContext = createContext<InstrumentContextType | undefined>(undefined);
 
 export const InstrumentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [instrument, setInstrumentState] = useState<Instrument>('GUITAR');
-    const [stringCount, setStringCount] = useState<number>(6);
-    const [tuningOffsets, setTuningOffsets] = useState<number[]>([]);
+    const [instrument, setInstrumentState] = useState<Instrument>(() => {
+        return (localStorage.getItem('fretboard-instrument') as Instrument) || 'GUITAR';
+    });
+    const [stringCount, setStringCountState] = useState<number>(() => {
+        const saved = localStorage.getItem('fretboard-stringCount');
+        return saved ? parseInt(saved, 10) : 6;
+    });
+    const [tuningOffsets, setTuningOffsetsState] = useState<number[]>(() => {
+        const saved = localStorage.getItem('fretboard-tuningOffsets');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const setStringCount = (count: number) => {
+        setStringCountState(count);
+        localStorage.setItem('fretboard-stringCount', count.toString());
+    };
+
+    const setTuningOffsets = (offsets: number[]) => {
+        setTuningOffsetsState(offsets);
+        localStorage.setItem('fretboard-tuningOffsets', JSON.stringify(offsets));
+    };
 
     const setInstrument = (newInstrument: Instrument) => {
         setInstrumentState(newInstrument);
+        localStorage.setItem('fretboard-instrument', newInstrument);
+
         // Default logic when switching instrument
         if (newInstrument === 'BASS') {
             setStringCount(4);
