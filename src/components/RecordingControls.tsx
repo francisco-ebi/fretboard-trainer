@@ -1,5 +1,5 @@
 import { audioRecordingEngine } from '@/utils/audio/recording-engine';
-import { trainModel } from '@/utils/audio/model';
+
 import { useEffect, useState } from 'react';
 
 const RecordingControls = () => {
@@ -19,6 +19,10 @@ const RecordingControls = () => {
     const handleStopRecording = () => {
         setActiveRecording(null);
         audioRecordingEngine.stopRecording();
+    };
+    const handleTrainModel = async () => {
+        const { trainModel } = await import('@/utils/audio/model');
+        trainModel();
     };
 
     return (
@@ -42,7 +46,7 @@ const RecordingControls = () => {
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button className="mode-btn" onClick={handleStopRecording}>Stop</button>
                 <button className="mode-btn" onClick={() => audioRecordingEngine.downloadDataset()}>Download</button>
-                <button className="mode-btn" onClick={() => trainModel()}>Train</button>
+                <button className="mode-btn" onClick={handleTrainModel}>Train</button>
             </div>
         </div>
     );
