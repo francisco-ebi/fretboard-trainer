@@ -47,16 +47,7 @@ class GuitarAudioRecordingEngine {
         this.frameBuffer = [];
     }
 
-    async setBackendType(type: 'meyda' | 'essentia') {
-        if (this.workletNode) {
-            this.workletNode.port.postMessage({ command: 'setBackend', type });
-            console.log(`Switched audio backend to: ${type}`);
-        } else {
-            // If worklet not ready, store preference or init default?
-            // For now just log
-            console.warn("Worklet not initialized, cannot switch backend yet.");
-        }
-    }
+
 
     async init() {
         if (this.audioContext) return;
@@ -96,8 +87,7 @@ class GuitarAudioRecordingEngine {
             source.connect(this.workletNode);
             console.log("GuitarAudioEngine initialized");
 
-            // Set default backend
-            this.setBackendType('meyda');
+
         } catch (err) {
             console.error("Error accessing microphone:", err);
         }
@@ -130,33 +120,14 @@ class GuitarAudioRecordingEngine {
         }
         // console.log({ note, noteName: this.getNoteNameFromMidi(note) })
 
-        let currentFrameFeatures: number[] = [];
-
-        // If we want to support the strict Essentia 18 features (MFCC+Note+Centroid+Flux+Rolloff+Inharm)
-        if (extraFeatures.inharmonicity !== undefined && extraFeatures.inharmonicity !== null) {
-            const extendedFeatures = [
-                ...mfcc,
-                note,
-                extraFeatures.spectralCentroid || 0,
-                extraFeatures.spectralFlux || 0,
-                extraFeatures.spectralRolloff || 0,
-                extraFeatures.inharmonicity || 0
-            ];
-
-            if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check
-            currentFrameFeatures = extendedFeatures;
-
-        } else {
-            // Meyda style (MFCC + Note + Centroid + Rolloff + brightnessPerNote)
-            const brightnessPerNote = (note / (extraFeatures?.spectralCentroid || 1)) || 0;
-            currentFrameFeatures = [
-                ...mfcc,
-                note,
-                extraFeatures.spectralCentroid || 0,
-                extraFeatures.spectralRolloff || 0,
-                brightnessPerNote
-            ];
-        }
+        const brightnessPerNote = (note / (extraFeatures?.spectralCentroid || 1)) || 0;
+        let currentFrameFeatures = [
+            ...mfcc,
+            note,
+            extraFeatures.spectralCentroid || 0,
+            extraFeatures.spectralRolloff || 0,
+            brightnessPerNote
+        ];
 
         // Buffer the frame
         this.frameBuffer.push({
