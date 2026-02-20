@@ -55,7 +55,41 @@ const resources = {
             },
             modes: {
                 scale: "Scale Explorer",
-                chord: "Chord Viewer"
+                chord: "Chord Viewer",
+                library: "Chord Library"
+            },
+            groups: {
+                triads: "Triads",
+                sevenths: "Sevenths",
+                extended: "Extended",
+                suspended: "Suspended & Added"
+            },
+            chords: {
+                MAJOR: "Major",
+                MINOR: "Minor",
+                DIMINISHED: "Diminished",
+                AUGMENTED: "Augmented",
+                SUS2: "Sus2",
+                SUS4: "Sus4",
+                ADD2: "Add2",
+                ADD4: "Add4",
+                ADD6: "Add6",
+                ADD9: "Add9",
+                DOM7: "Dominant 7",
+                MAJ7: "Major 7",
+                MIN7: "Minor 7",
+                MIN7B5: "Minor 7b5",
+                DIM7: "Diminished 7",
+                MINMAJ7: "Minor Major 7",
+                DOM9: "Dominant 9",
+                MAJ9: "Major 9",
+                MIN9: "Minor 9",
+                DOM11: "Dominant 11",
+                MAJ11: "Major 11",
+                MIN11: "Minor 11",
+                DOM13: "Dominant 13",
+                MAJ13: "Major 13",
+                MIN13: "Minor 13"
             },
             orientations: {
                 HORIZONTAL: "Horizontal",
@@ -136,7 +170,41 @@ const resources = {
             },
             modes: {
                 scale: "Explorador de Escalas",
-                chord: "Visor de Acordes"
+                chord: "Visor de Acordes",
+                library: "Biblioteca de Acordes"
+            },
+            groups: {
+                triads: "Tríadas",
+                sevenths: "Séptimas",
+                extended: "Extendidos",
+                suspended: "Suspendidas y Añadidas"
+            },
+            chords: {
+                MAJOR: "Mayor",
+                MINOR: "Menor",
+                DIMINISHED: "Disminuido",
+                AUGMENTED: "Aumentado",
+                SUS2: "Sus2",
+                SUS4: "Sus4",
+                ADD2: "Add2",
+                ADD4: "Add4",
+                ADD6: "Add6",
+                ADD9: "Add9",
+                DOM7: "Dominante 7",
+                MAJ7: "Mayor 7",
+                MIN7: "Menor 7",
+                MIN7B5: "Menor 7b5 (Semidisminuido)",
+                DIM7: "Disminuido 7",
+                MINMAJ7: "Menor Mayor 7",
+                DOM9: "Dominante 9",
+                MAJ9: "Mayor 9",
+                MIN9: "Menor 9",
+                DOM11: "Dominante 11",
+                MAJ11: "Mayor 11",
+                MIN11: "Menor 11",
+                DOM13: "Dominante 13",
+                MAJ13: "Mayor 13",
+                MIN13: "Menor 13"
             },
             orientations: {
                 HORIZONTAL: "Horizontal",

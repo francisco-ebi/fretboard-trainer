@@ -9,7 +9,7 @@ import { guitarPredictionEngine, type PredictionResult } from '@/utils/audio/pre
 import { OrientationProvider } from '@/context/OrientationContext';
 
 
-type AppMode = 'SCALE' | 'CHORD' | 'VISUAL';
+type AppMode = 'SCALE' | 'CHORD' | 'LIBRARY' | 'VISUAL';
 
 import PredictionControls from '@/components/PredictionControls';
 
@@ -18,6 +18,7 @@ import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
 // Dynamic Import
 const RecordingControls = lazy(() => import('./components/RecordingControls'));
 const VisualAnalysis = lazy(() => import('./components/VisualAnalysis'));
+const ChordLibrary = lazy(() => import('./components/ChordLibrary'));
 
 // Logic component to access context
 const AppContent = () => {
@@ -98,6 +99,12 @@ const AppContent = () => {
             >
               {t('modes.chord')}
             </button>
+            <button
+              className={`mode-btn ${currentMode === 'LIBRARY' ? 'active' : ''}`}
+              onClick={() => setCurrentMode('LIBRARY')}
+            >
+              {t('modes.library')}
+            </button>
             {/*  <button
               className={`mode-btn ${currentMode === 'VISUAL' ? 'active' : ''}`}
               onClick={() => setCurrentMode('VISUAL')}
@@ -137,6 +144,10 @@ const AppContent = () => {
           <ScaleMode prediction={currentPrediction} isFullScreen={isFullScreen} />
         ) : currentMode === 'CHORD' ? (
           <ChordMode prediction={currentPrediction} isFullScreen={isFullScreen} />
+        ) : currentMode === 'LIBRARY' ? (
+          <Suspense fallback={<div>Loading Library...</div>}>
+            <ChordLibrary isFullScreen={isFullScreen} />
+          </Suspense>
         ) : (
           <Suspense fallback={<div>Loading Analytics...</div>}>
             <VisualAnalysis />

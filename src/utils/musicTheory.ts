@@ -176,7 +176,14 @@ export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
 
 // Chord Theory
 
-export type ChordQuality = 'MAJOR' | 'MINOR' | 'DIMINISHED' | 'SUS2' | 'SUS4' | 'ADD9' | 'DOM7' | 'MAJ7';
+export type ChordQuality =
+    | 'MAJOR' | 'MINOR' | 'DIMINISHED' | 'AUGMENTED'
+    | 'SUS2' | 'SUS4'
+    | 'ADD2' | 'ADD4' | 'ADD6' | 'ADD9'
+    | 'DOM7' | 'MAJ7' | 'MIN7' | 'MIN7B5' | 'DIM7' | 'MINMAJ7'
+    | 'DOM9' | 'MAJ9' | 'MIN9'
+    | 'DOM11' | 'MAJ11' | 'MIN11'
+    | 'DOM13' | 'MAJ13' | 'MIN13';
 
 export interface ChordInfo {
     root: Note;
@@ -186,16 +193,33 @@ export interface ChordInfo {
     romanNumeral: string;
 }
 
-// Intervals for chord construction (Root, 3rd, 5th)
+// Intervals for chord construction
 const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
     MAJOR: [0, 4, 7],
     MINOR: [0, 3, 7],
     DIMINISHED: [0, 3, 6],
+    AUGMENTED: [0, 4, 8],
     SUS2: [0, 2, 7],
     SUS4: [0, 5, 7],
+    ADD2: [0, 2, 4, 7],
+    ADD4: [0, 4, 5, 7],
+    ADD6: [0, 4, 7, 9],
     ADD9: [0, 4, 7, 14],
     DOM7: [0, 4, 7, 10],
-    MAJ7: [0, 4, 7, 11]
+    MAJ7: [0, 4, 7, 11],
+    MIN7: [0, 3, 7, 10],
+    MIN7B5: [0, 3, 6, 10],
+    DIM7: [0, 3, 6, 9],
+    MINMAJ7: [0, 3, 7, 11],
+    DOM9: [0, 4, 7, 10, 14],
+    MAJ9: [0, 4, 7, 11, 14],
+    MIN9: [0, 3, 7, 10, 14],
+    DOM11: [0, 4, 7, 10, 14, 17],
+    MAJ11: [0, 4, 7, 11, 14, 17],
+    MIN11: [0, 3, 7, 10, 14, 17],
+    DOM13: [0, 4, 7, 10, 14, 17, 21],
+    MAJ13: [0, 4, 7, 11, 14, 17, 21],
+    MIN13: [0, 3, 7, 10, 14, 17, 21]
 };
 
 // Diatonic patterns
@@ -222,7 +246,7 @@ const DIATONIC_PATTERNS: Record<'MAJOR' | 'MINOR', { quality: ChordQuality, roma
 
 export const getChordNotes = (root: Note, quality: ChordQuality): Note[] => {
     const rotatedChromatic = getRotatedScale(root);
-    return CHORD_INTERVALS[quality].map(interval => rotatedChromatic[interval]);
+    return CHORD_INTERVALS[quality].map(interval => rotatedChromatic[interval % 12]);
 };
 
 export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {

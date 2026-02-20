@@ -88,32 +88,72 @@ describe('musicTheory', () => {
             const notes = getChordNotes('C', 'MAJ7');
             expect(notes).toEqual(['C', 'E', 'G', 'B']);
         });
+
+        it('should return correct notes for C Augmented', () => {
+            const notes = getChordNotes('C', 'AUGMENTED');
+            expect(notes).toEqual(['C', 'E', 'G#']);
+        });
+
+        it('should return correct notes for C Diminished', () => {
+            const notes = getChordNotes('C', 'DIMINISHED');
+            expect(notes).toEqual(['C', 'D#', 'F#']);
+        });
+
+        it('should return correct notes for C Min7b5 (Half-Diminished)', () => {
+            const notes = getChordNotes('C', 'MIN7B5');
+            expect(notes).toEqual(['C', 'D#', 'F#', 'A#']);
+        });
+
+        it('should return correct notes for C Dom9', () => {
+            const notes = getChordNotes('C', 'DOM9');
+            expect(notes).toEqual(['C', 'E', 'G', 'A#', 'D']);
+        });
+
+        it('should return correct notes for C Maj13', () => {
+            const notes = getChordNotes('C', 'MAJ13');
+            expect(notes).toEqual(['C', 'E', 'G', 'B', 'D', 'F', 'A']);
+        });
+
+        it('should return correct notes for C Add9', () => {
+            const notes = getChordNotes('C', 'ADD9');
+            expect(notes).toEqual(['C', 'E', 'G', 'D']);
+        });
+
+        it('should return correct notes for C Add4', () => {
+            const notes = getChordNotes('C', 'ADD4');
+            expect(notes).toEqual(['C', 'E', 'F', 'G']);
+        });
+
+        it('should return correct notes for C Min11', () => {
+            const notes = getChordNotes('C', 'MIN11');
+            expect(notes).toEqual(['C', 'D#', 'G', 'A#', 'D', 'F']);
+        });
     });
 
     describe('getNoteAtPosition', () => {
-        // Standard Tuning: E A D G B E
+        // Standard Tuning: E B G D A E (High to Low). Index 0 is High E, Index 5 is Low E.
         it('should return correct open string notes (Standard)', () => {
-            // String 0 (Low E)
+            // String 0 (High E)
             expect(getNoteAtPosition('GUITAR', 0, 0, [])).toBe('E');
-            // String 5 (High E)
+            // String 5 (Low E)
             expect(getNoteAtPosition('GUITAR', 5, 0, [])).toBe('E');
         });
 
         it('should return correct fretted notes', () => {
-            // String 0, Fret 1 -> F
+            // String 0 (High E), Fret 1 -> F
             expect(getNoteAtPosition('GUITAR', 0, 1, [])).toBe('F');
-            // String 1 (A), Fret 2 -> B
-            expect(getNoteAtPosition('GUITAR', 1, 2, [])).toBe('B');
+            // String 4 (A), Fret 2 -> B
+            expect(getNoteAtPosition('GUITAR', 4, 2, [])).toBe('B');
         });
 
         it('should handle tuning offsets (Drop D)', () => {
-            // Drop D: Low E dropped by 2 semitones to D
-            const tuning = [-2, 0, 0, 0, 0, 0];
+            // Drop D: Low E (Index 5) dropped by 2 semitones to D
+            const tuning = [0, 0, 0, 0, 0, -2];
 
-            // String 0 (D), Fret 0 -> D
-            expect(getNoteAtPosition('GUITAR', 0, 0, tuning)).toBe('D');
-            // String 0 (D), Fret 2 -> E
-            expect(getNoteAtPosition('GUITAR', 0, 2, tuning)).toBe('E');
+            // String 5 (Low E dropped to D), Fret 0 -> D
+            expect(getNoteAtPosition('GUITAR', 5, 0, tuning)).toBe('D');
+            // String 5 (Low E dropped to D), Fret 2 -> E
+            expect(getNoteAtPosition('GUITAR', 5, 2, tuning)).toBe('E');
         });
     });
 });
