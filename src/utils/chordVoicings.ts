@@ -123,7 +123,7 @@ function evaluateAndAddVoicing(
     for (let s = minPlayedStr; s <= maxPlayedStr; s++) {
         if (frets[s] === -1) internalMutes++;
     }
-    if (internalMutes > 1) return;
+    if (internalMutes > 0) return;
 
     // Filter physical unplayable stretches
     const activeFrets = frets.filter(f => f > 0);
@@ -157,6 +157,21 @@ function evaluateAndAddVoicing(
             for (let s = minStringOnMinFret; s <= maxStringOnMinFret; s++) {
                 if (frets[s] === 0) validBarre = false;
             }
+
+            // Also reject internal open strings that break the physical barre placement
+            let internalOpens = 0;
+            for (let s = 1; s < stringCount - 1; s++) {
+                if (frets[s] === 0) internalOpens++;
+            }
+            if (internalOpens > 0) validBarre = false;
+
+            // Reject if there is an open string physically higher than the barre
+            // (e.g. index < minStringOnMinFret), because barring lower strings
+            // while arching to leave the higher E string open is extremely difficult.
+            for (let s = 0; s < minStringOnMinFret; s++) {
+                if (frets[s] === 0) validBarre = false;
+            }
+
             if (validBarre) {
                 usedBarre = true;
                 fingers = 1 + (activeFrets.length - stringsOnMinFret); // Barre takes 1 finger

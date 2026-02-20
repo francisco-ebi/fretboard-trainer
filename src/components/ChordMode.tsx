@@ -125,9 +125,10 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
         return chord.displayName;
     };
 
-
-    const diatonicChords = getDiatonicChords(selectedRoot, selectedScaleType);
-
+    const diatonicChords = React.useMemo(() =>
+        getDiatonicChords(selectedRoot, selectedScaleType),
+        [selectedRoot, selectedScaleType]
+    );
     // Notes to display
     const activeChordQuality = selectedChordIndex !== null
         ? (chordModifiers[selectedChordIndex] || diatonicChords[selectedChordIndex].quality)

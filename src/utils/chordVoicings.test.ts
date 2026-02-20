@@ -20,11 +20,6 @@ describe('chordVoicings Algorithm', () => {
         const hasOpenC = voicings.some(v => v.frets.join(',') === '0,1,0,2,3,-1');
         expect(hasOpenC).toBe(true);
 
-        const aFormMatches = voicings.filter(v => v.frets.join(',') === '3,5,5,5,3,-1');
-        if (aFormMatches.length === 0) {
-            console.log("TOP VOICINGS GENERATED:", voicings.map(v => v.frets.join(',') + ' score: ' + v.score).join('\n'));
-        }
-
         // Standard 3rd fret barre C major High-to-Low: High E(3), B(5), G(5), D(5), A(3), Low E(-1) -> [3, 5, 5, 5, 3, -1]
         const hasAFormBarre = voicings.some(v => v.frets.join(',') === '3,5,5,5,3,-1');
         expect(hasAFormBarre).toBe(true);
@@ -63,7 +58,6 @@ describe('chordVoicings Algorithm', () => {
             5
         );
 
-        // G Major standard open should be #1 or near the top
         const first = voicings[0];
         // High to low: [3, 0, 0, 0, 2, 3] or [3, 3, 0, 0, 2, 3]
         expect(['3,0,0,0,2,3', '3,3,0,0,2,3'].includes(first.frets.join(','))).toBe(true);
