@@ -115,6 +115,10 @@ const resources = {
                 seventhColor: "Purple: 7th (Major/Minor)",
                 otherColor: "White: Other Intervals (2, 4, 6)"
             },
+            fretboard: {
+                allNotes: "All Notes",
+                voicingXofY: "Voicing {{current}} of {{total}}"
+            },
             language: "Language"
         }
     },
@@ -229,6 +233,10 @@ const resources = {
                 fifthColor: "Azul: 5ª (Justa/Dis/Aum)",
                 seventhColor: "Morado: 7ª (Mayor/Menor)",
                 otherColor: "Blanco: Otros Intervalos (2, 4, 6)"
+            },
+            fretboard: {
+                allNotes: "Todas las Notas",
+                voicingXofY: "Posición {{current}} de {{total}}"
             },
             language: "Idioma"
         }

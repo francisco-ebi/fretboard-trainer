@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type Voicing } from '@/utils/chordVoicings';
 import { useOrientation } from '@/context/OrientationContext';
+import { useTranslation } from 'react-i18next';
 import NoteMarker from '@/components/NoteMarker';
 import './Fretboard.css';
 
@@ -35,6 +36,7 @@ function usePrevious<T>(value: T): T | undefined {
 
 const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, tuningOffsets, stringCount, prediction, voicings }) => {
     const { orientation } = useOrientation();
+    const { t } = useTranslation();
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
     const [selectedVoicingIndex, setSelectedVoicingIndex] = React.useState<number | null>(null);
@@ -235,19 +237,53 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
         return <div className="voicing-badges-row">{badgeElements}</div>;
     };
 
-    return (
-        <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()}`}>
-            {orientation === 'HORIZONTAL' && renderVoicingBadges()}
-            <div
-                className={`fretboard ${orientation.toLowerCase()}`}
-                role="grid"
-                aria-label={`${instrument} fretboard`}
-            >
-                {renderStrings()}
+    const renderMobileVoicingStepper = () => {
+        if (!voicings || voicings.length === 0) return null;
+
+        const maxIndex = voicings.length - 1;
+
+        const handlePrevious = () => {
+            if (selectedVoicingIndex === null) setSelectedVoicingIndex(maxIndex);
+            else if (selectedVoicingIndex === 0) setSelectedVoicingIndex(null);
+            else setSelectedVoicingIndex(selectedVoicingIndex - 1);
+        };
+
+        const handleNext = () => {
+            if (selectedVoicingIndex === null) setSelectedVoicingIndex(0);
+            else if (selectedVoicingIndex === maxIndex) setSelectedVoicingIndex(null);
+            else setSelectedVoicingIndex(selectedVoicingIndex + 1);
+        };
+
+        let displayText = t('fretboard.allNotes');
+        if (selectedVoicingIndex !== null) {
+            displayText = t('fretboard.voicingXofY', { current: selectedVoicingIndex + 1, total: voicings.length });
+        }
+
+        return (
+            <div className="mobile-voicing-stepper">
+                <button className="stepper-btn" onClick={handlePrevious}>❮</button>
+                <div className="stepper-text">{displayText}</div>
+                <button className="stepper-btn" onClick={handleNext}>❯</button>
             </div>
-            {renderFretNumbers()}
-            {orientation === 'VERTICAL' && renderVoicingBadges()}
-        </div>
+        );
+    };
+
+    return (
+        <>
+            <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()}`}>
+                {orientation === 'HORIZONTAL' && renderVoicingBadges()}
+                <div
+                    className={`fretboard ${orientation.toLowerCase()}`}
+                    role="grid"
+                    aria-label={`${instrument} fretboard`}
+                >
+                    {renderStrings()}
+                </div>
+                {renderFretNumbers()}
+                {orientation === 'VERTICAL' && renderVoicingBadges()}
+            </div>
+            {renderMobileVoicingStepper()}
+        </>
     );
 };
 
