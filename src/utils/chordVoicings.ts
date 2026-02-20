@@ -83,7 +83,9 @@ function evaluateAndAddVoicing(
     voicings: Voicing[]
 ) {
     const playedNotes = new Set<string>();
+    const noteCounts: Record<string, number> = {};
     let bassNote = '';
+    let activeStringsCount = 0;
 
     // Find bass string (highest index of string configs natively maps to lowest pitch in standard guitar)
     let bassStringInd = -1;
@@ -98,12 +100,29 @@ function evaluateAndAddVoicing(
 
     for (let s = 0; s < stringCount; s++) {
         if (frets[s] !== -1) {
+            activeStringsCount++;
             const note = getNoteAtPosition(instrument, s, frets[s], tuningOffsets, stringCount);
             playedNotes.add(note);
+            noteCounts[note] = (noteCounts[note] || 0) + 1;
+
             if (s === bassStringInd) {
                 bassNote = note;
             }
         }
+    }
+
+    // Prevent any single note from dominating the voicing 
+    // Example: If playing 6 strings, max 3 repetitions allowed. If 4 strings, max 2.
+    const maxAllowedRepetitions = Math.ceil(activeStringsCount / 2);
+    for (const count of Object.values(noteCounts)) {
+        if (count > maxAllowedRepetitions) return;
+    }
+
+    // Ensure the root note is not outnumbered by any other note in the chord
+    // (e.g. Reject a C chord that has 1 C root, 2 E notes, and 3 G notes)
+    const rootCount = noteCounts[root] || 0;
+    for (const [note, count] of Object.entries(noteCounts)) {
+        if (note !== root && count > rootCount) return;
     }
 
     // Ensure adequate chord coverage based on required extensions
