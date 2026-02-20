@@ -15,6 +15,7 @@ import {
     type Instrument,
     type Tuning
 } from '@/utils/musicTheory';
+import { getChordVoicings } from '@/utils/chordVoicings';
 import { useInstrument } from '@/context/InstrumentContext';
 import './ChordLibrary.css';
 
@@ -157,6 +158,18 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
 
     const notesToDisplay = getChordNotes(selectedRoot, selectedQuality);
 
+    const voicings = React.useMemo(() => {
+        return getChordVoicings(
+            instrument,
+            tuningOffsets,
+            stringCount,
+            selectedRoot,
+            selectedQuality,
+            18,
+            15 // top 15 voicings
+        );
+    }, [instrument, tuningOffsets, stringCount, selectedRoot, selectedQuality]);
+
     // Render textual intervals
     const intervalSemitones = CHORD_INTERVALS[selectedQuality];
     const textualIntervals = intervalSemitones.map(semitones => {
@@ -281,6 +294,7 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
                     characteristicInterval={undefined}
+                    voicings={voicings}
                 />
             </div>
         </div>

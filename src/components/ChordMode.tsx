@@ -16,6 +16,7 @@ import {
     type Tuning,
     type ChordInfo,
 } from '@/utils/musicTheory';
+import { getChordVoicings } from '@/utils/chordVoicings';
 import './ChordMode.css';
 
 import { type PredictionResult } from '@/utils/audio/prediction-engine';
@@ -128,11 +129,28 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
     const diatonicChords = getDiatonicChords(selectedRoot, selectedScaleType);
 
     // Notes to display
+    const activeChordQuality = selectedChordIndex !== null
+        ? (chordModifiers[selectedChordIndex] || diatonicChords[selectedChordIndex].quality)
+        : null;
+
     const notesToDisplay = selectedChordIndex !== null
         ? (chordModifiers[selectedChordIndex]
             ? getChordNotes(diatonicChords[selectedChordIndex].root, chordModifiers[selectedChordIndex])
             : diatonicChords[selectedChordIndex].notes)
         : [];
+
+    const voicings = React.useMemo(() => {
+        if (selectedChordIndex === null || !activeChordQuality) return undefined;
+        return getChordVoicings(
+            instrument,
+            tuningOffsets,
+            stringCount,
+            diatonicChords[selectedChordIndex].root,
+            activeChordQuality,
+            18,
+            15
+        );
+    }, [selectedChordIndex, activeChordQuality, instrument, tuningOffsets, stringCount, diatonicChords]);
 
     const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
         'SUS2': 'sus2',
@@ -288,6 +306,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
                     prediction={prediction}
+                    voicings={voicings}
                 />
             </div>
         </div>

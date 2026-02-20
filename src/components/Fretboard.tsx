@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
+import { type Voicing } from '@/utils/chordVoicings';
 import { useOrientation } from '@/context/OrientationContext';
 import NoteMarker from '@/components/NoteMarker';
 import './Fretboard.css';
@@ -16,6 +17,7 @@ interface FretboardProps {
     tuningOffsets: number[];
     stringCount: number;
     prediction?: PredictionResult | null;
+    voicings?: Voicing[];
 }
 
 const FRETS = 18; // 0 (open) to 18
@@ -31,12 +33,18 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, tuningOffsets, stringCount, prediction }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, tuningOffsets, stringCount, prediction, voicings }) => {
     const { orientation } = useOrientation();
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
+    const [selectedVoicingIndex, setSelectedVoicingIndex] = React.useState<number | null>(null);
 
-    // Check if the musical context actually changed (to prevent shaking on unrelated renders)
+    // Reset selected voicing when the chord changes
+    useEffect(() => {
+        setSelectedVoicingIndex(null);
+    }, [voicings]);
+
+    // Check if the musical context actually changed
     const contextChanged = prevRoot !== selectedRoot || prevScaleNotes !== scaleNotes;
 
     const config = getInstrumentConfig(instrument, stringCount);
@@ -60,7 +68,14 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
         const fretElements = [];
         for (let fret = 0; fret <= FRETS; fret++) {
             const note = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets, stringCount);
-            const isNoteInScale = scaleNotes.includes(note);
+
+            let isNoteInScale = false;
+            if (voicings && selectedVoicingIndex !== null && voicings[selectedVoicingIndex]) {
+                isNoteInScale = voicings[selectedVoicingIndex].frets[stringIndex] === fret;
+            } else {
+                isNoteInScale = scaleNotes.includes(note);
+            }
+
             const isRoot = note === selectedRoot;
             const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
             const isCharacteristic = !!(interval && characteristicInterval && interval === characteristicInterval);
@@ -193,8 +208,36 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
         return <div className="fret-numbers-row">{fretNumbers}</div>;
     }
 
+    const renderVoicingBadges = () => {
+        if (!voicings || voicings.length === 0) return null;
+
+        const badgeElements = [];
+        for (let fret = 0; fret <= FRETS; fret++) {
+            const voicingsAtFret = voicings
+                .map((v, i) => ({ voicing: v, index: i }))
+                .filter(item => item.voicing.startFret === fret);
+
+            badgeElements.push(
+                <div key={`badge-cell-${fret}`} className="voicing-badge-cell">
+                    {voicingsAtFret.map(item => (
+                        <button
+                            key={`badge-${item.index}`}
+                            className={`voicing-badge ${selectedVoicingIndex === item.index ? 'active' : ''}`}
+                            onClick={() => setSelectedVoicingIndex(selectedVoicingIndex === item.index ? null : item.index)}
+                            title={`Position ${item.index + 1}`}
+                        >
+                            {item.index + 1}
+                        </button>
+                    ))}
+                </div>
+            );
+        }
+        return <div className="voicing-badges-row">{badgeElements}</div>;
+    };
+
     return (
         <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()}`}>
+            {orientation === 'HORIZONTAL' && renderVoicingBadges()}
             <div
                 className={`fretboard ${orientation.toLowerCase()}`}
                 role="grid"
@@ -203,6 +246,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                 {renderStrings()}
             </div>
             {renderFretNumbers()}
+            {orientation === 'VERTICAL' && renderVoicingBadges()}
         </div>
     );
 };
