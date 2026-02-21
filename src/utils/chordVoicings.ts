@@ -67,10 +67,12 @@ export function getChordVoicings(
         }
     }
 
-    // Sort by score and limit
-    return Array.from(uniqueVoicings.values())
+    // Get top scored voicings, then sort them by startFret (ascending positions)
+    const topVoicings = Array.from(uniqueVoicings.values())
         .sort((a, b) => a.score - b.score)
         .slice(0, limit);
+
+    return topVoicings.sort((a, b) => a.startFret - b.startFret);
 }
 
 function evaluateAndAddVoicing(

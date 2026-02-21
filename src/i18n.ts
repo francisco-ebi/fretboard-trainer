@@ -117,7 +117,11 @@ const resources = {
             },
             fretboard: {
                 allNotes: "All Notes",
-                voicingXofY: "Voicing {{current}} of {{total}}"
+                voicingXofY: "Voicing {{current}} of {{total}}",
+                selected: "Selected",
+                voicing: "Voicing",
+                openPosition: "Open Position",
+                fretX: "Fret {{fret}}"
             },
             language: "Language"
         }
@@ -236,7 +240,11 @@ const resources = {
             },
             fretboard: {
                 allNotes: "Todas las Notas",
-                voicingXofY: "Posición {{current}} de {{total}}"
+                voicingXofY: "Posición {{current}} de {{total}}",
+                selected: "Selecc.",
+                voicing: "Posición",
+                openPosition: "Posición Abierta",
+                fretX: "Traste {{fret}}"
             },
             language: "Idioma"
         }

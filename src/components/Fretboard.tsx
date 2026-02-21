@@ -210,31 +210,36 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
         return <div className="fret-numbers-row">{fretNumbers}</div>;
     }
 
-    const renderVoicingBadges = () => {
+    const renderDesktopVoicingCarousel = () => {
         if (!voicings || voicings.length === 0) return null;
 
-        const badgeElements = [];
-        for (let fret = 0; fret <= FRETS; fret++) {
-            const voicingsAtFret = voicings
-                .map((v, i) => ({ voicing: v, index: i }))
-                .filter(item => item.voicing.startFret === fret);
-
-            badgeElements.push(
-                <div key={`badge-cell-${fret}`} className="voicing-badge-cell">
-                    {voicingsAtFret.map(item => (
-                        <button
-                            key={`badge-${item.index}`}
-                            className={`voicing-badge ${selectedVoicingIndex === item.index ? 'active' : ''}`}
-                            onClick={() => setSelectedVoicingIndex(selectedVoicingIndex === item.index ? null : item.index)}
-                            title={`Position ${item.index + 1}`}
+        return (
+            <div className="desktop-voicing-carousel">
+                {voicings.map((voicing, index) => {
+                    const isActive = selectedVoicingIndex === index;
+                    return (
+                        <motion.button
+                            key={`carousel-btn-${index}`}
+                            className={`carousel-btn ${isActive ? 'active' : ''}`}
+                            onClick={() => setSelectedVoicingIndex(isActive ? null : index)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            title={`Select Voicing ${index + 1}`}
                         >
-                            {item.index + 1}
-                        </button>
-                    ))}
-                </div>
-            );
-        }
-        return <div className="voicing-badges-row">{badgeElements}</div>;
+                            <span className="carousel-btn-number">{index + 1}</span>
+                            <div className="carousel-btn-details">
+                                <span className="carousel-btn-label">
+                                    {isActive ? t('fretboard.selected') : t('fretboard.voicing')}
+                                </span>
+                                <span className="carousel-btn-desc">
+                                    {voicing.startFret === 0 ? t('fretboard.openPosition') : t('fretboard.fretX', { fret: voicing.startFret })}
+                                </span>
+                            </div>
+                        </motion.button>
+                    );
+                })}
+            </div>
+        );
     };
 
     const renderMobileVoicingStepper = () => {
@@ -271,7 +276,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
     return (
         <>
             <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()}`}>
-                {orientation === 'HORIZONTAL' && renderVoicingBadges()}
+                {orientation === 'HORIZONTAL' && renderDesktopVoicingCarousel()}
                 <div
                     className={`fretboard ${orientation.toLowerCase()}`}
                     role="grid"
@@ -280,7 +285,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                     {renderStrings()}
                 </div>
                 {renderFretNumbers()}
-                {orientation === 'VERTICAL' && renderVoicingBadges()}
+                {orientation === 'VERTICAL' && renderDesktopVoicingCarousel()}
             </div>
             {renderMobileVoicingStepper()}
         </>
