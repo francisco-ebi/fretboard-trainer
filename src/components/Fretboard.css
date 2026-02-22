@@ -359,31 +359,31 @@
 }
 
 /* Vertical String Thickness (Widths) */
-.fretboard-container.vertical .string-row:nth-last-child(1) .string-line {
+.fretboard-container.vertical .string-row:nth-child(1) .string-line {
     width: 0.25rem;
 }
 
-.fretboard-container.vertical .string-row:nth-last-child(2) .string-line {
+.fretboard-container.vertical .string-row:nth-child(2) .string-line {
     width: 0.219rem;
 }
 
-.fretboard-container.vertical .string-row:nth-last-child(3) .string-line {
+.fretboard-container.vertical .string-row:nth-child(3) .string-line {
     width: 0.188rem;
 }
 
-.fretboard-container.vertical .string-row:nth-last-child(4) .string-line {
+.fretboard-container.vertical .string-row:nth-child(4) .string-line {
     width: 0.156rem;
 }
 
-.fretboard-container.vertical .string-row:nth-last-child(5) .string-line {
+.fretboard-container.vertical .string-row:nth-child(5) .string-line {
     width: 0.125rem;
 }
 
-.fretboard-container.vertical .string-row:nth-last-child(6) .string-line {
+.fretboard-container.vertical .string-row:nth-child(6) .string-line {
     width: 0.094rem;
 }
 
-.fretboard-container.vertical .string-row:nth-last-child(n+7) .string-line {
+.fretboard-container.vertical .string-row:nth-child(n+7) .string-line {
     width: 0.09rem;
 }
 

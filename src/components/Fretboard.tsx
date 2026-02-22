@@ -55,13 +55,25 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
     // Generate the fretboard data structure
     const renderStrings = () => {
         const stringElements = [];
-        // Loop from Top (High Index 0) to Bottom (Low Index STRINGS-1)
-        for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
-            stringElements.push(
-                <div key={`string-${stringIndex}`} className="string-row" role="row" aria-label={`String ${stringIndex + 1}`}>
-                    {renderFrets(stringIndex)}
-                </div>
-            );
+
+        if (orientation === 'VERTICAL') {
+            // Display lowest string (highest index) on the left
+            for (let stringIndex = STRINGS - 1; stringIndex >= 0; stringIndex--) {
+                stringElements.push(
+                    <div key={`string-${stringIndex}`} className="string-row" role="row" aria-label={`String ${stringIndex + 1}`}>
+                        {renderFrets(stringIndex)}
+                    </div>
+                );
+            }
+        } else {
+            // Loop from Top (High Index 0) to Bottom (Low Index STRINGS-1)
+            for (let stringIndex = 0; stringIndex < STRINGS; stringIndex++) {
+                stringElements.push(
+                    <div key={`string-${stringIndex}`} className="string-row" role="row" aria-label={`String ${stringIndex + 1}`}>
+                        {renderFrets(stringIndex)}
+                    </div>
+                );
+            }
         }
         return stringElements;
     };
@@ -281,6 +293,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                     className={`fretboard ${orientation.toLowerCase()}`}
                     role="grid"
                     aria-label={`${instrument} fretboard`}
+                    style={orientation === 'VERTICAL' ? { gridTemplateColumns: `repeat(${STRINGS}, 4rem)` } : undefined}
                 >
                     {renderStrings()}
                 </div>
