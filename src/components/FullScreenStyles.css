@@ -68,18 +68,19 @@
 
 .scale-mode.fullscreen .fretboard-wrapper,
 .chord-mode.fullscreen .fretboard-wrapper {
-    width: 85%;
-    /* Use 85% of screen width as requested */
-    max-width: 85vw;
-    height: 90vh;
-    /* Take up most of screen */
+    width: 100%;
+    max-width: 100vw;
+    height: 95vh;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    /* Center it */
     padding: 0;
-    /* Ensure the fretboard itself scales properly */
+}
+
+.scale-mode.fullscreen .fretboard-container.vertical .fret-numbers-row,
+.chord-mode.fullscreen .fretboard-container.vertical .fret-numbers-row {
+    padding-left: 0;
 }
 
 /* Top Bar Icon Button */

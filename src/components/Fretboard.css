@@ -184,8 +184,8 @@
 .fret-numbers-row {
     display: grid;
     grid-template-columns: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
-    margin-top: 0.5rem;
     min-width: 1120px;
+    padding-bottom: 0.5rem;
 }
 
 .fret-number {
