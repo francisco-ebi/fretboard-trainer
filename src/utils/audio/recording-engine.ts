@@ -83,7 +83,7 @@ class GuitarAudioRecordingEngine {
                 }
             });
             const source = this.audioContext.createMediaStreamSource(stream);
-            this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor');
+            this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor', { numberOfInputs: 1 });
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
@@ -101,7 +101,7 @@ class GuitarAudioRecordingEngine {
     }
 
     handleAnalysisResult(result: AnalysisResult) {
-        if (result.pitch) {
+        if (result.pitch && result.pitch !== -1) {
             const midiNote = this.hertzToMidi(result.pitch);
 
             // String-specific Range Filter

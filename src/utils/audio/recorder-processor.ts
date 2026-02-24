@@ -2,7 +2,7 @@ import Meyda from 'meyda';
 import { YIN, Macleod } from 'pitchfinder';
 
 // Developer Config: Choose pitch detection algorithm ('yin' or 'macleod')
-const PITCH_ALGORITHM: 'yin' | 'macleod' = 'yin';
+const PITCH_ALGORITHM: 'yin' | 'macleod' = 'macleod';
 
 declare const sampleRate: number;
 
