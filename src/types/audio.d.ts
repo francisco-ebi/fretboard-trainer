@@ -35,8 +35,3 @@ declare module 'meyda' {
         buffer: Float32Array | number[]
     ): any;
 }
-
-// Pitchfinder Types (Partial)
-declare module 'pitchfinder' {
-    export function YIN(options?: { sampleRate?: number; threshold?: number }): (signal: Float32Array | number[]) => number | null;
-}

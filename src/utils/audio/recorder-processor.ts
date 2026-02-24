@@ -1,5 +1,8 @@
 import Meyda from 'meyda';
-import { YIN } from 'pitchfinder';
+import { YIN, Macleod } from 'pitchfinder';
+
+// Developer Config: Choose pitch detection algorithm ('yin' or 'macleod')
+const PITCH_ALGORITHM: 'yin' | 'macleod' = 'yin';
 
 declare const sampleRate: number;
 
@@ -25,7 +28,16 @@ class MeydaBackend implements AudioBackend {
     private detectPitch: ((buffer: Float32Array) => number | null) | null = null;
 
     async init(sampleRate: number) {
-        this.detectPitch = YIN({ sampleRate });
+        if (PITCH_ALGORITHM === 'macleod') {
+            const macleodDetector = Macleod({ sampleRate, bufferSize: 2048 });
+            this.detectPitch = (buffer: Float32Array) => {
+                const result = macleodDetector(buffer);
+                return result && result.probability > 0.5 ? result.freq : null;
+            };
+        } else {
+            this.detectPitch = YIN({ sampleRate });
+        }
+
         // Meyda configuration if needed, typically synchronous or setup on frame
         if (Meyda) {
             Meyda.bufferSize = 2048;
