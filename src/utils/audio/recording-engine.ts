@@ -68,11 +68,18 @@ class GuitarAudioRecordingEngine {
         }
 
         try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const inputs = devices.filter(device => device.kind === 'audioinput');
+            const selectedDeviceId = inputs.find(i => i.label.includes('USB Audio CODEC'))?.deviceId;
+
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     echoCancellation: false,
                     autoGainControl: false,
                     noiseSuppression: false,
+                    channelCount: 1,
+                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
                 }
             });
             const source = this.audioContext.createMediaStreamSource(stream);
