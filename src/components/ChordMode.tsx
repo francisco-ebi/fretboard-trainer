@@ -10,6 +10,7 @@ import {
     GUITAR_TUNINGS_8,
     getDiatonicChords,
     getChordNotes,
+    shouldUseFlats,
     type Note,
     type NamingSystem,
     type Instrument,
@@ -130,13 +131,18 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
         [selectedRoot, selectedScaleType]
     );
     // Notes to display
+    const useFlats = React.useMemo(() =>
+        shouldUseFlats(selectedRoot, selectedScaleType),
+        [selectedRoot, selectedScaleType]
+    );
+
     const activeChordQuality = selectedChordIndex !== null
         ? (chordModifiers[selectedChordIndex] || diatonicChords[selectedChordIndex].quality)
         : null;
 
     const notesToDisplay = selectedChordIndex !== null
         ? (chordModifiers[selectedChordIndex]
-            ? getChordNotes(diatonicChords[selectedChordIndex].root, chordModifiers[selectedChordIndex])
+            ? getChordNotes(diatonicChords[selectedChordIndex].root, chordModifiers[selectedChordIndex], useFlats)
             : diatonicChords[selectedChordIndex].notes)
         : [];
 

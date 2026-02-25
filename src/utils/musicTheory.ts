@@ -27,8 +27,8 @@ export const getNoteName = (note: Note, system: NamingSystem): string => {
 };
 
 export const getInterval = (root: Note, note: Note): string => {
-    const rootIndex = CHROMATIC_SCALE.indexOf(root);
-    const noteIndex = CHROMATIC_SCALE.indexOf(note);
+    const rootIndex = getNoteIndex(root);
+    const noteIndex = getNoteIndex(note);
 
     if (rootIndex === -1 || noteIndex === -1) return '?';
 
@@ -38,9 +38,15 @@ export const getInterval = (root: Note, note: Note): string => {
     return INTERVAL_NAMES[semitones] || '?';
 };
 
-export const CHROMATIC_SCALE: Note[] = [
-    'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
-];
+export const SHARPS_SCALE: Note[] = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+export const FLATS_SCALE: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+export const CHROMATIC_SCALE = SHARPS_SCALE;
+
+export const getNoteIndex = (note: Note): number => {
+    let index = SHARPS_SCALE.indexOf(note);
+    if (index === -1) index = FLATS_SCALE.indexOf(note);
+    return index;
+};
 
 export const SCALES = {
     MAJOR: [0, 2, 4, 5, 7, 9, 11], // Ionian: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
@@ -71,17 +77,45 @@ export const CHARACTERISTIC_INTERVALS: Partial<Record<ScaleType, string>> = {
     LOCRIAN: 'b5' // Diminished 5th
 };
 
+const FLAT_MAJOR_PITCH_CLASSES = new Set([1, 3, 5, 8, 10]);
+
+const RELATIVE_MAJOR_OFFSETS: Record<ScaleType, number> = {
+    MAJOR: 0,
+    MINOR: 3,
+    PENTATONIC_MAJOR: 0,
+    PENTATONIC_MINOR: 3,
+    BLUES: 3,
+    IONIAN: 0,
+    DORIAN: 10,
+    PHRYGIAN: 8,
+    LYDIAN: 7,
+    MIXOLYDIAN: 5,
+    AEOLIAN: 3,
+    LOCRIAN: 1
+};
+
+export const shouldUseFlats = (root: Note, scaleType: ScaleType): boolean => {
+    const rootIndex = getNoteIndex(root);
+    if (rootIndex === -1) return false;
+
+    if (root.includes('b')) return true;
+
+    const offset = RELATIVE_MAJOR_OFFSETS[scaleType] ?? 0;
+    const relativeMajorIndex = (rootIndex + offset) % 12;
+    return FLAT_MAJOR_PITCH_CLASSES.has(relativeMajorIndex);
+};
+
 /**
- * Rotates the chromatic scale so it starts with the given root note.
+ * Rotates the chromatic scale so it starts with the given root pitch class index.
  */
-const getRotatedScale = (root: Note): Note[] => {
-    const rootIndex = CHROMATIC_SCALE.indexOf(root);
+const getRotatedScale = (rootIndex: number, useFlats: boolean): Note[] => {
     if (rootIndex === -1) {
-        throw new Error(`Invalid root note: ${root}`);
+        throw new Error(`Invalid root index`);
     }
+    const chromatic = useFlats ? FLATS_SCALE : SHARPS_SCALE;
     return [
-        ...CHROMATIC_SCALE.slice(rootIndex),
-        ...CHROMATIC_SCALE.slice(0, rootIndex)
+        ...chromatic.slice(rootIndex),
+        ...chromatic.slice(0, rootIndex)
     ];
 };
 
@@ -89,7 +123,9 @@ const getRotatedScale = (root: Note): Note[] => {
  * Returns the notes in the scale for a given root note and scale intervals.
  */
 export const getScale = (root: Note, scaleType: ScaleType = 'MAJOR'): Note[] => {
-    const rotatedChromatic = getRotatedScale(root);
+    const rootIndex = getNoteIndex(root);
+    const useFlats = shouldUseFlats(root, scaleType);
+    const rotatedChromatic = getRotatedScale(rootIndex, useFlats);
     const intervals = SCALES[scaleType];
     return intervals.map(interval => rotatedChromatic[interval]);
 };
@@ -244,18 +280,22 @@ const DIATONIC_PATTERNS: Record<'MAJOR' | 'MINOR', { quality: ChordQuality, roma
     ]
 };
 
-export const getChordNotes = (root: Note, quality: ChordQuality): Note[] => {
-    const rotatedChromatic = getRotatedScale(root);
+export const getChordNotes = (root: Note, quality: ChordQuality, forceFlats?: boolean): Note[] => {
+    const rootIndex = getNoteIndex(root);
+    if (rootIndex === -1) throw new Error(`Invalid root note: ${root}`);
+    const useFlats = forceFlats !== undefined ? forceFlats : (root.includes('b') || root === 'F');
+    const rotatedChromatic = getRotatedScale(rootIndex, useFlats);
     return CHORD_INTERVALS[quality].map(interval => rotatedChromatic[interval % 12]);
 };
 
 export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
     const scaleNotes = getScale(keyRoot, scaleType);
+    const useFlats = shouldUseFlats(keyRoot, scaleType);
     const pattern = DIATONIC_PATTERNS[scaleType];
 
     return scaleNotes.map((note, index) => {
         const { quality, roman } = pattern[index];
-        const notes = getChordNotes(note, quality);
+        const notes = getChordNotes(note, quality, useFlats);
 
         let suffix = '';
         if (quality === 'MINOR') suffix = 'm';
@@ -275,7 +315,7 @@ export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): 
  * Returns the note at a specific string (0-based index) and fret (0-based index).
  * Takes an optional tuningOffset array to adjust the open string notes.
  */
-export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[], stringCount?: number): Note => {
+export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, fretIndex: number, tuningOffsets?: number[], stringCount?: number, useFlats?: boolean): Note => {
     const config = getInstrumentConfig(instrument, stringCount);
     // Safety check for string index
     if (stringIndex >= config.strings) return 'C';
@@ -289,7 +329,7 @@ export const getNoteAtPosition = (instrument: Instrument, stringIndex: number, f
 
     // Ensure positive index for modulo
     const chromaticIndex = (openStringNoteIndex + fretIndex + offset + 120) % 12; // +120 safely handles negative offsets
-    return CHROMATIC_SCALE[chromaticIndex];
+    return (useFlats ? FLATS_SCALE : SHARPS_SCALE)[chromaticIndex];
 };
 
 /**

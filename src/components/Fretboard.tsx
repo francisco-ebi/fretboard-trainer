@@ -79,9 +79,10 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
     };
 
     const renderFrets = (stringIndex: number) => {
+        const useFlats = scaleNotes.some(n => n.includes('b'));
         const fretElements = [];
         for (let fret = 0; fret <= FRETS; fret++) {
-            const note = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets, stringCount);
+            const note = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets, stringCount, useFlats);
 
             let isNoteInScale = false;
             if (voicings && selectedVoicingIndex !== null && voicings[selectedVoicingIndex]) {
