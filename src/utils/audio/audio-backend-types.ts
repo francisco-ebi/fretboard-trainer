@@ -6,6 +6,9 @@ export interface AnalysisResult {
     spectralFlux?: number | null;
     spectralRolloff?: number | null;
     inharmonicity?: number | null;
+    spectralSkewness?: number | null;
+    perceptualSpread?: number | null;
+    perceptualSharpness?: number | null;
 }
 
 export interface AudioAnalysisBackend {

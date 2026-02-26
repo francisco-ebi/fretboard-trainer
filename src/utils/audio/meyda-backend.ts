@@ -2,6 +2,16 @@ import Meyda from 'meyda';
 import { YIN } from 'pitchfinder';
 import type { AudioAnalysisBackend, AnalysisResult } from '@/utils/audio/audio-backend-types';
 
+const featuresToExtract = [
+    'mfcc',
+    'spectralCentroid',
+    'spectralRolloff',
+    'spectralFlux',
+    'spectralSkewness',
+    'perceptualSpread',
+    'perceptualSharpness'
+];
+
 export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
     name = 'meyda-pitchfinder';
     private detectPitch: ((buffer: Float32Array) => number | null) | null = null;
@@ -24,10 +34,14 @@ export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
         let mfcc: number[] | null = null;
         let spectralCentroid: number | null = null;
         let spectralRolloff: number | null = null;
+        let spectralFlux: number | null = null;
+        let spectralSkewness: number | null = null;
+        let perceptualSpread: number | null = null;
+        let perceptualSharpness: number | null = null;
 
         try {
             // @ts-ignore
-            const features = Meyda.extract(['mfcc', 'spectralCentroid', 'spectralRolloff'], buffer);
+            const features = Meyda.extract(featuresToExtract, buffer);
             // @ts-ignore
             if (features) {
                 // @ts-ignore
@@ -36,11 +50,28 @@ export class MeydaPitchfinderBackend implements AudioAnalysisBackend {
                 spectralCentroid = features.spectralCentroid || null;
                 // @ts-ignore
                 spectralRolloff = features.spectralRolloff || null;
+                // @ts-ignore
+                spectralFlux = features.spectralFlux || null;
+                // @ts-ignore
+                spectralSkewness = features.spectralSkewness || null;
+                // @ts-ignore
+                perceptualSpread = features.perceptualSpread || null;
+                // @ts-ignore
+                perceptualSharpness = features.perceptualSharpness || null;
             }
         } catch (e) {
             console.warn("Meyda extraction error", e);
         }
 
-        return { pitch, mfcc, spectralCentroid, spectralRolloff };
+        return {
+            pitch,
+            mfcc,
+            spectralCentroid,
+            spectralRolloff,
+            spectralFlux,
+            spectralSkewness,
+            perceptualSpread,
+            perceptualSharpness
+        };
     }
 }
