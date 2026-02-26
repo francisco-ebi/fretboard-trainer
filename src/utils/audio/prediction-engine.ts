@@ -97,7 +97,7 @@ class GuitarAudioPredictionEngine {
             }
 
             // Load Model & Stats
-            this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-brightness-model.json');
+            this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-mcleod.json');
             this.statsData = await import('@/utils/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
 
         } catch (e) {
