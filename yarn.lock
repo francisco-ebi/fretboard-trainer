@@ -3844,7 +3844,7 @@ __metadata:
     i18next: "npm:^25.8.0"
     i18next-browser-languagedetector: "npm:^8.2.0"
     jsdom: "npm:^27.4.0"
-    meyda: "npm:^5.6.3"
+    meyda: "npm:6.0.0-beta.2"
     pitchfinder: "npm:^2.3.4"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
@@ -4878,18 +4878,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"meyda@npm:^5.6.3":
-  version: 5.6.3
-  resolution: "meyda@npm:5.6.3"
+"meyda@npm:6.0.0-beta.2":
+  version: 6.0.0-beta.2
+  resolution: "meyda@npm:6.0.0-beta.2"
   dependencies:
-    "@rollup/plugin-node-resolve": "npm:^15.2.3"
     dct: "npm:0.1.0"
     fftjs: "npm:0.0.4"
     node-getopt: "npm:^0.3.2"
     wav: "npm:^1.0.2"
   bin:
     meyda: bin/cli.js
-  checksum: 10c0/8996c27a30e5b95a750fe4ae6fc6a917cd7a10532bc1e2c9930cb8aa4327988c6e327d978a6ae8fa34020f40edabfc6cae6514ed440b52bf773f05f9ad4e8101
+  checksum: 10c0/ab9a63e99ea35b1b6704057db4277449df7cd6053b714632860259c785eb6d2127bca881a1ca4cd007b0db3a4df4a0360795905dfb7b01b7967a043b6e37a066
   languageName: node
   linkType: hard
 
