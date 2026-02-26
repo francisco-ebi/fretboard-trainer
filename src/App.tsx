@@ -25,7 +25,14 @@ const AppContent = () => {
   const { t } = useTranslation();
   const { instrument, stringCount } = useInstrument();
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
-  const [currentMode, setCurrentMode] = useState<AppMode>('SCALE');
+  const [currentMode, setCurrentModeState] = useState<AppMode>(() => {
+    return (localStorage.getItem('app-mode') as AppMode) || 'SCALE';
+  });
+
+  const setCurrentMode = (mode: AppMode) => {
+    setCurrentModeState(mode);
+    localStorage.setItem('app-mode', mode);
+  };
 
   const [isFullScreen, setIsFullScreen] = useState(false);
 
