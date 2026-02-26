@@ -48,6 +48,17 @@ export const getNoteIndex = (note: Note): number => {
     return index;
 };
 
+export const getNoteDisplayLabel = (note: Note): string => {
+    const index = SHARPS_SCALE.indexOf(note);
+    if (index === -1) return note; // fallback
+
+    const flatEquivalent = FLATS_SCALE[index];
+    if (note !== flatEquivalent) {
+        return `${note} / ${flatEquivalent}`;
+    }
+    return note;
+};
+
 export const SCALES = {
     MAJOR: [0, 2, 4, 5, 7, 9, 11], // Ionian: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
     MINOR: [0, 2, 3, 5, 7, 8, 10], // Aeolian/Natural Minor: Root, Maj 2nd, Min 3rd, Perf 4th, Perf 5th, Min 6th, Min 7th

@@ -9,6 +9,7 @@ import {
     GUITAR_TUNINGS_7,
     GUITAR_TUNINGS_8,
     getChordNotes,
+    getNoteDisplayLabel,
     type Note,
     type ChordQuality,
     type NamingSystem,
@@ -201,7 +202,7 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                             <div className="control-group">
                                 <label>{t('controls.key')}:</label>
                                 <select value={selectedRoot} onChange={(e) => setSelectedRoot(e.target.value as Note)}>
-                                    {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{note}</option>)}
+                                    {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{getNoteDisplayLabel(note)}</option>)}
                                 </select>
                             </div>
                         </div>

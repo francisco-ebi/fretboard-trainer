@@ -11,6 +11,7 @@ import {
     getDiatonicChords,
     getChordNotes,
     shouldUseFlats,
+    getNoteDisplayLabel,
     type Note,
     type NamingSystem,
     type Instrument,
@@ -180,7 +181,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                             setSelectedChordIndex(null);
                             setChordModifiers({});
                         }}>
-                            {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{note}</option>)}
+                            {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{getNoteDisplayLabel(note)}</option>)}
                         </select>
                     </div>
                     <div className="control-group">
