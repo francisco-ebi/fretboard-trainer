@@ -32,8 +32,22 @@ import { useInstrument } from '@/context/InstrumentContext';
 
 const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false }) => {
     const { t } = useTranslation();
-    const [selectedRoot, setSelectedRoot] = useState<Note>('C');
-    const [selectedScaleType, setSelectedScaleType] = useState<'MAJOR' | 'MINOR'>('MAJOR');
+    const [selectedRoot, setSelectedRootState] = useState<Note>(() => {
+        return (localStorage.getItem('chordmode-root') as Note) || 'C';
+    });
+    const [selectedScaleType, setSelectedScaleTypeState] = useState<'MAJOR' | 'MINOR'>(() => {
+        return (localStorage.getItem('chordmode-scale') as 'MAJOR' | 'MINOR') || 'MAJOR';
+    });
+
+    const setSelectedRoot = (root: Note) => {
+        setSelectedRootState(root);
+        localStorage.setItem('chordmode-root', root);
+    };
+
+    const setSelectedScaleType = (scaleType: 'MAJOR' | 'MINOR') => {
+        setSelectedScaleTypeState(scaleType);
+        localStorage.setItem('chordmode-scale', scaleType);
+    };
 
     // Mofidied state to track selection including modifiers
     const [selectedChordIndex, setSelectedChordIndex] = useState<number | null>(null);
@@ -191,8 +205,8 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                             setSelectedChordIndex(null);
                             setChordModifiers({});
                         }}>
-                            <option value="MAJOR">Major</option>
-                            <option value="MINOR">Minor</option>
+                            <option value="MAJOR">{t('scales.MAJOR')}</option>
+                            <option value="MINOR">{t('scales.MINOR')}</option>
                         </select>
                     </div>
 
