@@ -9,9 +9,9 @@ export class MeydaBackend implements AudioBackend {
     name = 'meyda';
     private detectPitch: ((buffer: Float32Array) => number | null) | null = null;
 
-    async init(sampleRate: number) {
+    async init(sampleRate: number, bufferSize: number, _hopSize: number) {
         if (PITCH_ALGORITHM === 'macleod') {
-            const macleodDetector = Macleod({ sampleRate, bufferSize: 2048 });
+            const macleodDetector = Macleod({ sampleRate, bufferSize });
             this.detectPitch = (buffer: Float32Array) => {
                 const result = macleodDetector(buffer);
                 return result && result.probability > 0.5 ? result.freq : null;
@@ -22,7 +22,7 @@ export class MeydaBackend implements AudioBackend {
 
         // Meyda configuration if needed, typically synchronous or setup on frame
         if (Meyda) {
-            Meyda.bufferSize = 2048;
+            Meyda.bufferSize = bufferSize;
             Meyda.windowingFunction = "hamming";
         }
     }

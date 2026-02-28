@@ -15,15 +15,15 @@ class MeydaRecorderProcessor extends AudioWorkletProcessor {
     private _accumData: Float32Array[];
     private _audioWriter: AudioWriter | null = null;
 
-    constructor() {
+    constructor(options: AudioWorkletNodeOptions) {
         super();
-        this.bufferSize = 2048;
-        this.hopSize = 1024;
+        this.bufferSize = options.processorOptions.bufferSize;
+        this.hopSize = options.processorOptions.bufferSize / 2;
         this._inputRingBuffer = new ChromeLabsRingBuffer(this.bufferSize, 1);
         this._accumData = [new Float32Array(this.bufferSize)];
 
         this.backend = new MeydaBackend();
-        this.backend.init(sampleRate).then(() => {
+        this.backend.init(options.processorOptions.sampleRate, this.bufferSize, this.hopSize).then(() => {
             this.isBackendReady = true;
             console.log(`[AudioWorklet] Meyda backend initialized`);
         }).catch(err => {

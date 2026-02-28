@@ -141,7 +141,17 @@ class GuitarAudioPredictionEngine {
                 const ringBuffer = new RingBuffer(this.sharedBuffer);
                 this.audioReader = new AudioReader(ringBuffer);
 
-                this.workletNode = new AudioWorkletNode(this.audioContext, `${backendType}-recorder-processor`, { numberOfInputs: 1 });
+                this.workletNode = new AudioWorkletNode(
+                    this.audioContext,
+                    `${backendType}-recorder-processor`,
+                    {
+                        numberOfInputs: 1,
+                        processorOptions: {
+                            sampleRate: this.audioContext.sampleRate,
+                            bufferSize: 2048
+                        }
+                    }
+                );
 
                 // Send SAB to the context
                 this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
@@ -208,7 +218,17 @@ class GuitarAudioPredictionEngine {
             const ringBuffer = new RingBuffer(this.sharedBuffer);
             this.audioReader = new AudioReader(ringBuffer);
 
-            this.workletNode = new AudioWorkletNode(this.audioContext, `${backendType}-recorder-processor`, { numberOfInputs: 1 });
+            this.workletNode = new AudioWorkletNode(
+                this.audioContext,
+                `${backendType}-recorder-processor`,
+                {
+                    numberOfInputs: 1,
+                    processorOptions: {
+                        sampleRate: this.audioContext.sampleRate,
+                        bufferSize: 2048
+                    }
+                }
+            );
 
             this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
 

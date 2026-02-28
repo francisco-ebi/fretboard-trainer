@@ -1,7 +1,9 @@
 import { calculateStatistics, normalizeDataset } from '@/utils/audio/dataset-preparation';
 import essentiaProcessorUrl from '@/utils/audio/essentia-recorder-processor.ts?url';
 import meydaProcessorUrl from '@/utils/audio/meyda-recorder-processor.ts?url';
-import type { AudioAnalysisBackend, AnalysisResult } from '@/utils/audio/audio-backend-types';
+import { type AnalysisResult } from '@/utils/audio/audio-backend-types';
+import { AudioReader, RingBuffer } from '@/utils/audio/sab-ring-buffer';
+import { FEATURE_POSITIONS } from '@/utils/audio/worklet-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
@@ -29,18 +31,23 @@ export interface DatasetEntry {
 
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
+    gainNode: GainNode | null;
     workletNode: AudioWorkletNode | null;
     sourceNode: MediaStreamAudioSourceNode | null;
-    backend: AudioAnalysisBackend | null;
+    backend: any | null; // Placeholder as actual backend is in worklet
     activeBackendType: 'meyda' | 'essentia';
     dataset: DatasetEntry[];
     isRecording: boolean;
     currentLabel: number;
     onDataCaptured: ((note: number, count: number) => void) | null;
     private frameBuffer: { features: number[] }[] = [];
+    private sharedBuffer: SharedArrayBuffer | null = null;
+    private audioReader: AudioReader | null = null;
+    private pollingInterval: ReturnType<typeof setInterval> | null = null;
 
     constructor() {
         this.audioContext = null;
+        this.gainNode = null;
         this.workletNode = null;
         this.sourceNode = null;
         this.activeBackendType = 'essentia';
@@ -58,23 +65,66 @@ class GuitarAudioRecordingEngine {
             if (this.workletNode) {
                 this.workletNode.disconnect();
             }
-            this.workletNode = new AudioWorkletNode(this.audioContext, `${type}-recorder-processor`, { numberOfInputs: 1 });
 
-            this.workletNode.port.onmessage = (event) => {
-                if (!this.isRecording) return;
-                const result = event.data as AnalysisResult;
-                this.handleAnalysisResult(result);
-            };
+            // Re-initialize SAB for new processor
+            this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
+            const ringBuffer = new RingBuffer(this.sharedBuffer);
+            this.audioReader = new AudioReader(ringBuffer);
+
+            this.workletNode = new AudioWorkletNode(
+                this.audioContext,
+                `${type}-recorder-processor`,
+                { numberOfInputs: 1, processorOptions: { sampleRate: this.audioContext.sampleRate, bufferSize: 2048 } }
+            );
+
+            // Send SAB to the newly created worklet
+            this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
 
             this.sourceNode.connect(this.workletNode);
+            if (this.gainNode) {
+                this.workletNode.connect(this.gainNode);
+                this.gainNode.connect(this.audioContext.destination);
+            }
 
             if (this.isRecording) {
                 this.workletNode.port.postMessage({ command: 'setString', stringIndex: this.currentLabel });
+                this.startPolling();
+            } else {
+                this.stopPolling();
             }
 
             console.log(`Switched audio backend to: ${type}`);
         } else {
             console.warn("Audio Context or Source Node not initialized yet, backend preference saved.");
+        }
+    }
+
+    private startPolling() {
+        if (this.pollingInterval) clearInterval(this.pollingInterval);
+
+        // Poll SAB frequently
+        this.pollingInterval = setInterval(() => {
+            if (!this.audioReader || !this.isRecording) return;
+
+            const numFeatures = FEATURE_POSITIONS.TOTAL_FEATURES;
+            const available = this.audioReader.available_read();
+
+            if (available >= numFeatures) {
+                const elements = new Float32Array(available);
+                this.audioReader.dequeue(elements);
+
+                for (let i = 0; i <= elements.length - numFeatures; i += numFeatures) {
+                    const featureChunk = elements.subarray(i, i + numFeatures);
+                    this.handleSerializedResult(featureChunk);
+                }
+            }
+        }, 16);
+    }
+
+    private stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
         }
     }
 
@@ -113,6 +163,8 @@ class GuitarAudioRecordingEngine {
                 }
             });
             this.sourceNode = this.audioContext.createMediaStreamSource(stream);
+            this.gainNode = this.audioContext.createGain();
+            this.gainNode.gain.value = 0;
 
             console.log("GuitarAudioEngine initialized");
 
@@ -123,9 +175,12 @@ class GuitarAudioRecordingEngine {
         }
     }
 
-    handleAnalysisResult(result: AnalysisResult) {
-        if (result.pitch && result.pitch !== -1) {
-            const midiNote = this.hertzToMidi(result.pitch);
+    handleSerializedResult(features: Float32Array) {
+        const pitch = features[FEATURE_POSITIONS.PITCH];
+
+        if (pitch && pitch !== -1 && pitch > 0) {
+            const midiNote = this.hertzToMidi(pitch);
+            console.log({ pitch, midiNote, note: this.getNoteNameFromMidi(midiNote) });
 
             // String-specific Range Filter
             const range = STRING_MIDI_RANGES[this.currentLabel];
@@ -138,8 +193,19 @@ class GuitarAudioRecordingEngine {
                 if (midiNote < 40 || midiNote > 90) return;
             }
 
-            if (result.mfcc) {
-                this.saveData(result.mfcc, midiNote, result);
+            // Extract MFCCs
+            const mfcc = Array.from(features.subarray(FEATURE_POSITIONS.MFCC_START, FEATURE_POSITIONS.MFCC_START + 13));
+
+            const extraFeatures: Partial<AnalysisResult> = {
+                spectralCentroid: features[FEATURE_POSITIONS.CENTROID],
+                spectralRolloff: features[FEATURE_POSITIONS.ROLLOFF],
+                spectralFlux: features[FEATURE_POSITIONS.FLUX],
+                inharmonicity: features[FEATURE_POSITIONS.INHARMONICITY],
+                rms: features[FEATURE_POSITIONS.RMS]
+            };
+
+            if (mfcc) {
+                this.saveData(mfcc, midiNote, extraFeatures);
             }
         }
     }
@@ -148,7 +214,6 @@ class GuitarAudioRecordingEngine {
         if (!mfcc || mfcc.length !== FEATURE_CONFIG.MFCC_COUNT) {
             return;
         }
-        // console.log({ note, noteName: this.getNoteNameFromMidi(note) })
 
         let currentFrameFeatures: number[] = [];
 
@@ -187,7 +252,7 @@ class GuitarAudioRecordingEngine {
         if (this.frameBuffer.length >= 5) {
             // Create sequence entry
             const sequenceEntry: DatasetEntry = {
-                midiNote: note, // Using the note of the last frame (or could check consistency)
+                midiNote: note,
                 stringNum: this.currentLabel,
                 noteName: this.getNoteNameFromMidi(note),
                 features: this.frameBuffer.map(f => f.features),
@@ -202,8 +267,6 @@ class GuitarAudioRecordingEngine {
             }
 
             // Clear buffer to start next sequence
-            // Note: This implements non-overlapping windows. 
-            // For overlapping, we would shift/slice instead.
             this.frameBuffer = [];
         }
     }
@@ -232,10 +295,13 @@ class GuitarAudioRecordingEngine {
         if (this.workletNode) {
             this.workletNode.port.postMessage({ command: 'setString', stringIndex });
         }
+
+        this.startPolling();
     }
 
     stopRecording() {
         this.isRecording = false;
+        this.stopPolling();
         console.log("Recording stopped");
     }
 

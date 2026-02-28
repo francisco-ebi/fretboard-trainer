@@ -5,10 +5,15 @@ import { FEATURE_POSITIONS, type AudioBackend } from './worklet-types';
 export class EssentiaBackend implements AudioBackend {
     name = 'essentia';
     private essentia: any = null;
+    private sampleRate: number = 44100;
+    private bufferSize: number = 2048;
+    private hopSize: number = 1024;
 
-    async init(_sampleRate: number) {
+    async init(sampleRate: number, bufferSize: number, hopSize: number) {
+        this.sampleRate = sampleRate;
+        this.bufferSize = bufferSize;
+        this.hopSize = hopSize;
         if (!this.essentia) {
-            // @ts-ignore
             this.essentia = new Essentia(EssentiaWASM);
         }
     }
@@ -24,16 +29,8 @@ export class EssentiaBackend implements AudioBackend {
             return new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
         }
 
-        // Pitch
-        let pitch = null;
-        try {
-            const pitchResult = this.essentia.PitchYin(vectorSignal);
-            if (typeof pitchResult.pitch === 'number') {
-                pitch = pitchResult.pitch;
-            }
-        } catch (e) {
-            // console.warn("Essentia Pitch Error", e);
-        }
+        // Pitch detection using PitchMelodia
+        const pitch = this.computePitchMelodia(vectorSignal);
 
         let spectrum = null;
         let windowedFrame = null;
@@ -51,9 +48,7 @@ export class EssentiaBackend implements AudioBackend {
             spectrum = this.essentia.Spectrum(windowedFrame);
         } catch (e) {
             if (vectorSignal) vectorSignal.delete();
-            const fallbackArray = new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
-            fallbackArray[FEATURE_POSITIONS.PITCH] = pitch || 0;
-            return fallbackArray;
+            return new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
         }
 
         // MFCC
@@ -157,7 +152,31 @@ export class EssentiaBackend implements AudioBackend {
         featureArray[FEATURE_POSITIONS.FLUX] = spectralFlux || 0;
         featureArray[FEATURE_POSITIONS.INHARMONICITY] = inharmonicity || 0;
         featureArray[FEATURE_POSITIONS.RMS] = 0; // Handled by caller
-
         return featureArray;
+    }
+
+    private computePitchMelodia(vectorSignal: any): number {
+        let pitch = 0;
+        try {
+            // Constants from PitchMelodia example
+            const lowestFreq = 440 * Math.pow(Math.pow(2, 1 / 12), -33); // C2 ~65Hz
+            const highestFreq = 440 * Math.pow(Math.pow(2, 1 / 12), -33 + (6 * 12) - 1);
+
+            const algoOutput = this.essentia.PitchMelodia(
+                vectorSignal,
+                10, 3, this.bufferSize / 2, false, 0.8, this.hopSize, 1, 40, highestFreq,
+                100, lowestFreq, 20, 0.9, 0.9, 27.5625, lowestFreq, this.sampleRate, 100
+            );
+            const pitchFrames = this.essentia.vectorToArray(algoOutput.pitch);
+            const numVoicedFrames = pitchFrames.filter((p: number) => p > 0).length
+            console.log({ numVoicedFrames });
+
+            if (numVoicedFrames > 0) {
+                pitch = pitchFrames.reduce((acc: number, val: number) => acc + (val > 0 ? val : 0), 0) / numVoicedFrames;
+            }
+        } catch (e) {
+            console.error("Essentia PitchMelodia Error", e);
+        }
+        return pitch;
     }
 }

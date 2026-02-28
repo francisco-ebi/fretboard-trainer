@@ -21,6 +21,6 @@ export const FEATURE_POSITIONS = {
 
 export interface AudioBackend {
     name: string;
-    init(sampleRate: number): Promise<void>;
+    init(sampleRate: number, bufferSize: number, hopSize: number): Promise<void>;
     process(buffer: Float32Array): Float32Array; // Now returns a contiguous float array
 }

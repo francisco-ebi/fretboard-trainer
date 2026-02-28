@@ -3,8 +3,6 @@ import { ChromeLabsRingBuffer } from './ring-buffer';
 import { AudioWriter, RingBuffer } from './sab-ring-buffer';
 import { FEATURE_POSITIONS } from './worklet-types';
 
-declare const sampleRate: number;
-
 class EssentiaRecorderProcessor extends AudioWorkletProcessor {
     bufferSize: number;
     hopSize: number;
@@ -15,15 +13,15 @@ class EssentiaRecorderProcessor extends AudioWorkletProcessor {
     private _accumData: Float32Array[];
     private _audioWriter: AudioWriter | null = null;
 
-    constructor() {
+    constructor(options: AudioWorkletNodeOptions) {
         super();
-        this.bufferSize = 2048;
-        this.hopSize = 1024;
+        this.bufferSize = options.processorOptions.bufferSize;
+        this.hopSize = options.processorOptions.bufferSize / 2;
         this._inputRingBuffer = new ChromeLabsRingBuffer(this.bufferSize, 1);
         this._accumData = [new Float32Array(this.bufferSize)];
 
         this.backend = new EssentiaBackend();
-        this.backend.init(sampleRate).then(() => {
+        this.backend.init(options.processorOptions.sampleRate, this.bufferSize, this.hopSize).then(() => {
             this.isBackendReady = true;
             console.log(`[AudioWorklet] Essentia backend initialized`);
         }).catch(err => {
