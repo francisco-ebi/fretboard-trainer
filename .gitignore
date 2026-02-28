@@ -25,3 +25,5 @@ dev-dist
 *.sw?
 
 .agent
+experiments/analysis_plots
+.yarn
