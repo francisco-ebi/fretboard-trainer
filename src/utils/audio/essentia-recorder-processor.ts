@@ -1,5 +1,7 @@
 import { EssentiaBackend } from './essentia-worklet-backend';
 import { ChromeLabsRingBuffer } from './ring-buffer';
+import { AudioWriter, RingBuffer } from './sab-ring-buffer';
+import { FEATURE_POSITIONS } from './worklet-types';
 
 declare const sampleRate: number;
 
@@ -11,6 +13,7 @@ class EssentiaRecorderProcessor extends AudioWorkletProcessor {
     isBackendReady: boolean = false;
     private _inputRingBuffer: ChromeLabsRingBuffer;
     private _accumData: Float32Array[];
+    private _audioWriter: AudioWriter | null = null;
 
     constructor() {
         super();
@@ -30,6 +33,9 @@ class EssentiaRecorderProcessor extends AudioWorkletProcessor {
         this.port.onmessage = (event) => {
             if (event.data.command === 'setString') {
                 this.stringIndex = event.data.stringIndex;
+            } else if (event.data.command === 'sab') {
+                this._audioWriter = new AudioWriter(new RingBuffer(event.data.sab));
+                console.log("[AudioWorklet] AudioWriter initialized from SAB.");
             }
         };
     }
@@ -51,9 +57,12 @@ class EssentiaRecorderProcessor extends AudioWorkletProcessor {
 
             let rms = this.calculateRMS(this._accumData[0]);
             if (rms > 0.02 && this.isBackendReady) {
-                const result = this.backend.process(this._accumData[0]);
-                result.rms = rms;
-                this.port.postMessage(result);
+                const featureArray = this.backend.process(this._accumData[0]);
+                featureArray[FEATURE_POSITIONS.RMS] = rms;
+                // Push directly to SAB if available
+                if (this._audioWriter && this._audioWriter.available_write() >= featureArray.length) {
+                    this._audioWriter.enqueue(featureArray);
+                }
             }
 
             // Re-push overlap data (bufferSize - hopSize) back into the ring buffer

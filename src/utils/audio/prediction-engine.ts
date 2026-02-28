@@ -6,6 +6,8 @@ import { normalizeDataset } from '@/utils/audio/dataset-preparation';
 import essentiaProcessorUrl from '@/utils/audio/essentia-recorder-processor.ts?url';
 import meydaProcessorUrl from '@/utils/audio/meyda-recorder-processor.ts?url';
 import type { AnalysisResult } from '@/utils/audio/audio-backend-types';
+import { AudioReader, RingBuffer } from '@/utils/audio/sab-ring-buffer';
+import { FEATURE_POSITIONS } from '@/utils/audio/worklet-types';
 
 
 const baseNotes: Record<number, number> = {
@@ -39,6 +41,9 @@ class GuitarAudioPredictionEngine {
     // Buffering
     private frameBuffer: AnalysisResult[] = [];
     private readonly SEQUENCE_LENGTH = 5;
+    private sharedBuffer: SharedArrayBuffer | null = null;
+    private audioReader: AudioReader | null = null;
+    private pollingInterval: ReturnType<typeof setInterval> | null = null;
 
     // RxJS Logic
     private rawPrediction$: Subject<PredictionResult>;
@@ -131,15 +136,23 @@ class GuitarAudioPredictionEngine {
                 if (this.workletNode) {
                     this.workletNode.disconnect();
                 }
+
+                this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
+                const ringBuffer = new RingBuffer(this.sharedBuffer);
+                this.audioReader = new AudioReader(ringBuffer);
+
                 this.workletNode = new AudioWorkletNode(this.audioContext, `${backendType}-recorder-processor`, { numberOfInputs: 1 });
 
-                this.workletNode.port.onmessage = (event) => {
-                    if (!this.isRecording) return;
-                    const result = event.data as AnalysisResult;
-                    this.handleAnalysisResult(result);
-                };
+                // Send SAB to the context
+                this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
 
                 this.sourceNode.connect(this.workletNode);
+
+                if (this.isRecording) {
+                    this.startPolling();
+                } else {
+                    this.stopPolling();
+                }
                 console.log(`[PredictionEngine] Switched worklet backend to ${backendType}`);
             }
 
@@ -190,13 +203,14 @@ class GuitarAudioPredictionEngine {
 
             // Set initial backend
             const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
+
+            this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
+            const ringBuffer = new RingBuffer(this.sharedBuffer);
+            this.audioReader = new AudioReader(ringBuffer);
+
             this.workletNode = new AudioWorkletNode(this.audioContext, `${backendType}-recorder-processor`, { numberOfInputs: 1 });
 
-            this.workletNode.port.onmessage = (event) => {
-                if (!this.isRecording) return;
-                const result = event.data as AnalysisResult;
-                this.handleAnalysisResult(result);
-            };
+            this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
 
             this.sourceNode.connect(this.workletNode);
             console.log("GuitarPredictionEngine initialized");
@@ -205,14 +219,60 @@ class GuitarAudioPredictionEngine {
         }
     }
 
-    private handleAnalysisResult(result: AnalysisResult) {
-        if (result.pitch) {
-            const midiNote = this.hertzToMidi(result.pitch);
+    private startPolling() {
+        if (this.pollingInterval) clearInterval(this.pollingInterval);
+
+        // Poll SAB frequently
+        this.pollingInterval = setInterval(() => {
+            if (!this.audioReader || !this.isRecording) return;
+
+            const numFeatures = FEATURE_POSITIONS.TOTAL_FEATURES;
+            const available = this.audioReader.available_read();
+
+            if (available >= numFeatures) {
+                const elements = new Float32Array(available);
+                this.audioReader.dequeue(elements);
+
+                // Process elements chunk by chunk (e.g. 21 at a time)
+                for (let i = 0; i <= elements.length - numFeatures; i += numFeatures) {
+                    const featureChunk = elements.subarray(i, i + numFeatures);
+                    this.handleSerializedResult(featureChunk);
+                }
+            }
+        }, 16);
+    }
+
+    private stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    private handleSerializedResult(features: Float32Array) {
+        const pitch = features[FEATURE_POSITIONS.PITCH];
+
+        if (pitch && pitch !== -1 && pitch > 0) {
+            const midiNote = this.hertzToMidi(pitch);
             // Basic range filter
             if (midiNote < 40 || midiNote > 90) return;
-            if (result.mfcc) {
+
+            const mfcc = Array.from(features.subarray(FEATURE_POSITIONS.MFCC_START, FEATURE_POSITIONS.MFCC_START + 13));
+
+            // Reconstruct AnalysisResult for internal buffering
+            const resultObj: AnalysisResult = {
+                pitch: pitch,
+                mfcc: mfcc,
+                spectralCentroid: features[FEATURE_POSITIONS.CENTROID],
+                spectralRolloff: features[FEATURE_POSITIONS.ROLLOFF],
+                spectralFlux: features[FEATURE_POSITIONS.FLUX],
+                inharmonicity: features[FEATURE_POSITIONS.INHARMONICITY],
+                rms: features[FEATURE_POSITIONS.RMS]
+            };
+
+            if (mfcc) {
                 // Buffer frames
-                this.frameBuffer.push(result);
+                this.frameBuffer.push(resultObj);
 
                 if (this.frameBuffer.length > this.SEQUENCE_LENGTH) {
                     this.frameBuffer.shift();
@@ -329,11 +389,16 @@ class GuitarAudioPredictionEngine {
         this.isRecording = true;
         this.frameBuffer = []; // Reset buffer
 
+        if (this.workletNode) {
+            this.startPolling();
+        }
+
         console.log("Recording started");
     }
 
     stopRecording() {
         this.isRecording = false;
+        this.stopPolling();
         console.log("Recording stopped");
     }
 

@@ -1,6 +1,6 @@
 import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
 import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
-import type { AudioBackend, AnalysisResult } from './worklet-types';
+import { FEATURE_POSITIONS, type AudioBackend } from './worklet-types';
 
 export class EssentiaBackend implements AudioBackend {
     name = 'essentia';
@@ -13,15 +13,15 @@ export class EssentiaBackend implements AudioBackend {
         }
     }
 
-    process(buffer: Float32Array): AnalysisResult {
-        if (!this.essentia) return { pitch: null, mfcc: null };
+    process(buffer: Float32Array): Float32Array {
+        if (!this.essentia) return new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
 
         let vectorSignal;
         try {
             vectorSignal = this.essentia.arrayToVector(buffer);
         } catch (e) {
             console.error("Essentia arrayToVector failed", e);
-            return { pitch: null, mfcc: null };
+            return new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
         }
 
         // Pitch
@@ -51,7 +51,9 @@ export class EssentiaBackend implements AudioBackend {
             spectrum = this.essentia.Spectrum(windowedFrame);
         } catch (e) {
             if (vectorSignal) vectorSignal.delete();
-            return { pitch, mfcc: null };
+            const fallbackArray = new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
+            fallbackArray[FEATURE_POSITIONS.PITCH] = pitch || 0;
+            return fallbackArray;
         }
 
         // MFCC
@@ -142,13 +144,20 @@ export class EssentiaBackend implements AudioBackend {
         if (windowedFrame) windowedFrame.delete();
         if (spectrum && spectrum.spectrum) spectrum.spectrum.delete();
 
-        return {
-            pitch,
-            mfcc: Array.from(mfcc),
-            spectralCentroid,
-            spectralFlux,
-            spectralRolloff,
-            inharmonicity
-        };
+        // Serialize
+        const featureArray = new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
+        featureArray[FEATURE_POSITIONS.PITCH] = pitch || 0;
+
+        for (let i = 0; i < 13; i++) {
+            featureArray[FEATURE_POSITIONS.MFCC_START + i] = mfcc[i] || 0;
+        }
+
+        featureArray[FEATURE_POSITIONS.CENTROID] = spectralCentroid || 0;
+        featureArray[FEATURE_POSITIONS.ROLLOFF] = spectralRolloff || 0;
+        featureArray[FEATURE_POSITIONS.FLUX] = spectralFlux || 0;
+        featureArray[FEATURE_POSITIONS.INHARMONICITY] = inharmonicity || 0;
+        featureArray[FEATURE_POSITIONS.RMS] = 0; // Handled by caller
+
+        return featureArray;
     }
 }

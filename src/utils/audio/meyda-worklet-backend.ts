@@ -1,6 +1,6 @@
 import Meyda from 'meyda';
 import { YIN, Macleod } from 'pitchfinder';
-import type { AudioBackend, AnalysisResult } from './worklet-types';
+import { FEATURE_POSITIONS, type AudioBackend } from './worklet-types';
 
 // Developer Config: Choose pitch detection algorithm ('yin' or 'macleod')
 const PITCH_ALGORITHM: 'yin' | 'macleod' = 'macleod';
@@ -27,8 +27,8 @@ export class MeydaBackend implements AudioBackend {
         }
     }
 
-    process(buffer: Float32Array): AnalysisResult {
-        if (!this.detectPitch) return { pitch: null, mfcc: null };
+    process(buffer: Float32Array): Float32Array {
+        if (!this.detectPitch) return new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
 
         const pitch = this.detectPitch(buffer);
 
@@ -53,6 +53,20 @@ export class MeydaBackend implements AudioBackend {
             // console.warn("Meyda extraction error", e);
         }
 
-        return { pitch, mfcc, spectralCentroid, spectralRolloff, spectralFlux, inharmonicity: null };
+        // Serialize
+        const featureArray = new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
+        featureArray[FEATURE_POSITIONS.PITCH] = pitch || 0;
+
+        for (let i = 0; i < 13; i++) {
+            featureArray[FEATURE_POSITIONS.MFCC_START + i] = mfcc ? mfcc[i] || 0 : 0;
+        }
+
+        featureArray[FEATURE_POSITIONS.CENTROID] = spectralCentroid || 0;
+        featureArray[FEATURE_POSITIONS.ROLLOFF] = spectralRolloff || 0;
+        featureArray[FEATURE_POSITIONS.FLUX] = spectralFlux || 0;
+        featureArray[FEATURE_POSITIONS.INHARMONICITY] = 0; // Not available in Meyda
+        featureArray[FEATURE_POSITIONS.RMS] = 0; // Handled by caller
+
+        return featureArray;
     }
 }
