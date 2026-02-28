@@ -22,6 +22,7 @@ export interface PredictionResult {
     midiNoteDetected: number;
 }
 
+export type PredictionMode = 'performance' | 'precision';
 
 class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
@@ -30,6 +31,7 @@ class GuitarAudioPredictionEngine {
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
     model: LayersModel | null;
+    currentMode: PredictionMode;
     private tf: any = null; // Store TFJS instance
 
     // Buffering
@@ -46,6 +48,8 @@ class GuitarAudioPredictionEngine {
         this.isRecording = false;
         this.onNotePredicted = null;
         this.model = null;
+        this.currentMode = 'performance'; // Default
+
         this.rawPrediction$ = new Subject<PredictionResult>();
 
         const step = 1;
@@ -88,8 +92,16 @@ class GuitarAudioPredictionEngine {
         // this.fretPredicted$.subscribe(p => console.log('Emitted Prediction:', p));
     }
 
-    async loadResources() {
-        console.log(`Loading model resources`);
+    async setMode(mode: PredictionMode) {
+        if (this.currentMode === mode && this.model) return;
+        this.currentMode = mode;
+
+        // Reset and reload based on mode
+        await this.loadResourcesForMode();
+    }
+
+    async loadResourcesForMode() {
+        console.log(`Loading resources for mode: ${this.currentMode}`);
         try {
             // Lazy load TensorFlow.js
             if (!this.tf) {
@@ -97,8 +109,25 @@ class GuitarAudioPredictionEngine {
             }
 
             // Load Model & Stats
-            this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-mcleod.json');
-            this.statsData = await import('@/utils/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
+            if (this.currentMode === 'performance') {
+                this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-brightness-model.json');
+                this.statsData = await import('@/utils/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
+            } else {
+                try {
+                    this.model = await this.tf.loadLayersModel('/model/guitar-essentia-model.json');
+                    this.statsData = await import('@/utils/audio/datasets/essentia_initial/guitar_dataset_stats.json');
+                } catch (e) {
+                    console.warn("Precision model not found. Predictions might be unavailable.");
+                    this.model = null;
+                }
+            }
+
+            // Switch Worklet Backend
+            if (this.workletNode) {
+                const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
+                this.workletNode.port.postMessage({ command: 'setBackend', type: backendType });
+                console.log(`[PredictionEngine] Switched worklet backend to ${backendType}`);
+            }
 
         } catch (e) {
             console.error("Error loading resources", e);
@@ -124,7 +153,7 @@ class GuitarAudioPredictionEngine {
 
         // Load resources (model) if not loaded
         if (!this.model) {
-            await this.loadResources();
+            await this.loadResourcesForMode();
         }
 
         try {
@@ -145,6 +174,9 @@ class GuitarAudioPredictionEngine {
             const source = this.audioContext.createMediaStreamSource(stream);
             this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor', { numberOfInputs: 1 });
 
+            // Set initial backend
+            const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
+            this.workletNode.port.postMessage({ command: 'setBackend', type: backendType });
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
@@ -197,11 +229,19 @@ class GuitarAudioPredictionEngine {
 
             const featuresList = [...mfcc, midiNote];
 
-            // Expecting 17
-            const spectralCentroid = frame.spectralCentroid || 0;
-            featuresList.push(spectralCentroid);
-            featuresList.push(frame.spectralRolloff || 0);
-            featuresList.push((spectralCentroid / midiNote || 1) || 0);
+            if (this.currentMode === 'performance') {
+                // Expecting 17
+                const spectralCentroid = frame.spectralCentroid || 0;
+                featuresList.push(spectralCentroid);
+                featuresList.push(frame.spectralRolloff || 0);
+                featuresList.push((spectralCentroid / midiNote || 1) || 0);
+            } else {
+                // Expecting 18
+                featuresList.push(frame.spectralCentroid || 0);
+                featuresList.push(frame.spectralFlux || 0);
+                featuresList.push(frame.spectralRolloff || 0);
+                featuresList.push(frame.inharmonicity || 0);
+            }
             return featuresList;
         });
 

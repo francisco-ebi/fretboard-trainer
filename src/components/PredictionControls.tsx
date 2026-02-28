@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { guitarPredictionEngine } from '@/utils/audio/prediction-engine';
+import { guitarPredictionEngine, type PredictionMode } from '@/utils/audio/prediction-engine';
+import ListeningModeModal from './ListeningModeModal';
 import './PredictionControls.css';
 
 interface PredictionControlsProps {
@@ -11,6 +12,7 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
     const { t } = useTranslation();
     const [isListening, setIsListening] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showModeModal, setShowModeModal] = useState(false);
 
     const handleStartClick = () => {
         if (disabled) return;
@@ -19,8 +21,8 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
             // If already listening, just stop
             stopListening();
         } else {
-            // If not listening, start directly
-            startListening();
+            // If not listening, show modal to choose mode
+            setShowModeModal(true);
         }
     };
 
@@ -29,9 +31,11 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
         setIsListening(false);
     };
 
-    const startListening = async () => {
+    const startListening = async (mode: PredictionMode) => {
+        setShowModeModal(false);
         setIsLoading(true);
         try {
+            await guitarPredictionEngine.setMode(mode);
             await guitarPredictionEngine.init();
             await guitarPredictionEngine.startRecording();
             setIsListening(true);
@@ -61,6 +65,11 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
                 )}
             </button>
 
+            <ListeningModeModal
+                isOpen={showModeModal}
+                onClose={() => setShowModeModal(false)}
+                onConfirm={startListening}
+            />
         </div>
     );
 };

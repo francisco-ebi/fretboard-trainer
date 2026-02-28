@@ -1,0 +1,152 @@
+.listening-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.listening-modal-content {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    color: white;
+}
+
+.listening-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.listening-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.listening-modal-close {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.listening-modal-close:hover {
+    color: white;
+}
+
+.listening-modal-description {
+    color: #ccc;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.listening-mode-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 600px) {
+    .listening-mode-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mode-card {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.mode-card:hover {
+    background: #333;
+    border-color: #666;
+    transform: translateY(-2px);
+}
+
+.mode-card.performance:hover {
+    border-color: #f6ad55;
+    /* Orange-ish */
+}
+
+.mode-card.precision:hover {
+    border-color: #63b3ed;
+    /* Blue-ish */
+}
+
+.mode-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.mode-icon {
+    font-size: 2rem;
+    margin-bottom: 0px;
+}
+
+.mode-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+}
+
+.mode-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.mode-tag.mobile {
+    background-color: rgba(246, 173, 85, 0.2);
+    color: #f6ad55;
+}
+
+.mode-tag.desktop {
+    background-color: rgba(99, 179, 237, 0.2);
+    color: #63b3ed;
+}
+
+.mode-info p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #999;
+    line-height: 1.4;
+}
+
+.mode-info strong {
+    color: white;
+}
+
+.wasm-warning {
+    margin-top: 10px;
+    color: #fc8181;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
