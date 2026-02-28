@@ -14,8 +14,8 @@ const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
 // Standard feature set definition
 export const FEATURE_CONFIG = {
     MFCC_COUNT: 13,
-    EXTRA_FEATURES: 4, // Centroid, Flux, Rolloff, Inharmonicity
-    TOTAL_FEATURES: 18 // 13 MFCC + 1 Note + 4 Spectral
+    EXTRA_FEATURES: 7,
+    TOTAL_FEATURES: 21
 };
 
 export interface DatasetEntry {
@@ -133,6 +133,10 @@ class GuitarAudioRecordingEngine {
             note,
             extraFeatures.spectralCentroid || 0,
             extraFeatures.spectralRolloff || 0,
+            extraFeatures.spectralFlux || 0,
+            extraFeatures.spectralSkewness || 0,
+            extraFeatures.perceptualSpread || 0,
+            extraFeatures.perceptualSharpness || 0,
             brightnessPerNote
         ];
 

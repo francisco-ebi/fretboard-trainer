@@ -49,8 +49,8 @@ class GuitarAudioPredictionEngine {
         this.rawPrediction$ = new Subject<PredictionResult>();
 
         const step = 1;
-        const windowSize = 10;
-        const majorityThreshold = windowSize * 0.7;
+        const windowSize = 8;
+        const majorityThreshold = windowSize * 0.8;
         // Window size 10, step 1 (rolling/sliding window)
         // Majority 70% of 10 = 7
 
@@ -85,7 +85,7 @@ class GuitarAudioPredictionEngine {
             ))
         );
 
-        this.fretPredicted$.subscribe(p => console.log('Emitted Prediction:', p));
+        // this.fretPredicted$.subscribe(p => console.log('Emitted Prediction:', p));
     }
 
     async loadResources() {

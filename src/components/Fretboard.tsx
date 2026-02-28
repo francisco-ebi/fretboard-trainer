@@ -98,9 +98,9 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
 
             // Prediction Match Logic
             const isPredicted = prediction?.predictedStringNumber === stringIndex && prediction?.predictedFret === fret;
-            if (isPredicted) {
-                console.log(`Predicted: ${note} at Fret ${fret}, String ${stringIndex}`);
-            }
+            // if (isPredicted) {
+            //     console.log(`Predicted: ${note} at Fret ${fret}, String ${stringIndex}`);
+            // }
 
             // Shake if context changed AND note was in previous scale
             const wasInScale = prevScaleNotes?.includes(note);
