@@ -5,14 +5,14 @@ import { FEATURE_POSITIONS, type AudioBackend } from './worklet-types';
 export class EssentiaBackend implements AudioBackend {
     name = 'essentia';
     private essentia: any = null;
-    private sampleRate: number = 44100;
     private bufferSize: number = 2048;
-    private hopSize: number = 1024;
+    private sampleRate: number = 44100;
+    private lowestFreq: number = 440 * Math.pow(Math.pow(2, 1 / 12), -33); // C2 ~65Hz
+    private highestFreq: number = 440 * Math.pow(Math.pow(2, 1 / 12), -33 + (6 * 12) - 1);
 
-    async init(sampleRate: number, bufferSize: number, hopSize: number) {
-        this.sampleRate = sampleRate;
+    async init(sampleRate: number, bufferSize: number, _hopSize: number) {
         this.bufferSize = bufferSize;
-        this.hopSize = hopSize;
+        this.sampleRate = sampleRate;
         if (!this.essentia) {
             this.essentia = new Essentia(EssentiaWASM);
         }
@@ -29,8 +29,8 @@ export class EssentiaBackend implements AudioBackend {
             return new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
         }
 
-        // Pitch detection using PitchMelodia
-        const pitch = this.computePitchMelodia(vectorSignal);
+        // Pitch detection using PitchYinFFT
+        const pitch = this.extractPitch(vectorSignal);
 
         let spectrum = null;
         let windowedFrame = null;
@@ -155,27 +155,21 @@ export class EssentiaBackend implements AudioBackend {
         return featureArray;
     }
 
-    private computePitchMelodia(vectorSignal: any): number {
+    private extractPitch(vectorSignal: any): number {
         let pitch = 0;
         try {
-            // Constants from PitchMelodia example
-            const lowestFreq = 440 * Math.pow(Math.pow(2, 1 / 12), -33); // C2 ~65Hz
-            const highestFreq = 440 * Math.pow(Math.pow(2, 1 / 12), -33 + (6 * 12) - 1);
-
-            const algoOutput = this.essentia.PitchMelodia(
-                vectorSignal,
-                10, 3, this.bufferSize / 2, false, 0.8, this.hopSize, 1, 40, highestFreq,
-                100, lowestFreq, 20, 0.9, 0.9, 27.5625, lowestFreq, this.sampleRate, 100
-            );
-            const pitchFrames = this.essentia.vectorToArray(algoOutput.pitch);
-            const numVoicedFrames = pitchFrames.filter((p: number) => p > 0).length
-            console.log({ numVoicedFrames });
-
-            if (numVoicedFrames > 0) {
-                pitch = pitchFrames.reduce((acc: number, val: number) => acc + (val > 0 ? val : 0), 0) / numVoicedFrames;
+            const windowedFrame = this.essentia.Windowing(vectorSignal).frame;
+            const spectrum = this.essentia.Spectrum(windowedFrame, windowedFrame.size()).spectrum;
+            const pitchResult = this.essentia.PitchYinFFT(spectrum, spectrum.size() - 1, true, this.highestFreq, this.lowestFreq, this.sampleRate);
+            if (typeof pitchResult.pitch === 'number') {
+                pitch = pitchResult.pitch;
             }
+
+            // Cleanup temp vectors
+            if (windowedFrame) windowedFrame.delete();
+            if (spectrum) spectrum.delete();
         } catch (e) {
-            console.error("Essentia PitchMelodia Error", e);
+            console.error("Essentia PitchYinFFT Error", e);
         }
         return pitch;
     }

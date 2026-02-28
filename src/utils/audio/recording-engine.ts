@@ -180,8 +180,6 @@ class GuitarAudioRecordingEngine {
 
         if (pitch && pitch !== -1 && pitch > 0) {
             const midiNote = this.hertzToMidi(pitch);
-            console.log({ pitch, midiNote, note: this.getNoteNameFromMidi(midiNote) });
-
             // String-specific Range Filter
             const range = STRING_MIDI_RANGES[this.currentLabel];
 
