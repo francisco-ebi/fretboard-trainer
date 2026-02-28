@@ -3,7 +3,8 @@ import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import { normalizeDataset } from '@/utils/audio/dataset-preparation';
-import processorUrl from '@/utils/audio/recorder-processor.ts?url';
+import essentiaProcessorUrl from '@/utils/audio/essentia-recorder-processor.ts?url';
+import meydaProcessorUrl from '@/utils/audio/meyda-recorder-processor.ts?url';
 import type { AnalysisResult } from '@/utils/audio/audio-backend-types';
 
 
@@ -27,6 +28,7 @@ export type PredictionMode = 'performance' | 'precision';
 class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
+    sourceNode: MediaStreamAudioSourceNode | null;
     statsData: any = null;
     isRecording: boolean;
     onNotePredicted: ((note: number, count: number) => void) | null;
@@ -45,6 +47,7 @@ class GuitarAudioPredictionEngine {
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
+        this.sourceNode = null;
         this.isRecording = false;
         this.onNotePredicted = null;
         this.model = null;
@@ -123,9 +126,20 @@ class GuitarAudioPredictionEngine {
             }
 
             // Switch Worklet Backend
-            if (this.workletNode) {
+            if (this.audioContext && this.sourceNode) {
                 const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
-                this.workletNode.port.postMessage({ command: 'setBackend', type: backendType });
+                if (this.workletNode) {
+                    this.workletNode.disconnect();
+                }
+                this.workletNode = new AudioWorkletNode(this.audioContext, `${backendType}-recorder-processor`, { numberOfInputs: 1 });
+
+                this.workletNode.port.onmessage = (event) => {
+                    if (!this.isRecording) return;
+                    const result = event.data as AnalysisResult;
+                    this.handleAnalysisResult(result);
+                };
+
+                this.sourceNode.connect(this.workletNode);
                 console.log(`[PredictionEngine] Switched worklet backend to ${backendType}`);
             }
 
@@ -145,7 +159,8 @@ class GuitarAudioPredictionEngine {
             return;
         }
         try {
-            await this.audioContext.audioWorklet.addModule(processorUrl);
+            await this.audioContext.audioWorklet.addModule(essentiaProcessorUrl);
+            await this.audioContext.audioWorklet.addModule(meydaProcessorUrl);
         } catch (e) {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
@@ -171,12 +186,11 @@ class GuitarAudioPredictionEngine {
                     deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
                 }
             });
-            const source = this.audioContext.createMediaStreamSource(stream);
-            this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor', { numberOfInputs: 1 });
+            this.sourceNode = this.audioContext.createMediaStreamSource(stream);
 
             // Set initial backend
             const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
-            this.workletNode.port.postMessage({ command: 'setBackend', type: backendType });
+            this.workletNode = new AudioWorkletNode(this.audioContext, `${backendType}-recorder-processor`, { numberOfInputs: 1 });
 
             this.workletNode.port.onmessage = (event) => {
                 if (!this.isRecording) return;
@@ -184,7 +198,7 @@ class GuitarAudioPredictionEngine {
                 this.handleAnalysisResult(result);
             };
 
-            source.connect(this.workletNode);
+            this.sourceNode.connect(this.workletNode);
             console.log("GuitarPredictionEngine initialized");
         } catch (err) {
             console.error("Error accessing microphone:", err);

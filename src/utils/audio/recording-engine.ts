@@ -1,5 +1,6 @@
 import { calculateStatistics, normalizeDataset } from '@/utils/audio/dataset-preparation';
-import processorUrl from '@/utils/audio/recorder-processor.ts?url';
+import essentiaProcessorUrl from '@/utils/audio/essentia-recorder-processor.ts?url';
+import meydaProcessorUrl from '@/utils/audio/meyda-recorder-processor.ts?url';
 import type { AudioAnalysisBackend, AnalysisResult } from '@/utils/audio/audio-backend-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
@@ -29,7 +30,9 @@ export interface DatasetEntry {
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
+    sourceNode: MediaStreamAudioSourceNode | null;
     backend: AudioAnalysisBackend | null;
+    activeBackendType: 'meyda' | 'essentia';
     dataset: DatasetEntry[];
     isRecording: boolean;
     currentLabel: number;
@@ -39,6 +42,8 @@ class GuitarAudioRecordingEngine {
     constructor() {
         this.audioContext = null;
         this.workletNode = null;
+        this.sourceNode = null;
+        this.activeBackendType = 'essentia';
         this.backend = null;
         this.dataset = [];
         this.isRecording = false;
@@ -48,13 +53,28 @@ class GuitarAudioRecordingEngine {
     }
 
     async setBackendType(type: 'meyda' | 'essentia') {
-        if (this.workletNode) {
-            this.workletNode.port.postMessage({ command: 'setBackend', type });
+        this.activeBackendType = type;
+        if (this.audioContext && this.sourceNode) {
+            if (this.workletNode) {
+                this.workletNode.disconnect();
+            }
+            this.workletNode = new AudioWorkletNode(this.audioContext, `${type}-recorder-processor`, { numberOfInputs: 1 });
+
+            this.workletNode.port.onmessage = (event) => {
+                if (!this.isRecording) return;
+                const result = event.data as AnalysisResult;
+                this.handleAnalysisResult(result);
+            };
+
+            this.sourceNode.connect(this.workletNode);
+
+            if (this.isRecording) {
+                this.workletNode.port.postMessage({ command: 'setString', stringIndex: this.currentLabel });
+            }
+
             console.log(`Switched audio backend to: ${type}`);
         } else {
-            // If worklet not ready, store preference or init default?
-            // For now just log
-            console.warn("Worklet not initialized, cannot switch backend yet.");
+            console.warn("Audio Context or Source Node not initialized yet, backend preference saved.");
         }
     }
 
@@ -70,7 +90,8 @@ class GuitarAudioRecordingEngine {
         }
 
         try {
-            await this.audioContext.audioWorklet.addModule(processorUrl);
+            await this.audioContext.audioWorklet.addModule(essentiaProcessorUrl);
+            await this.audioContext.audioWorklet.addModule(meydaProcessorUrl);
         } catch (e) {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
@@ -91,20 +112,12 @@ class GuitarAudioRecordingEngine {
                     deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
                 }
             });
-            const source = this.audioContext.createMediaStreamSource(stream);
-            this.workletNode = new AudioWorkletNode(this.audioContext, 'recorder-processor', { numberOfInputs: 1 });
+            this.sourceNode = this.audioContext.createMediaStreamSource(stream);
 
-            this.workletNode.port.onmessage = (event) => {
-                if (!this.isRecording) return;
-                const result = event.data as AnalysisResult;
-                this.handleAnalysisResult(result);
-            };
-
-            source.connect(this.workletNode);
             console.log("GuitarAudioEngine initialized");
 
             // Set default backend
-            this.setBackendType('meyda');
+            await this.setBackendType(this.activeBackendType);
         } catch (err) {
             console.error("Error accessing microphone:", err);
         }
