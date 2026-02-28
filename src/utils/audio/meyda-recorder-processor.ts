@@ -1,22 +1,23 @@
 import { MeydaBackend } from './meyda-worklet-backend';
+import { ChromeLabsRingBuffer } from './ring-buffer';
 
 declare const sampleRate: number;
 
 class MeydaRecorderProcessor extends AudioWorkletProcessor {
     bufferSize: number;
     hopSize: number;
-    buffer: Float32Array;
-    currentSize: number;
     backend: MeydaBackend;
     stringIndex: number = 0;
     isBackendReady: boolean = false;
+    private _inputRingBuffer: ChromeLabsRingBuffer;
+    private _accumData: Float32Array[];
 
     constructor() {
         super();
         this.bufferSize = 2048;
         this.hopSize = 1024;
-        this.buffer = new Float32Array(this.bufferSize);
-        this.currentSize = 0;
+        this._inputRingBuffer = new ChromeLabsRingBuffer(this.bufferSize, 1);
+        this._accumData = [new Float32Array(this.bufferSize)];
 
         this.backend = new MeydaBackend();
         this.backend.init(sampleRate).then(() => {
@@ -40,39 +41,28 @@ class MeydaRecorderProcessor extends AudioWorkletProcessor {
         const channelData = input[0];
         if (!channelData || channelData.length === 0) return true;
 
-        for (let i = 0; i < channelData.length; i++) {
-            if (this.currentSize >= this.bufferSize) {
-                this.shiftBuffer();
+        // Push modern 128-sample chunk into the ring buffer
+        this._inputRingBuffer.push([channelData]);
+
+        // Check if we have enough frames for analysis (e.g., 2048)
+        if (this._inputRingBuffer.framesAvailable >= this.bufferSize) {
+            // Pull enough frames to cover hopSize/bufferSize overlap
+            this._inputRingBuffer.pull(this._accumData);
+
+            let rms = this.calculateRMS(this._accumData[0]);
+            if (rms > 0.02 && this.isBackendReady) {
+                const result = this.backend.process(this._accumData[0]);
+                result.rms = rms;
+                this.port.postMessage(result);
             }
 
-            this.buffer[this.currentSize] = channelData[i];
-            this.currentSize++;
-
-            if (this.currentSize >= this.bufferSize) {
-                const bufferToSend = new Float32Array(this.buffer);
-                const rms = this.calculateRMS(bufferToSend);
-
-                if (rms > 0.02 && this.isBackendReady) {
-                    try {
-                        const result = this.backend.process(bufferToSend);
-                        result.rms = rms;
-                        this.port.postMessage(result);
-                    } catch (err) {
-                        console.error("[AudioWorklet] Process error:", err);
-                    }
-                }
-
-                this.shiftBuffer();
-            }
+            // Re-push overlap data (bufferSize - hopSize) back into the ring buffer
+            // to support sliding windows correctly.
+            const overlapSize = this.bufferSize - this.hopSize;
+            const overlapData = new Float32Array(this._accumData[0].buffer, this.hopSize * Float32Array.BYTES_PER_ELEMENT, overlapSize);
+            this._inputRingBuffer.push([overlapData]);
         }
-
         return true;
-    }
-
-    shiftBuffer() {
-        const overlapSize = this.bufferSize - this.hopSize;
-        this.buffer.copyWithin(0, this.hopSize);
-        this.currentSize = overlapSize;
     }
 
     calculateRMS(data: Float32Array): number {
