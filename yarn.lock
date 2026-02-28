@@ -3909,6 +3909,7 @@ __metadata:
     typescript: "npm:~5.9.3"
     typescript-eslint: "npm:^8.46.4"
     vite: "npm:^7.2.4"
+    vite-plugin-cross-origin-isolation: "npm:^0.1.6"
     vite-plugin-pwa: "npm:^1.2.0"
     vitest: "npm:^4.0.18"
   languageName: unknown
@@ -6698,6 +6699,13 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
   checksum: 10c0/35e1179f872a53227bdf8a827f7911da4c37c0f4091c29b76b1e32473d1670ebe7bcd880b808b7549ba9a5605c233350f800ffab963ee4a4ee346ee983b6019b
+  languageName: node
+  linkType: hard
+
+"vite-plugin-cross-origin-isolation@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "vite-plugin-cross-origin-isolation@npm:0.1.6"
+  checksum: 10c0/ab4995a95d7d692b1a2ff26163f862d53aa8f9c9fe918eaf0abfcc37cf758bfbc684be534afe05afe5b7c2083325c430b4cf5f5c2efeea6d6b1636991ff7524f
   languageName: node
   linkType: hard
 

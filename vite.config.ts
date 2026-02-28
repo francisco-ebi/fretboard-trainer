@@ -1,7 +1,8 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import crossOriginIsolated from 'vite-plugin-cross-origin-isolation';
 
 import path from 'path'
 
@@ -31,6 +32,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    crossOriginIsolated(),
     VitePWA({
       registerType: 'prompt',
       devOptions: {
