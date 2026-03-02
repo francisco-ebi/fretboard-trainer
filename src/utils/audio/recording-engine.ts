@@ -260,8 +260,7 @@ class GuitarAudioRecordingEngine {
             this.dataset.push(sequenceEntry);
             if (this.onDataCaptured) {
                 this.onDataCaptured(note, this.dataset.length);
-                console.log({ midiNote: note, noteName: this.getNoteNameFromMidi(note) });
-                console.log(`Captured sequence. Total sequences: ${this.dataset.length}`);
+                console.log(`Captured sequence for ${this.getNoteNameFromMidi(note)}. Total sequences: ${this.dataset.length}`);
             }
 
             // Clear buffer to start next sequence

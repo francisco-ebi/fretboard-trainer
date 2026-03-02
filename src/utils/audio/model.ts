@@ -1,7 +1,7 @@
 import type { DatasetEntry } from '@/utils/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
-import dataset from '@/utils/audio/datasets/meyda-ts-mcleod/guitar_dataset.json';
+import dataset from '@/utils/audio/datasets/essentia-ts/guitar_dataset.json';
 import { prepare3DDataset, groupDataByString } from './dataset-preparation';
 
 async function getTiF() {
@@ -11,7 +11,7 @@ async function getTiF() {
 export async function createModel(): Promise<LayersModel> {
     const tf = await getTiF();
     const model = tf.sequential();
-    model.add(tf.layers.conv1d({ inputShape: [5, 17], filters: 32, kernelSize: 3, activation: "relu" }));
+    model.add(tf.layers.conv1d({ inputShape: [5, 18], filters: 32, kernelSize: 3, activation: "relu" }));
     model.add(tf.layers.globalAveragePooling1d());
     // model.add(tf.layers.flatten());
     // model.add(tf.layers.dropout({ rate: 0.3 }));
@@ -63,7 +63,7 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
         ]
     });
     console.log('Training completed');
-    await model.save('downloads://guitar-meyda-ts-mcleod');
+    await model.save('downloads://guitar-essentia-ts');
 
     return model;
 }

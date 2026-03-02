@@ -73,7 +73,7 @@ export function groupDataByString(data: DatasetEntry[]) {
 }
 
 const SEQUENCE_LENGTH = 5;
-const NUM_FEATURES = 17;
+const NUM_FEATURES = 18;
 
 export function prepare3DDataset(allDatasets: { label: number, frames: number[][] }[]) {
     const inputs: number[][][] = [];
