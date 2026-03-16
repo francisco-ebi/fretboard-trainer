@@ -61,8 +61,8 @@ class GuitarAudioPredictionEngine {
         this.rawPrediction$ = new Subject<PredictionResult>();
 
         const step = 1;
-        const windowSize = 8;
-        const majorityThreshold = windowSize * 0.8;
+        const windowSize = 5;
+        const majorityThreshold = windowSize * 0.7;
         // Window size 10, step 1 (rolling/sliding window)
         // Majority 70% of 10 = 7
 
@@ -122,8 +122,8 @@ class GuitarAudioPredictionEngine {
                 this.statsData = await import('@/utils/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
             } else {
                 try {
-                    this.model = await this.tf.loadLayersModel('/model/guitar-essentia-model.json');
-                    this.statsData = await import('@/utils/audio/datasets/essentia_initial/guitar_dataset_stats.json');
+                    this.model = await this.tf.loadLayersModel('/model/guitar-essentia-ts.json');
+                    this.statsData = await import('@/utils/audio/datasets/essentia-ts/guitar_dataset_stats.json');
                 } catch (e) {
                     console.warn("Precision model not found. Predictions might be unavailable.");
                     this.model = null;

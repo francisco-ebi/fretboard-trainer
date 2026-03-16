@@ -26,18 +26,15 @@ def analyze_and_plot(data, output_dir):
         mean_features = np.mean(features, axis=0)
         strings_data[string_num].append(mean_features)
     
-    # Feature names based on the recording engine's FEATURE_CONFIG in frontend
+    # Feature names based on the 18-feature layout (MFCC 0-12, Note, Centroid, Flux, Rolloff, Inharm)
     num_mfcc = 13
     feature_names = [f"MFCC_{i}" for i in range(num_mfcc)]
     extra_features = [
         "Midi Note",
         "Spectral Centroid",
-        "Spectral Rolloff",
         "Spectral Flux",
-        "Spectral Skewness",
-        "Perceptual Spread",
-        "Perceptual Sharpness",
-        "Brightness Per Note"
+        "Spectral Rolloff",
+        "Inharmonicity"
     ]
     feature_names.extend(extra_features)
     

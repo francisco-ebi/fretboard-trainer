@@ -5,13 +5,11 @@ import { FEATURE_POSITIONS, type AudioBackend } from './worklet-types';
 export class EssentiaBackend implements AudioBackend {
     name = 'essentia';
     private essentia: any = null;
-    private bufferSize: number = 2048;
     private sampleRate: number = 44100;
     private lowestFreq: number = 440 * Math.pow(Math.pow(2, 1 / 12), -33); // C2 ~65Hz
     private highestFreq: number = 440 * Math.pow(Math.pow(2, 1 / 12), -33 + (6 * 12) - 1);
 
-    async init(sampleRate: number, bufferSize: number, _hopSize: number) {
-        this.bufferSize = bufferSize;
+    async init(sampleRate: number, _bufferSize: number, _hopSize: number) {
         this.sampleRate = sampleRate;
         if (!this.essentia) {
             this.essentia = new Essentia(EssentiaWASM);
