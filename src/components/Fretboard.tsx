@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
+import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type Voicing } from '@/utils/chordVoicings';
 import { useOrientation } from '@/context/OrientationContext';
 import { useTranslation } from 'react-i18next';
@@ -82,35 +82,33 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
         const useFlats = scaleNotes.some(n => n.includes('b'));
         const fretElements = [];
         for (let fret = 0; fret <= FRETS; fret++) {
-            const note = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets, stringCount, useFlats);
+            const physicalNote = getNoteAtPosition(instrument, stringIndex, fret, tuningOffsets, stringCount, useFlats);
 
-            let isNoteInScale = false;
+            const theoreticalNote = scaleNotes.find(scaleNote => areEnharmonicallyEquivalent(scaleNote, physicalNote));
+            const isNoteInScale = !!theoreticalNote;
+
+            const noteToDisplay = theoreticalNote || physicalNote;
+
+            let isVoicingMatch = false;
             if (voicings && selectedVoicingIndex !== null && voicings[selectedVoicingIndex]) {
-                isNoteInScale = voicings[selectedVoicingIndex].frets[stringIndex] === fret;
-            } else {
-                isNoteInScale = scaleNotes.includes(note);
+                isVoicingMatch = voicings[selectedVoicingIndex].frets[stringIndex] === fret;
             }
 
-            const isRoot = note === selectedRoot;
-            const interval = isNoteInScale ? getInterval(selectedRoot, note) : null;
+            const isActive = isVoicingMatch || (selectedVoicingIndex === null && isNoteInScale);
+
+            const isRoot = theoreticalNote === selectedRoot;
+            const interval = isNoteInScale && theoreticalNote ? getInterval(selectedRoot, theoreticalNote) : null;
             const isCharacteristic = !!(interval && characteristicInterval && interval === characteristicInterval);
             const octave = getOctave(instrument, stringIndex, fret, tuningOffsets, stringCount);
 
-            // Prediction Match Logic
             const isPredicted = prediction?.predictedStringNumber === stringIndex && prediction?.predictedFret === fret;
-            // if (isPredicted) {
-            //     console.log(`Predicted: ${note} at Fret ${fret}, String ${stringIndex}`);
-            // }
 
-            // Shake if context changed AND note was in previous scale
-            const wasInScale = prevScaleNotes?.includes(note);
-            const shouldShake = isNoteInScale && contextChanged && !!wasInScale;
+            const wasInScale = prevScaleNotes?.some(prevNote => areEnharmonicallyEquivalent(prevNote, physicalNote));
+            const shouldShake = isActive && contextChanged && !!wasInScale;
 
-            // Inlay Logic
             const centerIndex = config.inlayCenterStringIndex;
             const isSingleInlay = INLAY_FRETS.includes(fret) && stringIndex === centerIndex;
 
-            // Double Inlay logic
             let isDoubleInlayTop = false;
             let isDoubleInlayBottom = false;
 
@@ -119,7 +117,6 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                 isDoubleInlayBottom = stringIndex === centerIndex - 2;
             }
 
-            // Stagger delay calculation: fret * 0.02s + string * 0.01s (ripple effect)
             const staggerDelay = fret * 0.02 + stringIndex * 0.01;
 
             fretElements.push(
@@ -127,18 +124,15 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                     key={`fret-${stringIndex}-${fret}`}
                     className={`fret ${fret === 0 ? 'open-string' : ''}`}
                     role="gridcell"
-                    aria-label={isNoteInScale ? `${note} at Fret ${fret}` : `Fret ${fret} (Empty)`}
+                    aria-label={isActive ? `${noteToDisplay} at Fret ${fret}` : `Fret ${fret} (Empty)`}
                 >
-                    {/* The string line itself */}
                     <div className="string-line"></div>
 
-                    {/* Inlay Dots */}
                     {isSingleInlay && <div className="inlay-dot" style={{ top: '100%', transform: 'translate(-50%, -50%)' }} />}
                     {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
 
-                    {/* The note marker */}
                     <AnimatePresence>
-                        {isNoteInScale && (
+                        {isActive && (
                             <motion.div
                                 variants={{
                                     hidden: { scale: 0, opacity: 0 },
@@ -191,7 +185,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                                     />
                                 )}
                                 <NoteMarker
-                                    note={note}
+                                    note={noteToDisplay}
                                     isRoot={isRoot}
                                     namingSystem={namingSystem}
                                     interval={interval}

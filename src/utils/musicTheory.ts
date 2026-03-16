@@ -43,9 +43,23 @@ export const FLATS_SCALE: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', '
 export const CHROMATIC_SCALE = SHARPS_SCALE;
 
 export const getNoteIndex = (note: Note): number => {
+    // Handle enharmonics that are not in the standard arrays
+    if (note === 'Cb') return 11; // B
+    if (note === 'Fb') return 4;  // E
+    if (note === 'E#') return 5;  // F
+    if (note === 'B#') return 0;  // C
+
     let index = SHARPS_SCALE.indexOf(note);
     if (index === -1) index = FLATS_SCALE.indexOf(note);
     return index;
+};
+
+export const areEnharmonicallyEquivalent = (note1: Note, note2: Note): boolean => {
+    const index1 = getNoteIndex(note1);
+    const index2 = getNoteIndex(note2);
+    // Be sure they are strictly valid pitches
+    if (index1 === -1 || index2 === -1) return false;
+    return index1 === index2;
 };
 
 export const getNoteDisplayLabel = (note: Note): string => {
@@ -58,6 +72,56 @@ export const getNoteDisplayLabel = (note: Note): string => {
     }
     return note;
 };
+
+// --- Diatonic spelling logic ---
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_PITCH_CLASSES: Record<string, number> = {
+    'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
+};
+
+export const SCALE_DEGREES: Record<ScaleType, number[]> = {
+    MAJOR: [0, 1, 2, 3, 4, 5, 6],
+    MINOR: [0, 1, 2, 3, 4, 5, 6],
+    PENTATONIC_MAJOR: [0, 1, 2, 4, 5],
+    PENTATONIC_MINOR: [0, 2, 3, 4, 6],
+    BLUES: [0, 2, 3, 3, 4, 6], // Blues has a chromatic passing tone, we assign the #4/b5 to the 4th degree ideally, but this is a rough mapping.
+    IONIAN: [0, 1, 2, 3, 4, 5, 6],
+    DORIAN: [0, 1, 2, 3, 4, 5, 6],
+    PHRYGIAN: [0, 1, 2, 3, 4, 5, 6],
+    LYDIAN: [0, 1, 2, 3, 4, 5, 6],
+    MIXOLYDIAN: [0, 1, 2, 3, 4, 5, 6],
+    AEOLIAN: [0, 1, 2, 3, 4, 5, 6],
+    LOCRIAN: [0, 1, 2, 3, 4, 5, 6]
+};
+
+export const getProperSpelling = (root: Note, targetPitchClass: number, degreeIndex: number): Note => {
+    // 1. Determine the target letter name based on the root letter and diatonic degree index.
+    const rootLetter = root.charAt(0);
+    const rootLetterIndex = LETTERS.indexOf(rootLetter);
+    if (rootLetterIndex === -1) return SHARPS_SCALE[targetPitchClass]; // Fallback
+
+    const targetLetter = LETTERS[(rootLetterIndex + degreeIndex) % 7];
+    const targetLetterBasePitch = LETTER_PITCH_CLASSES[targetLetter];
+
+    // 2. Calculate the difference in semitones between the base letter pitch and the target pitch.
+    let diff = targetPitchClass - targetLetterBasePitch;
+    
+    // Adjust for octave wrapping
+    if (diff > 6) diff -= 12;
+    if (diff < -6) diff += 12;
+
+    // 3. Construct the note with the correct accidentals
+    if (diff === 0) return targetLetter;
+    if (diff === 1) return `${targetLetter}#`;
+    if (diff === 2) return `${targetLetter}x`; // Double sharp
+    if (diff === -1) return `${targetLetter}b`;
+    if (diff === -2) return `${targetLetter}bb`; // Double flat
+
+    // Fallback if the difference is extreme (should not happen in standard diatonic theory)
+    return FLATS_SCALE[targetPitchClass]; 
+};
+// ------------------------------
+
 
 export const SCALES = {
     MAJOR: [0, 2, 4, 5, 7, 9, 11], // Ionian: Root, Major 2nd, Major 3rd, Perfect 4th, Perfect 5th, Major 6th, Major 7th
@@ -135,10 +199,21 @@ const getRotatedScale = (rootIndex: number, useFlats: boolean): Note[] => {
  */
 export const getScale = (root: Note, scaleType: ScaleType = 'MAJOR'): Note[] => {
     const rootIndex = getNoteIndex(root);
-    const useFlats = shouldUseFlats(root, scaleType);
-    const rotatedChromatic = getRotatedScale(rootIndex, useFlats);
+    if (rootIndex === -1) return [];
+
     const intervals = SCALES[scaleType];
-    return intervals.map(interval => rotatedChromatic[interval]);
+    const degrees = SCALE_DEGREES[scaleType];
+
+    return intervals.map((interval, i) => {
+        const targetPitchClass = (rootIndex + interval) % 12;
+        // If we know the exact spelling degree expected, use it. Otherwise fallback to generic chromatic grab.
+        if (degrees && typeof degrees[i] === 'number') {
+            return getProperSpelling(root, targetPitchClass, degrees[i]);
+        }
+        const useFlats = shouldUseFlats(root, scaleType);
+        const rotatedChromatic = getRotatedScale(rootIndex, useFlats);
+        return rotatedChromatic[interval];
+    });
 };
 
 // Instrument Configuration
@@ -269,6 +344,36 @@ const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
     MIN13: [0, 3, 7, 10, 14, 17, 21]
 };
 
+// Map chord qualities to their diatonic scale degrees mapping so spelling logic works.
+// E.g. minor 3rd is degree 2 (0, 1, 2)
+export const CHORD_DEGREES: Record<ChordQuality, number[]> = {
+    MAJOR: [0, 2, 4],
+    MINOR: [0, 2, 4],
+    DIMINISHED: [0, 2, 4],
+    AUGMENTED: [0, 2, 4],
+    SUS2: [0, 1, 4],
+    SUS4: [0, 3, 4],
+    ADD2: [0, 1, 2, 4],
+    ADD4: [0, 2, 3, 4],
+    ADD6: [0, 2, 4, 5],
+    ADD9: [0, 2, 4, 1], // 9th is same letter as 2nd
+    DOM7: [0, 2, 4, 6],
+    MAJ7: [0, 2, 4, 6],
+    MIN7: [0, 2, 4, 6],
+    MIN7B5: [0, 2, 4, 6],
+    DIM7: [0, 2, 4, 6],
+    MINMAJ7: [0, 2, 4, 6],
+    DOM9: [0, 2, 4, 6, 1],
+    MAJ9: [0, 2, 4, 6, 1],
+    MIN9: [0, 2, 4, 6, 1],
+    DOM11: [0, 2, 4, 6, 1, 3],
+    MAJ11: [0, 2, 4, 6, 1, 3],
+    MIN11: [0, 2, 4, 6, 1, 3],
+    DOM13: [0, 2, 4, 6, 1, 3, 5],
+    MAJ13: [0, 2, 4, 6, 1, 3, 5],
+    MIN13: [0, 2, 4, 6, 1, 3, 5]
+};
+
 // Diatonic patterns
 const DIATONIC_PATTERNS: Record<'MAJOR' | 'MINOR', { quality: ChordQuality, roman: string }[]> = {
     MAJOR: [
@@ -294,9 +399,21 @@ const DIATONIC_PATTERNS: Record<'MAJOR' | 'MINOR', { quality: ChordQuality, roma
 export const getChordNotes = (root: Note, quality: ChordQuality, forceFlats?: boolean): Note[] => {
     const rootIndex = getNoteIndex(root);
     if (rootIndex === -1) throw new Error(`Invalid root note: ${root}`);
-    const useFlats = forceFlats !== undefined ? forceFlats : (root.includes('b') || root === 'F');
-    const rotatedChromatic = getRotatedScale(rootIndex, useFlats);
-    return CHORD_INTERVALS[quality].map(interval => rotatedChromatic[interval % 12]);
+    
+    const intervals = CHORD_INTERVALS[quality];
+    const degrees = CHORD_DEGREES[quality];
+
+    return intervals.map((interval, i) => {
+        const targetPitchClass = (rootIndex + interval) % 12;
+        if (degrees && typeof degrees[i] === 'number') {
+            return getProperSpelling(root, targetPitchClass, degrees[i]);
+        }
+        
+        // Fallback to legacy flat/sharp generic spelling
+        const useFlats = forceFlats !== undefined ? forceFlats : (root.includes('b') || root === 'F');
+        const rotatedChromatic = getRotatedScale(rootIndex, useFlats);
+        return rotatedChromatic[interval % 12];
+    });
 };
 
 export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
