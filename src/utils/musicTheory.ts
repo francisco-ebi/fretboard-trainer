@@ -217,7 +217,7 @@ export const getScale = (root: Note, scaleType: ScaleType = 'MAJOR'): Note[] => 
 };
 
 // Instrument Configuration
-export type Instrument = 'GUITAR' | 'BASS';
+export type Instrument = 'GUITAR' | 'BASS' | 'UKULELE';
 
 export interface Tuning {
     name: string;
@@ -247,6 +247,13 @@ export const INSTRUMENT_CONFIGS: Record<Instrument, InstrumentConfig> = {
         defaultTuning: [7, 2, 9, 4], // G, D, A, E (High to Low)
         baseSemitones: [31, 26, 21, 16], // G2, D2, A1, E1
         inlayCenterStringIndex: 1 // D string is index 1 (from top 0)
+    },
+    UKULELE: {
+        name: 'Ukulele',
+        strings: 4,
+        defaultTuning: [9, 4, 0, 7], // A, E, C, G (High to Low index, standard re-entrant High G)
+        baseSemitones: [57, 52, 48, 55], // A4, E4, C4, G4
+        inlayCenterStringIndex: 1
     }
 };
 

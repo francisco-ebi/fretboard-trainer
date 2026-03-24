@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import { type Instrument } from '@/utils/musicTheory';
 
+export type ColorScheme = 'OKLCH' | 'LEGACY';
+
 interface InstrumentContextType {
     instrument: Instrument;
     setInstrument: (instrument: Instrument) => void;
@@ -8,6 +10,8 @@ interface InstrumentContextType {
     setStringCount: (count: number) => void;
     tuningOffsets: number[];
     setTuningOffsets: (offsets: number[]) => void;
+    colorScheme: ColorScheme;
+    setColorScheme: (schema: ColorScheme) => void;
 }
 
 const InstrumentContext = createContext<InstrumentContextType | undefined>(undefined);
@@ -24,6 +28,14 @@ export const InstrumentProvider: React.FC<{ children: ReactNode }> = ({ children
         const saved = localStorage.getItem('fretboard-tuningOffsets');
         return saved ? JSON.parse(saved) : [];
     });
+    const [colorScheme, setColorSchemeState] = useState<ColorScheme>(() => {
+        return (localStorage.getItem('fretboard-colorScheme') as ColorScheme) || 'OKLCH';
+    });
+
+    const setColorScheme = (scheme: ColorScheme) => {
+        setColorSchemeState(scheme);
+        localStorage.setItem('fretboard-colorScheme', scheme);
+    };
 
     const setStringCount = (count: number) => {
         setStringCountState(count);
@@ -40,7 +52,7 @@ export const InstrumentProvider: React.FC<{ children: ReactNode }> = ({ children
         localStorage.setItem('fretboard-instrument', newInstrument);
 
         // Default logic when switching instrument
-        if (newInstrument === 'BASS') {
+        if (newInstrument === 'BASS' || newInstrument === 'UKULELE') {
             setStringCount(4);
         } else {
             setStringCount(6);
@@ -55,7 +67,9 @@ export const InstrumentProvider: React.FC<{ children: ReactNode }> = ({ children
             stringCount,
             setStringCount,
             tuningOffsets,
-            setTuningOffsets
+            setTuningOffsets,
+            colorScheme,
+            setColorScheme
         }}>
             {children}
         </InstrumentContext.Provider>

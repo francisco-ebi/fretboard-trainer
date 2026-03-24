@@ -76,7 +76,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
         stringCount,
         setStringCount,
         tuningOffsets,
-        setTuningOffsets
+        setTuningOffsets,
+        colorScheme,
+        setColorScheme
     } = useInstrument();
 
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -307,6 +309,13 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                                     transition={{ duration: 0.3, ease: "easeInOut" }}
                                     style={{ overflow: 'hidden' }}
                                 >
+                                    <div className="control-group">
+                                        <label htmlFor="theme-select">Theme:</label>
+                                        <select id="theme-select" value={colorScheme} onChange={(e) => setColorScheme(e.target.value as any)}>
+                                            <option value="OKLCH">OKLCH (Perceptual)</option>
+                                            <option value="LEGACY">Legacy (Bright)</option>
+                                        </select>
+                                    </div>
                                     {instrument === 'GUITAR' && (
                                         <>
                                             <div className="control-group">

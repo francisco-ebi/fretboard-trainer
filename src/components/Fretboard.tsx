@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type Voicing } from '@/utils/chordVoicings';
 import { useOrientation } from '@/context/OrientationContext';
+import { useInstrument } from '@/context/InstrumentContext';
 import { useTranslation } from 'react-i18next';
 import NoteMarker from '@/components/NoteMarker';
 import './Fretboard.css';
@@ -47,6 +48,7 @@ const Fretboard: React.FC<FretboardProps> = ({
     onInteractiveRootClick, onInteractiveNoteToggle 
 }) => {
     const { orientation } = useOrientation();
+    const { colorScheme } = useInstrument();
     const { t } = useTranslation();
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
@@ -345,7 +347,7 @@ const Fretboard: React.FC<FretboardProps> = ({
 
     return (
         <>
-            <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()}`}>
+            <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()} theme-${colorScheme.toLowerCase()}`}>
                 {orientation === 'HORIZONTAL' && renderDesktopVoicingCarousel()}
                 <div
                     className={`fretboard ${orientation.toLowerCase()}`}

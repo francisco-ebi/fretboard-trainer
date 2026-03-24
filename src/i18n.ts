@@ -37,7 +37,8 @@ const resources = {
             },
             instruments: {
                 GUITAR: "Guitar",
-                BASS: "Bass"
+                BASS: "Bass",
+                UKULELE: "Ukulele"
             },
             scales: {
                 MAJOR: "Major (Ionian)",
@@ -160,7 +161,8 @@ const resources = {
             },
             instruments: {
                 GUITAR: "Guitarra",
-                BASS: "Bajo"
+                BASS: "Bajo",
+                UKULELE: "Ukelele"
             },
             scales: {
                 MAJOR: "Mayor (Jónico)",

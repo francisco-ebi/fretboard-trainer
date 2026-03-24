@@ -151,3 +151,48 @@
 .shake {
     animation: shake 0.4s ease-in-out;
 }
+
+
+/* ==========================================================
+   LEGACY Theme Overrides (Bright HEX colors without OKLCH bounds)
+   ========================================================== */
+.theme-legacy .note-marker {
+    background-color: #ffffff;
+    color: #0C121A;
+    text-shadow: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    border: none;
+}
+
+.theme-legacy .note-marker.root-note { --base-color: #ef4444; background-color: #ef4444; color: white; transform: scale(1.1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); border: 2px solid white; }
+.theme-legacy .interval-3 { --base-color: #ca8a04; background-color: #ca8a04; color: #282828; }
+.theme-legacy .interval-5 { --base-color: #1d4ed8; background-color: #1d4ed8; color: white; }
+.theme-legacy .interval-7 { --base-color: #7e22ce; background-color: #7e22ce; color: white; }
+.theme-legacy .interval-9 { --base-color: #0ea5e9; background-color: #0ea5e9; color: white; }
+.theme-legacy .interval-11 { --base-color: #10b981; background-color: #10b981; color: white; }
+.theme-legacy .interval-13 { --base-color: #ec4899; background-color: #ec4899; color: white; }
+
+.theme-legacy .note-separator {
+    border-top: 2px solid rgba(0, 0, 0, 0.5);
+    box-shadow: none;
+}
+.theme-legacy .interval-3 .note-separator,
+.theme-legacy .interval-5 .note-separator,
+.theme-legacy .interval-7 .note-separator,
+.theme-legacy .interval-9 .note-separator,
+.theme-legacy .interval-11 .note-separator,
+.theme-legacy .interval-13 .note-separator,
+.theme-legacy .root-note .note-separator {
+    border-top: 2px solid rgba(255, 255, 255, 1);
+}
+
+.theme-legacy .note-marker.outline-only {
+    background-color: transparent !important;
+    color: var(--base-color, currentColor);
+    border: 2px dashed var(--base-color, currentColor);
+    text-shadow: none;
+}
+
+.theme-legacy .outline-only .note-separator {
+    border-top: 2px dashed var(--base-color, currentColor) !important;
+}

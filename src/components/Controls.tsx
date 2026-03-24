@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, getNoteDisplayLabel, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '@/utils/musicTheory';
+import { useInstrument } from '@/context/InstrumentContext';
 import './Controls.css';
 
 interface ControlsProps {
@@ -34,6 +35,7 @@ const Controls: React.FC<ControlsProps> = ({
     onStringCountChange
 }) => {
     const { t } = useTranslation();
+    const { colorScheme, setColorScheme } = useInstrument();
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
     const getAvailableTunings = (): Record<string, Tuning> => {
@@ -159,6 +161,19 @@ const Controls: React.FC<ControlsProps> = ({
                                 >
                                     <option value="ENGLISH">{t('naming.ENGLISH')}</option>
                                     <option value="SOLFEGE">{t('naming.SOLFEGE')}</option>
+                                </select>
+                            </div>
+                            
+                            {/* Preference: Color Scheme */}
+                            <div className="control-group secondary-group">
+                                <label htmlFor="theme-select">Color Scheme:</label>
+                                <select
+                                    id="theme-select"
+                                    value={colorScheme}
+                                    onChange={(e) => setColorScheme(e.target.value as any)}
+                                >
+                                    <option value="OKLCH">OKLCH (Perceptual)</option>
+                                    <option value="LEGACY">Legacy (Bright)</option>
                                 </select>
                             </div>
 
