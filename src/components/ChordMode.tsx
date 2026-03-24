@@ -10,6 +10,7 @@ import {
     GUITAR_TUNINGS_8,
     getDiatonicChords,
     getChordNotes,
+    getScale,
     shouldUseFlats,
     getNoteDisplayLabel,
     inferChordName,
@@ -108,9 +109,17 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
         setInteractiveRootNotePos({ stringIndex, fret });
         
         if (voicings && voicings.length > 0) {
+            const getPriority = (count: number) => {
+                if (count === 3 || count === 4) return 2;
+                if (count === 5) return 1;
+                return 0;
+            };
+
             const matchingVoicing = [...voicings].sort((a,b) => {
                 const aActive = a.frets.filter(f => f >= 0).length; // 0 is open, -1 is muted
                 const bActive = b.frets.filter(f => f >= 0).length;
+                const priorityDiff = getPriority(bActive) - getPriority(aActive);
+                if (priorityDiff !== 0) return priorityDiff;
                 return bActive - aActive; 
             }).find(v => v.frets[stringIndex] === fret);
 
@@ -230,6 +239,8 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
             15
         );
     }, [selectedChordIndex, activeChordQuality, instrument, tuningOffsets, stringCount, diatonicChords]);
+
+    const fullScaleNotes = React.useMemo(() => getScale(selectedRoot, selectedScaleType), [selectedRoot, selectedScaleType]);
 
     const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
         'SUS2': 'sus2',
@@ -400,6 +411,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                     voicings={voicings}
                     interactiveMode={selectedChordIndex !== null && !chordModifiers[selectedChordIndex]}
                     interactiveRootNotePos={interactiveRootNotePos}
+                    interactiveTogglableNotes={interactiveRootNotePos ? CHROMATIC_SCALE : fullScaleNotes}
                     customVoicingKeys={customVoicingKeys}
                     onInteractiveRootClick={handleInteractiveRootClick}
                     onInteractiveNoteToggle={handleInteractiveNoteToggle}

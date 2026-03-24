@@ -21,6 +21,7 @@ interface FretboardProps {
     voicings?: Voicing[];
     interactiveMode?: boolean;
     interactiveRootNotePos?: { stringIndex: number, fret: number } | null;
+    interactiveTogglableNotes?: Note[];
     customVoicingKeys?: string[];
     onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
     onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
@@ -42,7 +43,7 @@ function usePrevious<T>(value: T): T | undefined {
 const Fretboard: React.FC<FretboardProps> = ({ 
     selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, 
     tuningOffsets, stringCount, prediction, voicings,
-    interactiveMode, interactiveRootNotePos, customVoicingKeys, 
+    interactiveMode, interactiveRootNotePos, interactiveTogglableNotes, customVoicingKeys, 
     onInteractiveRootClick, onInteractiveNoteToggle 
 }) => {
     const { orientation } = useOrientation();
@@ -96,15 +97,18 @@ const Fretboard: React.FC<FretboardProps> = ({
 
             const theoreticalNote = scaleNotes.find(scaleNote => areEnharmonicallyEquivalent(scaleNote, physicalNote));
             const isNoteInScale = !!theoreticalNote;
+            
+            const interactiveTheoreticalNote = interactiveTogglableNotes?.find(n => areEnharmonicallyEquivalent(n, physicalNote));
+            const isNoteTogglable = !!interactiveTheoreticalNote;
 
-            const noteToDisplay = theoreticalNote || physicalNote;
+            const noteToDisplay = theoreticalNote || interactiveTheoreticalNote || physicalNote;
 
             let isVoicingMatch = false;
             if (voicings && selectedVoicingIndex !== null && voicings[selectedVoicingIndex]) {
                 isVoicingMatch = voicings[selectedVoicingIndex].frets[stringIndex] === fret;
             }
 
-            const isRoot = theoreticalNote === selectedRoot;
+            const isRoot = theoreticalNote === selectedRoot || interactiveTheoreticalNote === selectedRoot;
             
             // Interactive custom voicing logic
             const isClickableRoot = interactiveMode && !interactiveRootNotePos && isRoot && stringIndex >= 3 && stringIndex <= 5;
@@ -126,12 +130,12 @@ const Fretboard: React.FC<FretboardProps> = ({
             if (maxVoicingFret === -1) maxVoicingFret = interactiveRootNotePos?.fret || 0;
 
             const isWithinBoundary = fret === 0 || (fret >= minVoicingFret - 2 && fret <= maxVoicingFret + 2);
-            const isAvailableForToggle = isCustomVoicingMode && isNoteInScale && isWithinBoundary;
+            const isAvailableForToggle = isCustomVoicingMode && isNoteTogglable && isWithinBoundary;
             const isOutline = isAvailableForToggle && !isCustomActive;
 
             const isActive = isVoicingMatch || (selectedVoicingIndex === null && isNoteInScale && !isCustomVoicingMode) || isCustomActive || !!isOutline || !!isClickableRoot;
 
-            const interval = isNoteInScale && theoreticalNote ? getInterval(selectedRoot, theoreticalNote) : null;
+            const interval = isActive && noteToDisplay ? getInterval(selectedRoot, noteToDisplay) : null;
             const isCharacteristic = !!(interval && characteristicInterval && interval === characteristicInterval);
             const octave = getOctave(instrument, stringIndex, fret, tuningOffsets, stringCount);
 
@@ -140,8 +144,12 @@ const Fretboard: React.FC<FretboardProps> = ({
                 const rootOctave = interactiveRootNotePos ? getOctave(instrument, interactiveRootNotePos.stringIndex, interactiveRootNotePos.fret, tuningOffsets, stringCount) : 0;
                 if (octave > rootOctave || (octave === rootOctave && fret > (interactiveRootNotePos?.fret || 0) + 12)) {
                     if (interval === '2') customInterval = '9';
+                    else if (interval === 'b2') customInterval = 'b9';
+                    else if (interval === 'b3') customInterval = '#9';
                     else if (interval === '4') customInterval = '11';
+                    else if (interval === 'b5') customInterval = '#11';
                     else if (interval === '6') customInterval = '13';
+                    else if (interval === 'b6') customInterval = 'b13';
                 }
             }
 

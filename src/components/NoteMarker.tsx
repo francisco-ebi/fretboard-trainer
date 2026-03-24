@@ -44,9 +44,15 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, int
         if (interval.includes('6')) intervalClass = 'interval-13';
     }
 
+    // Octave scaling for CSS
+    // The lowest guitar octave is typically 2 (E2 is ~82Hz).
+    // We bind a normalized octave ratio (0 at oct 2, increasing upwards)
+    const normalizedOctave = Math.max(0, octave - 2);
+
     return (
         <div 
             className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${shaking ? 'shake' : ''} ${isInactiveOutline ? 'outline-only' : ''} ${onClick ? 'clickable' : ''}`}
+            style={{ '--octave': normalizedOctave } as React.CSSProperties}
             onClick={(e) => {
                 if (onClick) {
                     e.stopPropagation();

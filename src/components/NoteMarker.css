@@ -5,44 +5,62 @@
     /* Default: White background, Dark text */
     background: #ffffff;
     color: #0C121A;
-    /* Gray 800 */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     line-height: 1;
     z-index: 2;
-    /* Above string */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
     transition: all 0.2s ease;
     flex-shrink: 0;
+
+    /* Base OKLCH variables (fallback for unthemed notes) */
+    --base-hue: 0;
+    
+    /* In data viz, spiraling through a perceptually uniform space like OKLCH is state-of-the-art. 
+       - L (Lightness) smoothly increases with pitch height (octave).
+       - C (Chroma) stays relatively vibrant for distinction.
+       - H (Hue) spirals slightly with each octave to create distinct qualitative clusters across pitches. */
+    --l: calc(50% + (var(--octave, 0) * 8%));
+    --c: calc(0.20 - (var(--octave, 0) * 0.015));
+    --h: calc(var(--base-hue, 0) + (var(--octave, 0) * 18));
+    
+    background-color: oklch(var(--l) var(--c) var(--h));
+    /* Dark text shadow makes white text readable even as lightness hits ~80% in high octaves */
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
 
-/* Interval-based Palette */
-/* 3rds (Major or Minor) */
-.interval-3 {
-    background-color: #ca8a04;
-    color: #282828;
+/* 
+  Perceptually Uniform Interval Palette
+  Spaced smoothly around the 360 degree hue rotation of OKLCH.
+*/
+/* Root - Red/Orange */
+.note-marker.root-note {
+    --base-hue: 25;
+    transform: scale(1.1);
+    box-shadow: 0 0 10px oklch(var(--l) var(--c) var(--h) / 0.6);
+    border: 2px solid white;
 }
 
-/* 5ths (Perfect or Diminished) */
-.interval-5 {
-    background-color: #1d4ed8;
-    color: white;
-}
+/* 2nds/9ths - Orange/Yellow */
+.interval-9 { --base-hue: 70; }
 
-/* 7ths (Major or Minor) */
-.interval-7 {
-    background-color: #7e22ce;
-    color: white;
-}
+/* 3rds - Yellow/Green */
+.interval-3 { --base-hue: 115; }
 
-/* 2nds/9ths */
-.interval-9 { background-color: #0ea5e9; color: white; }
-/* 4ths/11ths */
-.interval-11 { background-color: #10b981; color: white; }
-/* 6ths/13ths */
-.interval-13 { background-color: #ec4899; color: white; }
+/* 4ths/11ths - Emerald Green */
+.interval-11 { --base-hue: 160; }
+
+/* 5ths - Blue */
+.interval-5 { --base-hue: 230; }
+
+/* 6ths/13ths - Purple */
+.interval-13 { --base-hue: 280; }
+
+/* 7ths - Pink/Magenta */
+.interval-7 { --base-hue: 330; }
 
 .note-name {
     font-weight: bold;
@@ -55,22 +73,13 @@
     margin-left: 1px;
 }
 
+/* Fix Note separator for standard styling */
 .note-separator {
     width: 80%;
     border: none;
-    border-top: 2px solid rgba(0, 0, 0, 0.5);
+    border-top: 2px solid rgba(255, 255, 255, 0.9);
     margin: 2px 0;
-}
-
-/* Override separator color for colored backgrounds */
-.interval-3 .note-separator,
-.interval-5 .note-separator,
-.interval-7 .note-separator,
-.interval-9 .note-separator,
-.interval-11 .note-separator,
-.interval-13 .note-separator,
-.root-note .note-separator {
-    border-top: 2px solid rgba(255, 255, 255, 1);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.5);
 }
 
 .note-interval {
@@ -78,12 +87,20 @@
     opacity: 0.9;
 }
 
-.note-marker.root-note {
-    background: #ef4444;
-    /* Root note color (red) */
-    transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
-    border: 2px solid white;
+/* Outline styling using OKLCH base-color */
+.note-marker.outline-only {
+    background-color: transparent !important;
+    border: 2px dashed oklch(var(--l) var(--c) var(--h));
+    /* Darken the text slightly to make it readable against a light fretboard background */
+    color: oklch(calc(var(--l) - 20%) var(--c) var(--h));
+    box-shadow: none;
+    text-shadow: none;
+    opacity: 0.9;
+}
+
+.outline-only .note-separator {
+    border-top: 2px dashed oklch(var(--l) var(--c) var(--h)) !important;
+    box-shadow: none;
 }
 
 .note-marker.characteristic-note {
@@ -98,18 +115,6 @@
     color: inherit;
     box-shadow: none;
     opacity: 0.8;
-}
-
-.interval-3.outline-only { border-color: #ca8a04; color: #ca8a04; }
-.interval-5.outline-only { border-color: #1d4ed8; color: #1d4ed8; }
-.interval-7.outline-only { border-color: #7e22ce; color: #7e22ce; }
-.interval-9.outline-only { border-color: #0ea5e9; color: #0ea5e9; }
-.interval-11.outline-only { border-color: #10b981; color: #10b981; }
-.interval-13.outline-only { border-color: #ec4899; color: #ec4899; }
-.root-note.outline-only { border-color: #ef4444; color: #ef4444; }
-
-.outline-only .note-separator {
-    border-top: 2px dashed currentColor !important;
 }
 
 .note-marker.clickable {
