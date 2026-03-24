@@ -37,6 +37,13 @@
     color: white;
 }
 
+/* 2nds/9ths */
+.interval-9 { background-color: #0ea5e9; color: white; }
+/* 4ths/11ths */
+.interval-11 { background-color: #10b981; color: white; }
+/* 6ths/13ths */
+.interval-13 { background-color: #ec4899; color: white; }
+
 .note-name {
     font-weight: bold;
     font-size: 0.9rem;
@@ -59,6 +66,9 @@
 .interval-3 .note-separator,
 .interval-5 .note-separator,
 .interval-7 .note-separator,
+.interval-9 .note-separator,
+.interval-11 .note-separator,
+.interval-13 .note-separator,
 .root-note .note-separator {
     border-top: 2px solid rgba(255, 255, 255, 1);
 }
@@ -80,6 +90,35 @@
     border: 3px solid #ffeb3b;
     box-shadow: 0 0 12px rgba(255, 235, 59, 0.8), inset 0 0 5px rgba(255, 235, 59, 0.5);
     transform: scale(1.05);
+}
+
+.note-marker.outline-only {
+    background-color: transparent !important;
+    border: 2px dashed currentColor;
+    color: inherit;
+    box-shadow: none;
+    opacity: 0.8;
+}
+
+.interval-3.outline-only { border-color: #ca8a04; color: #ca8a04; }
+.interval-5.outline-only { border-color: #1d4ed8; color: #1d4ed8; }
+.interval-7.outline-only { border-color: #7e22ce; color: #7e22ce; }
+.interval-9.outline-only { border-color: #0ea5e9; color: #0ea5e9; }
+.interval-11.outline-only { border-color: #10b981; color: #10b981; }
+.interval-13.outline-only { border-color: #ec4899; color: #ec4899; }
+.root-note.outline-only { border-color: #ef4444; color: #ef4444; }
+
+.outline-only .note-separator {
+    border-top: 2px dashed currentColor !important;
+}
+
+.note-marker.clickable {
+    cursor: pointer;
+}
+
+.note-marker.clickable:hover {
+    transform: scale(1.15) !important;
+    opacity: 1;
 }
 
 @keyframes shake {

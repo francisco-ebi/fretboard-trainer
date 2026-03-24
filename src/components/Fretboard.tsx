@@ -19,6 +19,11 @@ interface FretboardProps {
     stringCount: number;
     prediction?: PredictionResult | null;
     voicings?: Voicing[];
+    interactiveMode?: boolean;
+    interactiveRootNotePos?: { stringIndex: number, fret: number } | null;
+    customVoicingKeys?: string[];
+    onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
+    onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
 }
 
 const FRETS = 18; // 0 (open) to 18
@@ -34,7 +39,12 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, tuningOffsets, stringCount, prediction, voicings }) => {
+const Fretboard: React.FC<FretboardProps> = ({ 
+    selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, 
+    tuningOffsets, stringCount, prediction, voicings,
+    interactiveMode, interactiveRootNotePos, customVoicingKeys, 
+    onInteractiveRootClick, onInteractiveNoteToggle 
+}) => {
     const { orientation } = useOrientation();
     const { t } = useTranslation();
     const prevScaleNotes = usePrevious(scaleNotes);
@@ -94,12 +104,54 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                 isVoicingMatch = voicings[selectedVoicingIndex].frets[stringIndex] === fret;
             }
 
-            const isActive = isVoicingMatch || (selectedVoicingIndex === null && isNoteInScale);
-
             const isRoot = theoreticalNote === selectedRoot;
+            
+            // Interactive custom voicing logic
+            const isClickableRoot = interactiveMode && !interactiveRootNotePos && isRoot && stringIndex >= 3 && stringIndex <= 5;
+            const isCustomVoicingMode = interactiveMode && interactiveRootNotePos !== null;
+            const isCustomActive = isCustomVoicingMode && customVoicingKeys?.includes(`${stringIndex}-${fret}`);
+
+            let minVoicingFret = 999;
+            let maxVoicingFret = -1;
+            if (isCustomVoicingMode && customVoicingKeys) {
+                customVoicingKeys.forEach(k => {
+                    const f = parseInt(k.split('-')[1]);
+                    if (f > 0) {
+                        minVoicingFret = Math.min(minVoicingFret, f);
+                        maxVoicingFret = Math.max(maxVoicingFret, f);
+                    }
+                });
+            }
+            if (minVoicingFret === 999) minVoicingFret = interactiveRootNotePos?.fret || 0;
+            if (maxVoicingFret === -1) maxVoicingFret = interactiveRootNotePos?.fret || 0;
+
+            const isWithinBoundary = fret === 0 || (fret >= minVoicingFret - 2 && fret <= maxVoicingFret + 2);
+            const isAvailableForToggle = isCustomVoicingMode && isNoteInScale && isWithinBoundary;
+            const isOutline = isAvailableForToggle && !isCustomActive;
+
+            const isActive = isVoicingMatch || (selectedVoicingIndex === null && isNoteInScale && !isCustomVoicingMode) || isCustomActive || !!isOutline || !!isClickableRoot;
+
             const interval = isNoteInScale && theoreticalNote ? getInterval(selectedRoot, theoreticalNote) : null;
             const isCharacteristic = !!(interval && characteristicInterval && interval === characteristicInterval);
             const octave = getOctave(instrument, stringIndex, fret, tuningOffsets, stringCount);
+
+            let customInterval = null;
+            if (isCustomVoicingMode && interval) {
+                const rootOctave = interactiveRootNotePos ? getOctave(instrument, interactiveRootNotePos.stringIndex, interactiveRootNotePos.fret, tuningOffsets, stringCount) : 0;
+                if (octave > rootOctave || (octave === rootOctave && fret > (interactiveRootNotePos?.fret || 0) + 12)) {
+                    if (interval === '2') customInterval = '9';
+                    else if (interval === '4') customInterval = '11';
+                    else if (interval === '6') customInterval = '13';
+                }
+            }
+
+            const handleNoteClick = () => {
+                if (isClickableRoot && onInteractiveRootClick) {
+                    onInteractiveRootClick(stringIndex, fret);
+                } else if ((isOutline || isCustomActive) && onInteractiveNoteToggle) {
+                    onInteractiveNoteToggle(stringIndex, fret);
+                }
+            };
 
             const isPredicted = prediction?.predictedStringNumber === stringIndex && prediction?.predictedFret === fret;
 
@@ -192,6 +244,9 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, scaleNotes, charact
                                     isCharacteristic={isCharacteristic}
                                     shouldShake={shouldShake}
                                     octave={octave}
+                                    isInactiveOutline={!!isOutline}
+                                    customInterval={customInterval}
+                                    onClick={(isClickableRoot || isOutline || isCustomActive) ? handleNoteClick : undefined}
                                 />
                             </motion.div>
                         )}

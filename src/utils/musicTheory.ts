@@ -440,6 +440,58 @@ export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): 
 };
 
 /**
+ * Infers a chord name based on a root note and an array of notes it contains.
+ */
+export const inferChordName = (root: Note, notes: Note[]): string => {
+    const rootIndex = getNoteIndex(root);
+    if (rootIndex === -1) return root;
+
+    const uniqueSemitones = new Set<number>();
+    notes.forEach(n => {
+        const idx = getNoteIndex(n);
+        if (idx !== -1) {
+            let diff = idx - rootIndex;
+            if (diff < 0) diff += 12;
+            uniqueSemitones.add(diff);
+        }
+    });
+
+    const semitones = Array.from(uniqueSemitones).sort((a, b) => a - b);
+    const key = semitones.join(',');
+
+    // Evaluate basic triads and 7ths first
+    if (key.includes('0,4,7') && key.includes('11')) return `${root}maj7`;
+    if (key.includes('0,4,7') && key.includes('10')) return `${root}7`;
+    if (key.includes('0,3,7') && key.includes('10')) return `${root}m7`;
+    if (key.includes('0,3,7') && key.includes('11')) return `${root}mM7`;
+    if (key.includes('0,3,6') && key.includes('10')) return `${root}m7b5`;
+    if (key.includes('0,3,6') && key.includes('9')) return `${root}dim7`;
+
+    // Extended
+    if (key.includes('0,4,7,10') && key.includes('2')) return `${root}9`;
+    if (key.includes('0,3,7,10') && key.includes('2')) return `${root}m9`;
+    if (key.includes('0,4,7,11') && key.includes('2')) return `${root}maj9`;
+
+    // Added
+    if (key.includes('0,4,7') && key.includes('2')) return `${root}add9`;
+    if (key.includes('0,3,7') && key.includes('2')) return `${root}m(add9)`;
+    if (key.includes('0,4,7') && key.includes('9')) return `${root}6`;
+    if (key.includes('0,3,7') && key.includes('9')) return `${root}m6`;
+
+    // Suspended
+    if (key.includes('0,2,7')) return `${root}sus2`;
+    if (key.includes('0,5,7')) return `${root}sus4`;
+
+    // Triads
+    if (key.includes('0,4,7')) return `${root}`;
+    if (key.includes('0,3,7')) return `${root}m`;
+    if (key.includes('0,4,8')) return `${root}aug`;
+    if (key.includes('0,3,6')) return `${root}dim`;
+
+    return `${root}*`;
+};
+
+/**
  * Returns the note at a specific string (0-based index) and fret (0-based index).
  * Takes an optional tuningOffset array to adjust the open string notes.
  */

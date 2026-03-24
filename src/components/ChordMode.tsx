@@ -12,6 +12,8 @@ import {
     getChordNotes,
     shouldUseFlats,
     getNoteDisplayLabel,
+    inferChordName,
+    getNoteAtPosition,
     type Note,
     type NamingSystem,
     type Instrument,
@@ -49,12 +51,21 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
         localStorage.setItem('chordmode-scale', scaleType);
     };
 
-    // Mofidied state to track selection including modifiers
     const [selectedChordIndex, setSelectedChordIndex] = useState<number | null>(null);
     const [chordModifiers, setChordModifiers] = useState<Record<number, any>>({});
     const [hoveredChordIndex, setHoveredChordIndex] = useState<number | null>(null);
     const [modifiersVisible, setModifiersVisible] = useState(false);
     const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Custom Interactive Voicing State
+    const [interactiveRootNotePos, setInteractiveRootNotePos] = useState<{stringIndex: number, fret: number} | null>(null);
+    const [customVoicingKeys, setCustomVoicingKeys] = useState<string[]>([]);
+
+    // Reset custom voicing on chord parameter change
+    React.useEffect(() => {
+        setInteractiveRootNotePos(null);
+        setCustomVoicingKeys([]);
+    }, [selectedChordIndex, selectedRoot, selectedScaleType, chordModifiers]);
 
     // Context for instrument settings
     const [namingSystem] = useState<NamingSystem>('ENGLISH');
@@ -85,7 +96,53 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
     };
 
     const handleChordClick = (index: number) => {
-        setSelectedChordIndex(index);
+        if (selectedChordIndex !== index) {
+            setSelectedChordIndex(index);
+        } else {
+            // Optional: click again to deselect
+            setSelectedChordIndex(null);
+        }
+    };
+
+    const handleInteractiveRootClick = (stringIndex: number, fret: number) => {
+        setInteractiveRootNotePos({ stringIndex, fret });
+        
+        if (voicings && voicings.length > 0) {
+            const matchingVoicing = [...voicings].sort((a,b) => {
+                const aActive = a.frets.filter(f => f >= 0).length; // 0 is open, -1 is muted
+                const bActive = b.frets.filter(f => f >= 0).length;
+                return bActive - aActive; 
+            }).find(v => v.frets[stringIndex] === fret);
+
+            if (matchingVoicing) {
+                const keys = matchingVoicing.frets
+                    .map((f, s) => f !== -1 ? `${s}-${f}` : null)
+                    .filter(Boolean) as string[];
+                setCustomVoicingKeys(keys);
+            } else {
+                setCustomVoicingKeys([`${stringIndex}-${fret}`]);
+            }
+        } else {
+            setCustomVoicingKeys([`${stringIndex}-${fret}`]);
+        }
+    };
+
+    const handleInteractiveNoteToggle = (stringIndex: number, fret: number) => {
+        setCustomVoicingKeys(prev => {
+            const currentStrNodes = prev.filter(k => k.startsWith(`${stringIndex}-`));
+            const toggleKey = `${stringIndex}-${fret}`;
+            
+            if (currentStrNodes.includes(toggleKey)) {
+                // Prevent untoggling root
+                if (interactiveRootNotePos?.stringIndex === stringIndex && interactiveRootNotePos?.fret === fret) {
+                    return prev;
+                }
+                return prev.filter(k => k !== toggleKey);
+            } else {
+                // Add / Replace on string
+                return [...prev.filter(k => !k.startsWith(`${stringIndex}-`)), toggleKey];
+            }
+        });
     };
 
     const handleModifierClick = (modifier: any, index: number, e: React.MouseEvent) => {
@@ -285,7 +342,19 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                                 >
                                     <div className="roman">{chord.romanNumeral}</div>
                                     <div className="name">
-                                        {getFullChordName(chord, index)}
+                                        {isSelected && customVoicingKeys.length > 0 && interactiveRootNotePos && !activeModifier ? (
+                                            <span style={{color: '#D3AF37', textShadow: '0 0 5px rgba(211, 175, 55, 0.4)'}}>
+                                                {inferChordName(
+                                                    chord.root, 
+                                                    customVoicingKeys.map(k => {
+                                                        const [s, f] = k.split('-').map(Number);
+                                                        return getNoteAtPosition(instrument, s, f, tuningOffsets, stringCount, useFlats);
+                                                    })
+                                                )}
+                                            </span>
+                                        ) : (
+                                            getFullChordName(chord, index)
+                                        )}
                                     </div>
                                 </button>
 
@@ -329,6 +398,11 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                     stringCount={stringCount}
                     prediction={prediction}
                     voicings={voicings}
+                    interactiveMode={selectedChordIndex !== null && !chordModifiers[selectedChordIndex]}
+                    interactiveRootNotePos={interactiveRootNotePos}
+                    customVoicingKeys={customVoicingKeys}
+                    onInteractiveRootClick={handleInteractiveRootClick}
+                    onInteractiveNoteToggle={handleInteractiveNoteToggle}
                 />
             </div>
         </div>
