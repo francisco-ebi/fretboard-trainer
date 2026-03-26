@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fretboard from '@/components/Fretboard';
+import CircleOfFifths from '@/components/CircleOfFifths';
 import {
-    ROOT_NOTES,
     INSTRUMENT_CONFIGS,
     GUITAR_TUNINGS,
     GUITAR_TUNINGS_7,
@@ -198,11 +198,11 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                     <div className="library-controls-layout">
                         {/* Selectors Sidebar */}
                         <div className="library-sidebar">
-                            <div className="control-group">
-                                <label>{t('controls.key')}:</label>
-                                <select value={selectedRoot} onChange={(e) => setSelectedRoot(e.target.value as Note)}>
-                                    {ROOT_NOTES.map(note => <option key={note} value={note}>{note}</option>)}
-                                </select>
+                            <div className="control-group" style={{ alignItems: "center" }}>
+                                <CircleOfFifths
+                                    selectedRoot={selectedRoot}
+                                    onRootChange={(newRoot) => setSelectedRoot(newRoot)}
+                                />
                             </div>
                         </div>
 

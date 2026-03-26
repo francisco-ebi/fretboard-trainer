@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ROOT_NOTES, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '@/utils/musicTheory';
+import { SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '@/utils/musicTheory';
 import { useInstrument } from '@/context/InstrumentContext';
+import CircleOfFifths from '@/components/CircleOfFifths';
 import './Controls.css';
 
 interface ControlsProps {
@@ -95,20 +96,9 @@ const Controls: React.FC<ControlsProps> = ({
             {/* 2. Primary Actions: Key & Scale (Grouped) */}
             <div className="primary-controls-group">
                 <div className="control-group">
-                    <label htmlFor="root-select">{t('controls.key')}:</label>
-                    <select
-                        id="root-select"
-                        value={selectedRoot}
-                        onChange={(e) => onRootChange(e.target.value as Note)}
-                    >
-                        {ROOT_NOTES.map(note => (
-                            <option key={note} value={note}>
-                                {note}
-                            </option>
-                        ))}
-                    </select>
+                    <CircleOfFifths selectedRoot={selectedRoot} onRootChange={onRootChange} />
                 </div>
-
+                
                 <div className="control-group">
                     <label htmlFor="scale-select">{t('controls.scale')}:</label>
                     <select

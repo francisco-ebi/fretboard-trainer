@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fretboard from '@/components/Fretboard';
+import CircleOfFifths from '@/components/CircleOfFifths';
 import {
-    ROOT_NOTES,
     CHROMATIC_SCALE,
     INSTRUMENT_CONFIGS,
     GUITAR_TUNINGS,
@@ -261,14 +261,14 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
             {!isFullScreen && (
                 <div className="chord-controls">
                     <div className="control-group">
-                        <label>{t('controls.key')}:</label>
-                        <select value={selectedRoot} onChange={(e) => {
-                            setSelectedRoot(e.target.value as Note);
-                            setSelectedChordIndex(null);
-                            setChordModifiers({});
-                        }}>
-                            {ROOT_NOTES.map(note => <option key={note} value={note}>{note}</option>)}
-                        </select>
+                        <CircleOfFifths 
+                            selectedRoot={selectedRoot} 
+                            onRootChange={(newRoot) => {
+                                setSelectedRoot(newRoot);
+                                setSelectedChordIndex(null);
+                                setChordModifiers({});
+                            }} 
+                        />
                     </div>
                     <div className="control-group">
                         <label>{t('controls.scale')}:</label>
