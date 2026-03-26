@@ -3,13 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fretboard from '@/components/Fretboard';
 import {
-    CHROMATIC_SCALE,
+    ROOT_NOTES,
     INSTRUMENT_CONFIGS,
     GUITAR_TUNINGS,
     GUITAR_TUNINGS_7,
     GUITAR_TUNINGS_8,
     getChordNotes,
-    getNoteDisplayLabel,
     type Note,
     type ChordQuality,
     type NamingSystem,
@@ -202,7 +201,7 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                             <div className="control-group">
                                 <label>{t('controls.key')}:</label>
                                 <select value={selectedRoot} onChange={(e) => setSelectedRoot(e.target.value as Note)}>
-                                    {CHROMATIC_SCALE.map(note => <option key={note} value={note}>{getNoteDisplayLabel(note)}</option>)}
+                                    {ROOT_NOTES.map(note => <option key={note} value={note}>{note}</option>)}
                                 </select>
                             </div>
                         </div>

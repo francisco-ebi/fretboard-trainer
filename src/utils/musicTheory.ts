@@ -41,6 +41,9 @@ export const getInterval = (root: Note, note: Note): string => {
 export const SHARPS_SCALE: Note[] = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export const FLATS_SCALE: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 export const CHROMATIC_SCALE = SHARPS_SCALE;
+export const ROOT_NOTES: Note[] = [
+    'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'E#', 'Fb', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B', 'B#', 'Cb'
+];
 
 export const getNoteIndex = (note: Note): number => {
     // Handle enharmonics that are not in the standard arrays

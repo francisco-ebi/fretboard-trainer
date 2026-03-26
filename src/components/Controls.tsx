@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CHROMATIC_SCALE, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, getNoteDisplayLabel, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '@/utils/musicTheory';
+import { ROOT_NOTES, SCALES, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type NamingSystem, type Instrument, type Tuning } from '@/utils/musicTheory';
 import { useInstrument } from '@/context/InstrumentContext';
 import './Controls.css';
 
@@ -101,9 +101,9 @@ const Controls: React.FC<ControlsProps> = ({
                         value={selectedRoot}
                         onChange={(e) => onRootChange(e.target.value as Note)}
                     >
-                        {CHROMATIC_SCALE.map((note) => (
+                        {ROOT_NOTES.map(note => (
                             <option key={note} value={note}>
-                                {getNoteDisplayLabel(note)}
+                                {note}
                             </option>
                         ))}
                     </select>
