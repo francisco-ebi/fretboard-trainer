@@ -126,6 +126,33 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
         localStorage.setItem('fretboard_chord_queue', JSON.stringify(chordQueue));
     }, [chordQueue]);
 
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (document.activeElement?.tagName === 'SELECT' || document.activeElement?.tagName === 'INPUT') return;
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (activeQueueIndex > 0) {
+                    const newIndex = activeQueueIndex - 1;
+                    setActiveQueueIndex(newIndex);
+                    setSelectedRoot(chordQueue[newIndex].root);
+                    setSelectedQuality(chordQueue[newIndex].quality);
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (activeQueueIndex < chordQueue.length - 1) {
+                    const newIndex = activeQueueIndex + 1;
+                    setActiveQueueIndex(newIndex);
+                    setSelectedRoot(chordQueue[newIndex].root);
+                    setSelectedQuality(chordQueue[newIndex].quality);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [activeQueueIndex, chordQueue]);
+
     // Context for instrument settings
     const [namingSystem] = useState<NamingSystem>('ENGLISH');
     const {
@@ -175,7 +202,7 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
     };
 
     const nextInQueue = () => {
-        if (activeQueueIndex >= 0 && activeQueueIndex < chordQueue.length - 1) {
+        if (activeQueueIndex < chordQueue.length - 1) {
             selectFromQueue(activeQueueIndex + 1);
         }
     };
@@ -432,7 +459,7 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                         <button 
                             className="icon-btn" 
                             onClick={nextInQueue} 
-                            disabled={activeQueueIndex < 0 || activeQueueIndex >= chordQueue.length - 1}
+                            disabled={activeQueueIndex >= chordQueue.length - 1}
                             title={t('queue.next')}
                             aria-label={t('queue.next')}
                         >
