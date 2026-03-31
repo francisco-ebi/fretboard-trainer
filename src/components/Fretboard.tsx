@@ -41,11 +41,11 @@ function usePrevious<T>(value: T): T | undefined {
     return ref.current;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ 
-    selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument, 
+const Fretboard: React.FC<FretboardProps> = ({
+    selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument,
     tuningOffsets, stringCount, prediction, voicings,
-    interactiveMode, interactiveRootNotePos, interactiveTogglableNotes, customVoicingKeys, 
-    onInteractiveRootClick, onInteractiveNoteToggle 
+    interactiveMode, interactiveRootNotePos, interactiveTogglableNotes, customVoicingKeys,
+    onInteractiveRootClick, onInteractiveNoteToggle
 }) => {
     const { orientation } = useOrientation();
     const { colorScheme } = useInstrument();
@@ -99,7 +99,7 @@ const Fretboard: React.FC<FretboardProps> = ({
 
             const theoreticalNote = scaleNotes.find(scaleNote => areEnharmonicallyEquivalent(scaleNote, physicalNote));
             const isNoteInScale = !!theoreticalNote;
-            
+
             const interactiveTheoreticalNote = interactiveTogglableNotes?.find(n => areEnharmonicallyEquivalent(n, physicalNote));
             const isNoteTogglable = !!interactiveTheoreticalNote;
 
@@ -111,7 +111,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             }
 
             const isRoot = theoreticalNote === selectedRoot || interactiveTheoreticalNote === selectedRoot;
-            
+
             // Interactive custom voicing logic
             const isClickableRoot = interactiveMode && !interactiveRootNotePos && isRoot && stringIndex >= 3 && stringIndex <= 5;
             const isCustomVoicingMode = interactiveMode && interactiveRootNotePos !== null;
@@ -348,7 +348,6 @@ const Fretboard: React.FC<FretboardProps> = ({
     return (
         <>
             <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()} theme-${colorScheme.toLowerCase()}`}>
-                {orientation === 'HORIZONTAL' && renderDesktopVoicingCarousel()}
                 <div
                     className={`fretboard ${orientation.toLowerCase()}`}
                     role="grid"
@@ -358,9 +357,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                     {renderStrings()}
                 </div>
                 {renderFretNumbers()}
-                {orientation === 'VERTICAL' && renderDesktopVoicingCarousel()}
             </div>
-            {renderMobileVoicingStepper()}
         </>
     );
 };

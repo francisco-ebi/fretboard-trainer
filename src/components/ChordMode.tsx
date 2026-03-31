@@ -419,7 +419,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
                     prediction={prediction}
-                    voicings={voicings}
                     interactiveMode={selectedChordIndex !== null && !chordModifiers[selectedChordIndex]}
                     interactiveRootNotePos={interactiveRootNotePos}
                     interactiveTogglableNotes={interactiveRootNotePos ? CHROMATIC_SCALE : fullScaleNotes}

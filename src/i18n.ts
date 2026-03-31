@@ -124,7 +124,16 @@ const resources = {
                 openPosition: "Open Position",
                 fretX: "Fret {{fret}}"
             },
-            language: "Language"
+            language: "Language",
+            queue: {
+                title: "Chord Sequence",
+                addToQueue: "Add to Sequence",
+                next: "Next Chord",
+                previous: "Previous Chord",
+                remove: "Remove Chord",
+                clear: "Clear Sequence",
+                empty: "Sequence is empty"
+            }
         }
     },
     es: {
@@ -248,7 +257,16 @@ const resources = {
                 openPosition: "Posición Abierta",
                 fretX: "Traste {{fret}}"
             },
-            language: "Idioma"
+            language: "Idioma",
+            queue: {
+                title: "Secuencia de Acordes",
+                addToQueue: "Añadir a la Secuencia",
+                next: "Siguiente Acorde",
+                previous: "Acorde Anterior",
+                remove: "Eliminar Acorde",
+                clear: "Limpiar Secuencia",
+                empty: "Secuencia vacía"
+            }
         }
     }
 };

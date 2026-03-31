@@ -23,6 +23,12 @@ interface ChordLibraryProps {
     isFullScreen?: boolean;
 }
 
+interface QueuedChord {
+    id: string;
+    root: Note;
+    quality: ChordQuality;
+}
+
 const INTERVAL_ALIASES: Record<string, Record<number, string>> = {
     AUGMENTED: { 8: '#5' },
     DIM7: { 9: 'bb7', 6: 'b5' },
@@ -107,6 +113,19 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedQuality, setSelectedQuality] = useState<ChordQuality>('MAJOR');
 
+    const [chordQueue, setChordQueue] = useState<QueuedChord[]>(() => {
+        const saved = localStorage.getItem('fretboard_chord_queue');
+        if (saved) {
+            try { return JSON.parse(saved); } catch (e) {}
+        }
+        return [];
+    });
+    const [activeQueueIndex, setActiveQueueIndex] = useState<number>(-1);
+
+    React.useEffect(() => {
+        localStorage.setItem('fretboard_chord_queue', JSON.stringify(chordQueue));
+    }, [chordQueue]);
+
     // Context for instrument settings
     const [namingSystem] = useState<NamingSystem>('ENGLISH');
     const {
@@ -119,6 +138,53 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
     } = useInstrument();
 
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+    // Queue Handlers
+    const addToQueue = () => {
+        const newChord: QueuedChord = {
+            id: Date.now().toString() + Math.random().toString(36).substring(7),
+            root: selectedRoot,
+            quality: selectedQuality
+        };
+        setChordQueue([...chordQueue, newChord]);
+        setActiveQueueIndex(chordQueue.length);
+    };
+
+    const selectFromQueue = (index: number) => {
+        setActiveQueueIndex(index);
+        setSelectedRoot(chordQueue[index].root);
+        setSelectedQuality(chordQueue[index].quality);
+    };
+
+    const removeFromQueue = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const newQueue = [...chordQueue];
+        newQueue.splice(index, 1);
+        setChordQueue(newQueue);
+        
+        if (activeQueueIndex === index) {
+            setActiveQueueIndex(-1);
+        } else if (activeQueueIndex > index) {
+            setActiveQueueIndex(activeQueueIndex - 1);
+        }
+    };
+
+    const clearQueue = () => {
+        setChordQueue([]);
+        setActiveQueueIndex(-1);
+    };
+
+    const nextInQueue = () => {
+        if (activeQueueIndex >= 0 && activeQueueIndex < chordQueue.length - 1) {
+            selectFromQueue(activeQueueIndex + 1);
+        }
+    };
+
+    const prevInQueue = () => {
+        if (activeQueueIndex > 0) {
+            selectFromQueue(activeQueueIndex - 1);
+        }
+    };
 
     // Handlers
     const handleInstrumentChange = (newInstrument: Instrument) => {
@@ -201,7 +267,10 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                             <div className="control-group" style={{ alignItems: "center" }}>
                                 <CircleOfFifths
                                     selectedRoot={selectedRoot}
-                                    onRootChange={(newRoot) => setSelectedRoot(newRoot)}
+                                    onRootChange={(newRoot) => {
+                                        setSelectedRoot(newRoot);
+                                        setActiveQueueIndex(-1);
+                                    }}
                                 />
                             </div>
                         </div>
@@ -272,7 +341,10 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                                         <button
                                             key={quality}
                                             className={`quality-btn ${selectedQuality === quality ? 'active' : ''}`}
-                                            onClick={() => setSelectedQuality(quality)}
+                                            onClick={() => {
+                                                setSelectedQuality(quality);
+                                                setActiveQueueIndex(-1);
+                                            }}
                                         >
                                             <div className="btn-symbol">{selectedRoot}{CHORD_SYMBOLS[quality]}</div>
                                             <div className="btn-name">{getDisplayName(t, quality)}</div>
@@ -296,6 +368,80 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                     characteristicInterval={undefined}
                     voicings={voicings}
                 />
+            </div>
+
+            {/* Floating Queue UI */}
+            <div className="chord-queue-floating">
+                <div className="chord-queue-header">
+                    <h3>{t('queue.title')}</h3>
+                    <button className="icon-btn" onClick={clearQueue} title={t('queue.clear')} aria-label={t('queue.clear')}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div className="queue-items">
+                    {chordQueue.length === 0 ? (
+                        <div className="empty-queue-msg">{t('queue.empty')}</div>
+                    ) : (
+                        chordQueue.map((chord, index) => (
+                            <div 
+                                key={chord.id} 
+                                className={`queue-item ${activeQueueIndex === index ? 'active' : ''}`}
+                                onClick={() => selectFromQueue(index)}
+                            >
+                                <span className="queue-item-name">
+                                    {chord.root}{CHORD_SYMBOLS[chord.quality]}
+                                </span>
+                                <button className="icon-btn" onClick={(e) => removeFromQueue(index, e)} title={t('queue.remove')} aria-label={t('queue.remove')}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="add-to-queue-btn" onClick={addToQueue} title={t('queue.addToQueue')}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        {t('queue.addToQueue')}
+                    </button>
+                </div>
+
+                {chordQueue.length > 0 && (
+                    <div className="queue-controls">
+                        <button 
+                            className="icon-btn" 
+                            onClick={prevInQueue} 
+                            disabled={activeQueueIndex <= 0}
+                            title={t('queue.previous')}
+                            aria-label={t('queue.previous')}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <button 
+                            className="icon-btn" 
+                            onClick={nextInQueue} 
+                            disabled={activeQueueIndex < 0 || activeQueueIndex >= chordQueue.length - 1}
+                            title={t('queue.next')}
+                            aria-label={t('queue.next')}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
