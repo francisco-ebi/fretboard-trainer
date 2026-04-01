@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import crossOriginIsolated from 'vite-plugin-cross-origin-isolation';
+import replace from "@rollup/plugin-replace";
 
 import path from 'path'
 
@@ -13,7 +14,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  base: './',
+  base: "/fretboard-trainer/",
   test: {
     environment: 'jsdom',
     globals: true,
@@ -34,13 +35,15 @@ export default defineConfig({
     react(),
     crossOriginIsolated(),
     VitePWA({
+      base: "/fretboard-trainer/",
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'prompt',
       devOptions: {
-        enabled: true,
-        type: 'module'
+        enabled: process.env.SW_DEV === "true",
+        type: "module",
+        navigateFallback: "index.html",
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
@@ -56,17 +59,18 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'pwa-192x192.jpeg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/jpeg'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512.jpeg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/jpeg'
           }
         ]
       }
-    })
+    }),
+    replace({ __DATE__: new Date().toISOString() }),
   ],
 })
