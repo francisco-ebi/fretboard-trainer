@@ -5,6 +5,12 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 const resources = {
     en: {
         translation: {
+            reloadPrompt: {
+                offlineReady: "App ready to work offline",
+                newContentAvailable: "New content available, click on reload button to update.",
+                reload: "Reload",
+                close: "Close"
+            },
             title: "Fretboard Trainer",
             subtitle: "Visualize scales and master the fretboard.",
             listeningModal: {
@@ -138,6 +144,12 @@ const resources = {
     },
     es: {
         translation: {
+            reloadPrompt: {
+                offlineReady: "Aplicación lista para funcionar sin conexión",
+                newContentAvailable: "Nuevo contenido disponible, haz clic en el botón de recargar para actualizar.",
+                reload: "Recargar",
+                close: "Cerrar"
+            },
             title: "Entrenador de Diapasón",
             subtitle: "Visualiza escalas y domina el diapasón.",
             listeningModal: {
