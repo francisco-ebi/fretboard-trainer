@@ -1,0 +1,68 @@
+.ReloadPrompt-container {
+    padding: 0;
+    margin: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .ReloadPrompt-toast {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    margin: 16px;
+    padding: 18px 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    z-index: 9999;
+    text-align: left;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background-color: rgba(30, 30, 30, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  .ReloadPrompt-toast-message {
+    margin-bottom: 4px;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .ReloadPrompt-toast-button {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    outline: none;
+    margin-right: 8px;
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+  }
+  
+  .ReloadPrompt-toast-button:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+  }
+
+  .ReloadPrompt-toast-button:active {
+    transform: translateY(0);
+  }
+  
+  @keyframes slideInUp {
+      from {
+          transform: translateY(100%) scale(0.95);
+          opacity: 0;
+      }
+      to {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+      }
+  }

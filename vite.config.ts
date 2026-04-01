@@ -34,11 +34,15 @@ export default defineConfig({
     react(),
     crossOriginIsolated(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'prompt',
       devOptions: {
-        enabled: true
+        enabled: true,
+        type: 'module'
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 100 * 1024 * 1024 // 100 MB
       },

@@ -12,6 +12,7 @@ import { OrientationProvider } from '@/context/OrientationContext';
 type AppMode = 'SCALE' | 'CHORD' | 'LIBRARY' | 'VISUAL';
 
 import PredictionControls from '@/components/PredictionControls';
+import ReloadPrompt from '@/ReloadPrompt';
 
 import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
 
@@ -165,6 +166,7 @@ const AppContent = () => {
           <PredictionControls disabled={!isPredictionEnabled} />
         )}
       </main>
+      <ReloadPrompt />
     </div>
   );
 };

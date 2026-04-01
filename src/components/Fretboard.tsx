@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type Voicing } from '@/utils/chordVoicings';
 import { useOrientation } from '@/context/OrientationContext';
 import { useInstrument } from '@/context/InstrumentContext';
-import { useTranslation } from 'react-i18next';
+
 import NoteMarker from '@/components/NoteMarker';
 import './Fretboard.css';
 
@@ -49,7 +49,7 @@ const Fretboard: React.FC<FretboardProps> = ({
 }) => {
     const { orientation } = useOrientation();
     const { colorScheme } = useInstrument();
-    const { t } = useTranslation();
+
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
     const [selectedVoicingIndex, setSelectedVoicingIndex] = React.useState<number | null>(null);
@@ -137,7 +137,7 @@ const Fretboard: React.FC<FretboardProps> = ({
 
             const isActive = isVoicingMatch || (selectedVoicingIndex === null && isNoteInScale && !isCustomVoicingMode) || isCustomActive || !!isOutline || !!isClickableRoot;
 
-            const interval = isActive && noteToDisplay ? getInterval(selectedRoot, noteToDisplay) : null;
+            const interval = noteToDisplay ? getInterval(selectedRoot, noteToDisplay) : null;
             const isCharacteristic = !!(interval && characteristicInterval && interval === characteristicInterval);
             const octave = getOctave(instrument, stringIndex, fret, tuningOffsets, stringCount);
 
@@ -193,74 +193,77 @@ const Fretboard: React.FC<FretboardProps> = ({
                     {isSingleInlay && <div className="inlay-dot" style={{ top: '100%', transform: 'translate(-50%, -50%)' }} />}
                     {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
 
-                    <AnimatePresence>
-                        {isActive && (
-                            <motion.div
-                                variants={{
-                                    hidden: { scale: 0, opacity: 0 },
-                                    visible: {
-                                        scale: 1,
-                                        opacity: 1,
-                                        zIndex: 2,
-                                        transition: {
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 25,
-                                            delay: staggerDelay
-                                        }
+                    <motion.div
+                        variants={{
+                            hidden: { 
+                                scale: 0, 
+                                opacity: 0,
+                                transitionEnd: {
+                                    pointerEvents: "none"
+                                }
+                            },
+                            visible: {
+                                scale: 1,
+                                opacity: 1,
+                                zIndex: 2,
+                                pointerEvents: "auto",
+                                transition: {
+                                    type: "spring",
+                                    stiffness: 400,
+                                    damping: 25,
+                                    delay: staggerDelay
+                                }
+                            },
+                            predicted: {
+                                scale: 1.3,
+                                opacity: 1,
+                                zIndex: 10,
+                                pointerEvents: "auto",
+                                x: [0, -2, 2, -2, 2, 0],
+                                transition: {
+                                    x: {
+                                        duration: 0.4,
+                                        repeat: Infinity,
+                                        repeatDelay: 1,
+                                        ease: "easeInOut"
                                     },
-                                    predicted: {
-                                        scale: 1.3,
-                                        opacity: 1,
-                                        zIndex: 10,
-                                        x: [0, -2, 2, -2, 2, 0],
-                                        transition: {
-                                            x: {
-                                                duration: 0.4,
-                                                repeat: Infinity,
-                                                repeatDelay: 1,
-                                                ease: "easeInOut"
-                                            },
-                                            scale: { duration: 0.2 }
-                                        }
-                                    }
+                                    scale: { duration: 0.2 }
+                                }
+                            }
+                        }}
+                        initial={false}
+                        animate={isPredicted ? "predicted" : (isActive ? "visible" : "hidden")}
+                        style={{ position: 'relative' }}
+                    >
+                        {isPredicted && (
+                            <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '-6px',
+                                    left: '-6px',
+                                    right: '-6px',
+                                    bottom: '-6px',
+                                    borderRadius: '50%',
+                                    border: '2px dashed #D3AF37',
+                                    pointerEvents: 'none'
                                 }}
-                                initial="hidden"
-                                animate={isPredicted ? "predicted" : "visible"}
-                                exit="hidden"
-                                style={{ position: 'relative' }}
-                            >
-                                {isPredicted && (
-                                    <motion.div
-                                        animate={{ rotate: 360 }}
-                                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                        style={{
-                                            position: 'absolute',
-                                            top: '-6px',
-                                            left: '-6px',
-                                            right: '-6px',
-                                            bottom: '-6px',
-                                            borderRadius: '50%',
-                                            border: '2px dashed #D3AF37',
-                                            pointerEvents: 'none'
-                                        }}
-                                    />
-                                )}
-                                <NoteMarker
-                                    note={noteToDisplay}
-                                    isRoot={isRoot}
-                                    namingSystem={namingSystem}
-                                    interval={interval}
-                                    isCharacteristic={isCharacteristic}
-                                    shouldShake={shouldShake}
-                                    octave={octave}
-                                    isInactiveOutline={!!isOutline}
-                                    customInterval={customInterval}
-                                    onClick={(isClickableRoot || isOutline || isCustomActive) ? handleNoteClick : undefined}
-                                />
-                            </motion.div>
+                            />
                         )}
-                    </AnimatePresence>
+                        <NoteMarker
+                            note={noteToDisplay}
+                            isRoot={isRoot}
+                            namingSystem={namingSystem}
+                            interval={interval}
+                            isCharacteristic={isCharacteristic}
+                            shouldShake={shouldShake}
+                            octave={octave}
+                            isInactiveOutline={!!isOutline}
+                            customInterval={customInterval}
+                            onClick={(isClickableRoot || isOutline || isCustomActive) ? handleNoteClick : undefined}
+                        />
+                    </motion.div>
 
                     {/* Fret wire */}
                 </div>
@@ -282,68 +285,6 @@ const Fretboard: React.FC<FretboardProps> = ({
         return <div className="fret-numbers-row">{fretNumbers}</div>;
     }
 
-    const renderDesktopVoicingCarousel = () => {
-        if (!voicings || voicings.length === 0) return null;
-
-        return (
-            <div className="desktop-voicing-carousel">
-                {voicings.map((voicing, index) => {
-                    const isActive = selectedVoicingIndex === index;
-                    return (
-                        <motion.button
-                            key={`carousel-btn-${index}`}
-                            className={`carousel-btn ${isActive ? 'active' : ''}`}
-                            onClick={() => setSelectedVoicingIndex(isActive ? null : index)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            title={`Select Voicing ${index + 1}`}
-                        >
-                            <span className="carousel-btn-number">{index + 1}</span>
-                            <div className="carousel-btn-details">
-                                <span className="carousel-btn-label">
-                                    {isActive ? t('fretboard.selected') : t('fretboard.voicing')}
-                                </span>
-                                <span className="carousel-btn-desc">
-                                    {voicing.startFret === 0 ? t('fretboard.openPosition') : t('fretboard.fretX', { fret: voicing.startFret })}
-                                </span>
-                            </div>
-                        </motion.button>
-                    );
-                })}
-            </div>
-        );
-    };
-
-    const renderMobileVoicingStepper = () => {
-        if (!voicings || voicings.length === 0) return null;
-
-        const maxIndex = voicings.length - 1;
-
-        const handlePrevious = () => {
-            if (selectedVoicingIndex === null) setSelectedVoicingIndex(maxIndex);
-            else if (selectedVoicingIndex === 0) setSelectedVoicingIndex(null);
-            else setSelectedVoicingIndex(selectedVoicingIndex - 1);
-        };
-
-        const handleNext = () => {
-            if (selectedVoicingIndex === null) setSelectedVoicingIndex(0);
-            else if (selectedVoicingIndex === maxIndex) setSelectedVoicingIndex(null);
-            else setSelectedVoicingIndex(selectedVoicingIndex + 1);
-        };
-
-        let displayText = t('fretboard.allNotes');
-        if (selectedVoicingIndex !== null) {
-            displayText = t('fretboard.voicingXofY', { current: selectedVoicingIndex + 1, total: voicings.length });
-        }
-
-        return (
-            <div className="mobile-voicing-stepper">
-                <button className="stepper-btn" onClick={handlePrevious}>❮</button>
-                <div className="stepper-text">{displayText}</div>
-                <button className="stepper-btn" onClick={handleNext}>❯</button>
-            </div>
-        );
-    };
 
     return (
         <>
