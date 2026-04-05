@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './CircleOfFifths.css';
 import { type Note } from '@/utils/musicTheory';
@@ -6,6 +6,7 @@ import { type Note } from '@/utils/musicTheory';
 interface CircleOfFifthsProps {
     selectedRoot: Note;
     onRootChange: (root: Note) => void;
+    disableKeyboardShortcuts?: boolean;
 }
 
 const KEYS: { main: Note; alt?: Note }[] = [
@@ -25,8 +26,39 @@ const KEYS: { main: Note; alt?: Note }[] = [
 
 const WEDGE_PATH = "M 88.35 56.53 L 74.12 3.41 A 100 100 0 0 1 125.88 3.41 L 111.65 56.53 A 45 45 0 0 0 88.35 56.53 Z";
 
-const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({ selectedRoot, onRootChange }) => {
+const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({ 
+    selectedRoot, 
+    onRootChange,
+    disableKeyboardShortcuts = false
+}) => {
     const [isExpanded, setIsExpanded] = useState(false);
+
+    useEffect(() => {
+        if (disableKeyboardShortcuts) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const activeElem = document.activeElement;
+            if (activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'TEXTAREA' || activeElem.tagName === 'SELECT')) {
+                return;
+            }
+
+            const currentIndex = KEYS.findIndex(k => k.main === selectedRoot || k.alt === selectedRoot);
+            if (currentIndex === -1) return;
+
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                const nextIndex = (currentIndex + 1) % KEYS.length;
+                onRootChange(KEYS[nextIndex].main);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                const prevIndex = (currentIndex - 1 + KEYS.length) % KEYS.length;
+                onRootChange(KEYS[prevIndex].main);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedRoot, onRootChange, disableKeyboardShortcuts]);
 
     const handleKeySelect = (key: Note) => {
         onRootChange(key);

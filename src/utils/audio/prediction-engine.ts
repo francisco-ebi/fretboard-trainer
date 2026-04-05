@@ -118,11 +118,11 @@ class GuitarAudioPredictionEngine {
 
             // Load Model & Stats
             if (this.currentMode === 'performance') {
-                this.model = await this.tf.loadLayersModel('/model/guitar-meyda-ts-brightness-model.json');
+                this.model = await this.tf.loadLayersModel('/fretboard-trainer/model/guitar-meyda-ts-brightness-model.json');
                 this.statsData = await import('@/utils/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
             } else {
                 try {
-                    this.model = await this.tf.loadLayersModel('/model/guitar-essentia-ts.json');
+                    this.model = await this.tf.loadLayersModel('/fretboard-trainer/model/guitar-essentia-ts.json');
                     this.statsData = await import('@/utils/audio/datasets/essentia-ts/guitar_dataset_stats.json');
                 } catch (e) {
                     console.warn("Precision model not found. Predictions might be unavailable.");
