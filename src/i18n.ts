@@ -40,6 +40,7 @@ const resources = {
                 setup: "Setup & Preferences",
                 startListening: "Start Listening",
                 stopListening: "Stop Listening",
+                selectedScale: "Selected Scale",
                 baseTonality: "Base Tonality",
                 categories: {
                     MAJOR_BASED: "Major",
@@ -192,6 +193,7 @@ const resources = {
                 setup: "Configuración & Preferencias",
                 startListening: "Comenzar a Escuchar",
                 stopListening: "Dejar de Escuchar",
+                selectedScale: "Escala Seleccionada",
                 baseTonality: "Tonalidad Base",
                 categories: {
                     MAJOR_BASED: "Mayor",

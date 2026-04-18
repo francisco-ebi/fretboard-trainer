@@ -1,0 +1,244 @@
+.scale-matrix-selector {
+    background: rgba(20, 20, 25, 0.6);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    width: 100%;
+    max-width: 650px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.matrix-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.matrix-header-name {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #888;
+    display: flex;
+    align-items: center;
+}
+
+.matrix-scale-label {
+    font-size: 0.9rem;
+    color: #ccc;
+}
+.matrix-scale-label strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Single View Body */
+.matrix-body.single-view {
+    display: flex;
+    flex-direction: column;
+    height: 300px; /* fixed height for absolute positioning of dots */
+    padding: 10px 0;
+}
+
+.matrix-body.single-view.collapsed {
+    height: 120px;
+}
+
+/* Grid Header */
+.matrix-grid-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 16px;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.matrix-collapse-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: color 0.2s ease;
+}
+
+.matrix-collapse-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.matrix-col-label {
+    width: 24px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #666;
+}
+
+/* Workspace containing SVG lines and absolute Dot columns */
+.matrix-workspace {
+    flex: 1;
+    position: relative;
+    margin: 0 16px;
+    background: linear-gradient(180deg, 
+        rgba(0,0,0,0) 0%, 
+        rgba(0,0,0,0) 49%, 
+        rgba(255,255,255,0.05) 50%, 
+        rgba(0,0,0,0) 51%, 
+        rgba(0,0,0,0) 100%
+    ); /* Center line for visual anchoring */
+}
+
+/* SVG Line Drawer */
+.matrix-svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through to dots */
+    z-index: 1;
+}
+
+.matrix-svg-line {
+    stroke: rgba(100, 108, 255, 0.5);
+    stroke-width: 3px;
+    stroke-linecap: round;
+    transition: all 0.3s ease;
+}
+
+.matrix-line-label {
+    fill: rgba(255, 255, 255, 0.85);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-anchor: middle;
+    pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 1);
+}
+
+/* Nodes Layer */
+.matrix-nodes-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    z-index: 2;
+}
+
+.matrix-col {
+    position: relative;
+    width: 24px;
+    height: 100%;
+}
+
+/* Dots */
+.matrix-dot {
+    position: absolute;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    margin-left: -16px; /* Center horizontally */
+    margin-top: -16px; /* Center vertically against the top offset */
+    border-radius: 50%;
+    background: #444; /* Fallback */
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.2s, background-color 0.2s;
+    box-shadow: 0 0 0 2px rgba(20, 20, 25, 1), 0 2px 4px rgba(0,0,0,0.5);
+    
+    /* Using similar lightness/chroma concept for interval notes */
+    --l: 60%;
+    --c: 0.18;
+    background-color: oklch(var(--l) var(--c) var(--h));
+}
+
+.matrix-dot-interval {
+    font-size: 0.5rem;
+    opacity: 0.85;
+    font-weight: 600;
+}
+
+.matrix-dot-note {
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.matrix-dot.interactable {
+    cursor: pointer;
+}
+
+.matrix-dot.interactable:hover {
+    transform: scale(1.2);
+    z-index: 10;
+}
+
+.matrix-dot:not(.active) {
+    --l: 30%;
+    --c: 0.03;
+    opacity: 0.4;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+}
+
+.matrix-dot.interactable:not(.active):hover {
+    --l: 50%;
+    --c: 0.1;
+    opacity: 0.8;
+}
+
+.matrix-dot.active {
+    --c: 0.18;
+    opacity: 1;
+    z-index: 5;
+    box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.4), 0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* Color codes mimicking fretboard --base-hue */
+.color-root { --h: 25; --l: 55%; color: white; }
+.color-9    { --h: 70; color: #333; }
+.color-3    { --h: 115; color: #222; }
+.color-11   { --h: 160; color: white; }
+.color-5    { --h: 230; color: white; }
+.color-13   { --h: 280; color: white; }
+.color-7    { --h: 330; color: white; }
+
+.matrix-dot.active.color-root {
+    box-shadow: 0 0 0 3px white, 0 4px 8px rgba(0,0,0,0.6);
+}
+
+@media (max-width: 600px) {
+    .matrix-body.single-view {
+        height: 250px;
+    }
+    .matrix-body.single-view.collapsed {
+        height: 100px;
+    }
+    .matrix-dot {
+        width: 28px;
+        height: 28px;
+        margin-left: -14px;
+        margin-top: -14px;
+    }
+    .matrix-dot-interval {
+        font-size: 0.45rem;
+    }
+    .matrix-dot-note {
+        font-size: 0.65rem;
+    }
+}

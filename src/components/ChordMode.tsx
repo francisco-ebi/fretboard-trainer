@@ -32,6 +32,7 @@ interface ChordModeProps {
 }
 
 import { useInstrument } from '@/context/InstrumentContext';
+import { useNaming } from '@/context/NamingContext';
 
 const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false }) => {
     const { t } = useTranslation();
@@ -69,7 +70,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
     }, [selectedChordIndex, selectedRoot, selectedScaleType, chordModifiers]);
 
     // Context for instrument settings
-    const [namingSystem] = useState<NamingSystem>('ENGLISH');
+    const { namingSystem } = useNaming();
     const {
         instrument,
         setInstrument,

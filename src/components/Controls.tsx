@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SCALES, SCALE_CATEGORIES, getScaleAlterations, INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type ScaleCategory, type NamingSystem, type Instrument, type Tuning } from '@/utils/musicTheory';
+import { INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type Instrument, type Tuning } from '@/utils/musicTheory';
 import { useInstrument } from '@/context/InstrumentContext';
+import { useNaming } from '@/context/NamingContext';
 import CircleOfFifths from '@/components/CircleOfFifths';
+import ScaleMatrixSelector from '@/components/ScaleMatrixSelector';
 import './Controls.css';
 
 interface ControlsProps {
@@ -11,8 +13,6 @@ interface ControlsProps {
     onRootChange: (root: Note) => void;
     selectedScale: ScaleType;
     onScaleChange: (scale: ScaleType) => void;
-    namingSystem: NamingSystem;
-    onNamingSystemChange: (system: NamingSystem) => void;
     instrument: Instrument;
     onInstrumentChange: (instrument: Instrument) => void;
     tuningOffsets: number[];
@@ -26,8 +26,6 @@ const Controls: React.FC<ControlsProps> = ({
     onRootChange,
     selectedScale,
     onScaleChange,
-    namingSystem,
-    onNamingSystemChange,
     instrument,
     onInstrumentChange,
     tuningOffsets,
@@ -37,18 +35,8 @@ const Controls: React.FC<ControlsProps> = ({
 }) => {
     const { t } = useTranslation();
     const { colorScheme, setColorScheme } = useInstrument();
+    const { namingSystem, setNamingSystem } = useNaming();
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-    const [activeCategory, setActiveCategory] = useState<ScaleCategory>('MAJOR_BASED');
-
-    // Make sure the active category matches the currently selected scale initially
-    React.useEffect(() => {
-        for (const [category, scales] of Object.entries(SCALE_CATEGORIES)) {
-            if (scales.includes(selectedScale as any)) {
-                setActiveCategory(category as ScaleCategory);
-                break;
-            }
-        }
-    }, [selectedScale]);
 
     const getAvailableTunings = (): Record<string, Tuning> => {
         if (instrument === 'GUITAR') {
@@ -109,45 +97,8 @@ const Controls: React.FC<ControlsProps> = ({
                 <div className="control-group">
                     <CircleOfFifths selectedRoot={selectedRoot} onRootChange={onRootChange} />
                 </div>
-                
-                <div className="scale-selector-container control-group">
-                    <label>{t('controls.baseTonality') || 'Base Tonality'}:</label>
-                    <div className="scale-category-tabs">
-                        {(Object.keys(SCALE_CATEGORIES) as ScaleCategory[]).map(cat => (
-                            <button 
-                                key={cat} 
-                                className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
-                                onClick={() => setActiveCategory(cat)}
-                            >
-                                {t(`controls.categories.${cat}`)}
-                            </button>
-                        ))}
-                    </div>
-                    
-                    <div className="scale-list">
-                        {SCALE_CATEGORIES[activeCategory].map(scale => {
-                            const alterations = getScaleAlterations(scale);
-                            const isSelected = scale === selectedScale;
-                            
-                            return (
-                                <div 
-                                    key={scale} 
-                                    className={`scale-item ${isSelected ? 'selected' : ''}`} 
-                                    onClick={() => onScaleChange(scale)}
-                                >
-                                    <span className="scale-name">{t(`scales.${scale}`)}</span>
-                                    {alterations.length > 0 && (
-                                        <div className="scale-alterations">
-                                            {alterations.map((alt, i) => (
-                                                <span key={i} className="alteration-badge">{alt}</span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
+
+                <ScaleMatrixSelector selectedScale={selectedScale} onScaleChange={onScaleChange} selectedRoot={selectedRoot} />
             </div>
 
             {/* 3. Setup & Preferences (Collapsed) */}
@@ -182,13 +133,13 @@ const Controls: React.FC<ControlsProps> = ({
                                 <select
                                     id="naming-select"
                                     value={namingSystem}
-                                    onChange={(e) => onNamingSystemChange(e.target.value as NamingSystem)}
+                                    onChange={(e) => setNamingSystem(e.target.value as NamingSystem)}
                                 >
                                     <option value="ENGLISH">{t('naming.ENGLISH')}</option>
                                     <option value="SOLFEGE">{t('naming.SOLFEGE')}</option>
                                 </select>
                             </div>
-                            
+
                             {/* Preference: Color Scheme */}
                             <div className="control-group secondary-group">
                                 <label htmlFor="theme-select">Color Scheme:</label>

@@ -15,6 +15,7 @@ import PredictionControls from '@/components/PredictionControls';
 import ReloadPrompt from '@/ReloadPrompt';
 
 import { InstrumentProvider, useInstrument } from '@/context/InstrumentContext';
+import { NamingProvider } from '@/context/NamingContext';
 
 // Dynamic Import
 const RecordingControls = lazy(() => import('./components/RecordingControls'));
@@ -175,7 +176,9 @@ function App() {
   return (
     <OrientationProvider>
       <InstrumentProvider>
-        <AppContent />
+        <NamingProvider>
+          <AppContent />
+        </NamingProvider>
       </InstrumentProvider>
     </OrientationProvider>
   );

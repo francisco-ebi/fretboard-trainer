@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './CircleOfFifths.css';
-import { type Note } from '@/utils/musicTheory';
+import { type Note, getNoteName } from '@/utils/musicTheory';
+import { useNaming } from '@/context/NamingContext';
 
 interface CircleOfFifthsProps {
     selectedRoot: Note;
@@ -32,6 +33,7 @@ const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({
     disableKeyboardShortcuts = false
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const { namingSystem } = useNaming();
 
     useEffect(() => {
         if (disableKeyboardShortcuts) return;
@@ -71,7 +73,7 @@ const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({
                 className="circle-center-toggle"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
-                <span className="current-key">{selectedRoot}</span>
+                <span className="current-key">{getNoteName(selectedRoot, namingSystem)}</span>
                 <span className="key-label">Key</span>
             </button>
 
@@ -133,7 +135,7 @@ const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({
                                         className={`slice-text ${isMainSelected ? 'selected-text' : ''}`}
                                         onClick={(e) => { e.stopPropagation(); handleKeySelect(k.main); }}
                                     >
-                                        {k.main}
+                                        {getNoteName(k.main, namingSystem)}
                                     </text>
                                     <text 
                                         x={xText} 
@@ -141,7 +143,7 @@ const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({
                                         className={`slice-text alt-text ${isAltSelected ? 'selected-text' : ''}`}
                                         onClick={(e) => { e.stopPropagation(); handleKeySelect(k.alt!); }}
                                     >
-                                        {k.alt}
+                                        {getNoteName(k.alt!, namingSystem)}
                                     </text>
                                 </>
                             ) : (
@@ -151,7 +153,7 @@ const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({
                                     className={`slice-text ${isMainSelected ? 'selected-text' : ''}`}
                                     onClick={(e) => { e.stopPropagation(); handleKeySelect(k.main); }}
                                 >
-                                    {k.main}
+                                    {getNoteName(k.main, namingSystem)}
                                 </text>
                             )}
                         </g>

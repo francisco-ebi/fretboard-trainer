@@ -2,13 +2,13 @@ export type Note = string;
 export type NamingSystem = 'ENGLISH' | 'SOLFEGE';
 
 const SOLFEGE_MAP: Record<string, string> = {
-    'C': 'Do', 'C#': 'Do#',
-    'D': 'Re', 'D#': 'Re#',
-    'E': 'Mi',
-    'F': 'Fa', 'F#': 'Fa#',
-    'G': 'Sol', 'G#': 'Sol#',
-    'A': 'La', 'A#': 'La#',
-    'B': 'Si'
+    'C': 'Do', 'C#': 'Do#', 'Cb': 'Dob',
+    'D': 'Re', 'D#': 'Re#', 'Db': 'Reb',
+    'E': 'Mi', 'E#': 'Mi#', 'Eb': 'Mib',
+    'F': 'Fa', 'F#': 'Fa#', 'Fb': 'Fab',
+    'G': 'Sol', 'G#': 'Sol#', 'Gb': 'Solb',
+    'A': 'La', 'A#': 'La#', 'Ab': 'Lab',
+    'B': 'Si', 'B#': 'Si#', 'Bb': 'Sib'
 };
 
 const INTERVAL_NAMES: Record<number, string> = {
