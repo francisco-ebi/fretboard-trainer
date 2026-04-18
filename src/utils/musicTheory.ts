@@ -94,7 +94,13 @@ export const SCALE_DEGREES: Record<ScaleType, number[]> = {
     LYDIAN: [0, 1, 2, 3, 4, 5, 6],
     MIXOLYDIAN: [0, 1, 2, 3, 4, 5, 6],
     AEOLIAN: [0, 1, 2, 3, 4, 5, 6],
-    LOCRIAN: [0, 1, 2, 3, 4, 5, 6]
+    LOCRIAN: [0, 1, 2, 3, 4, 5, 6],
+    DOUBLE_HARMONIC: [0, 1, 2, 3, 4, 5, 6],
+    HUNGARIAN_MINOR: [0, 1, 2, 3, 4, 5, 6],
+    NEAPOLITAN_MINOR: [0, 1, 2, 3, 4, 5, 6],
+    NEAPOLITAN_MAJOR: [0, 1, 2, 3, 4, 5, 6],
+    HARMONIC_MINOR: [0, 1, 2, 3, 4, 5, 6],
+    MELODIC_MINOR: [0, 1, 2, 3, 4, 5, 6]
 };
 
 export const getProperSpelling = (root: Note, targetPitchClass: number, degreeIndex: number): Note => {
@@ -140,7 +146,17 @@ export const SCALES = {
     LYDIAN: [0, 2, 4, 6, 7, 9, 11], // Mode 4 (Major with sharp 4)
     MIXOLYDIAN: [0, 2, 4, 5, 7, 9, 10], // Mode 5 (Major with flat 7)
     AEOLIAN: [0, 2, 3, 5, 7, 8, 10], // Mode 6 (Same as Natural Minor)
-    LOCRIAN: [0, 1, 3, 5, 6, 8, 10]  // Mode 7 (Diminished)
+    LOCRIAN: [0, 1, 3, 5, 6, 8, 10],  // Mode 7 (Diminished)
+
+    // Exotic Scales
+    DOUBLE_HARMONIC: [0, 1, 4, 5, 7, 8, 11],
+    HUNGARIAN_MINOR: [0, 2, 3, 6, 7, 8, 11],
+    NEAPOLITAN_MINOR: [0, 1, 3, 5, 7, 8, 11],
+    NEAPOLITAN_MAJOR: [0, 1, 3, 5, 7, 9, 11],
+    
+    // Technical Minors
+    HARMONIC_MINOR: [0, 2, 3, 5, 7, 8, 11], // 1, 2, b3, 4, 5, b6, 7
+    MELODIC_MINOR: [0, 2, 3, 5, 7, 9, 11]   // 1, 2, b3, 4, 5, 6, 7
 };
 
 export type ScaleType = keyof typeof SCALES;
@@ -169,7 +185,13 @@ const RELATIVE_MAJOR_OFFSETS: Record<ScaleType, number> = {
     LYDIAN: 7,
     MIXOLYDIAN: 5,
     AEOLIAN: 3,
-    LOCRIAN: 1
+    LOCRIAN: 1,
+    DOUBLE_HARMONIC: 0,
+    HUNGARIAN_MINOR: 3,
+    NEAPOLITAN_MINOR: 3,
+    NEAPOLITAN_MAJOR: 3,
+    HARMONIC_MINOR: 3,
+    MELODIC_MINOR: 3
 };
 
 export const shouldUseFlats = (root: Note, scaleType: ScaleType): boolean => {
@@ -218,6 +240,69 @@ export const getScale = (root: Note, scaleType: ScaleType = 'MAJOR'): Note[] => 
         return rotatedChromatic[interval];
     });
 };
+
+export type ScaleCategory = 'MAJOR_BASED' | 'MINOR_BASED' | 'OTHER';
+
+export const SCALE_CATEGORIES: Record<ScaleCategory, ScaleType[]> = {
+    MAJOR_BASED: [
+        'MAJOR', 'IONIAN', 'LYDIAN', 'MIXOLYDIAN', 'PENTATONIC_MAJOR', 'DOUBLE_HARMONIC'
+    ],
+    MINOR_BASED: [
+        'MINOR', 'AEOLIAN', 'DORIAN', 'PHRYGIAN', 'HARMONIC_MINOR', 'MELODIC_MINOR',
+        'PENTATONIC_MINOR', 'HUNGARIAN_MINOR', 'NEAPOLITAN_MINOR', 'NEAPOLITAN_MAJOR'
+    ],
+    OTHER: [
+        'BLUES', 'LOCRIAN'
+    ]
+};
+
+export const getScaleAlterations = (scaleType: ScaleType): string[] => {
+    let baseRef: number[];
+    let isMinor = false;
+    
+    if (scaleType === 'MAJOR' || scaleType === 'MINOR') return [];
+
+    if (SCALE_CATEGORIES.MAJOR_BASED.includes(scaleType)) {
+        baseRef = SCALES.MAJOR;
+    } else if (SCALE_CATEGORIES.MINOR_BASED.includes(scaleType)) {
+        baseRef = SCALES.MINOR;
+        isMinor = true;
+    } else {
+        return [];
+    }
+
+    const scaleIntervals = SCALES[scaleType];
+    const intervalsSet = new Set(scaleIntervals);
+    const baseSet = new Set(baseRef);
+    
+    const added = scaleIntervals.filter(i => !baseSet.has(i));
+    const removed = baseRef.filter(i => !intervalsSet.has(i));
+    
+    let alterations: string[] = [];
+    
+    if (scaleIntervals.length < baseRef.length) {
+        removed.forEach(r => {
+            const name = INTERVAL_NAMES[r];
+            alterations.push(`omit ${name}`);
+        });
+    }
+
+    added.forEach(a => {
+        const name = INTERVAL_NAMES[a];
+        if (isMinor) {
+            if (a === 11) alterations.push('♮7');
+            else if (a === 9) alterations.push('♮6');
+            else if (a === 6) alterations.push('#4');
+            else alterations.push(name);
+        } else {
+            if (a === 6) alterations.push('#4');
+            else alterations.push(name);
+        }
+    });
+
+    return alterations;
+};
+
 
 // Instrument Configuration
 export type Instrument = 'GUITAR' | 'BASS' | 'UKULELE';

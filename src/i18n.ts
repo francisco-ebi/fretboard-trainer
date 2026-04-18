@@ -39,7 +39,14 @@ const resources = {
                 tuning: "Tuning",
                 setup: "Setup & Preferences",
                 startListening: "Start Listening",
-                stopListening: "Stop Listening"
+                stopListening: "Stop Listening",
+                baseTonality: "Base Tonality",
+                categories: {
+                    MAJOR_BASED: "Major",
+                    MINOR_BASED: "Minor",
+                    OTHER: "Other / Symmetrical"
+                },
+                alterations: "Alterations"
             },
             instruments: {
                 GUITAR: "Guitar",
@@ -58,7 +65,13 @@ const resources = {
                 LYDIAN: "Lydian (Mode 4)",
                 MIXOLYDIAN: "Mixolydian (Mode 5)",
                 AEOLIAN: "Aeolian (Mode 6)",
-                LOCRIAN: "Locrian (Mode 7)"
+                LOCRIAN: "Locrian (Mode 7)",
+                DOUBLE_HARMONIC: "Double Harmonic",
+                HUNGARIAN_MINOR: "Hungarian Minor",
+                NEAPOLITAN_MINOR: "Neapolitan Minor",
+                NEAPOLITAN_MAJOR: "Neapolitan Major",
+                HARMONIC_MINOR: "Harmonic Minor",
+                MELODIC_MINOR: "Melodic Minor"
             },
             modes: {
                 scale: "Scale Explorer",
@@ -178,7 +191,14 @@ const resources = {
                 tuning: "Afinación",
                 setup: "Configuración & Preferencias",
                 startListening: "Comenzar a Escuchar",
-                stopListening: "Dejar de Escuchar"
+                stopListening: "Dejar de Escuchar",
+                baseTonality: "Tonalidad Base",
+                categories: {
+                    MAJOR_BASED: "Mayor",
+                    MINOR_BASED: "Menor",
+                    OTHER: "Otras / Simétricas"
+                },
+                alterations: "Alteraciones"
             },
             instruments: {
                 GUITAR: "Guitarra",
@@ -197,7 +217,13 @@ const resources = {
                 LYDIAN: "Lidio (Modo 4)",
                 MIXOLYDIAN: "Mixolidio (Modo 5)",
                 AEOLIAN: "Eólico (Modo 6)",
-                LOCRIAN: "Locrio (Modo 7)"
+                LOCRIAN: "Locrio (Modo 7)",
+                DOUBLE_HARMONIC: "Doble Armónica",
+                HUNGARIAN_MINOR: "Menor Húngara",
+                NEAPOLITAN_MINOR: "Menor Napolitana",
+                NEAPOLITAN_MAJOR: "Mayor Napolitana",
+                HARMONIC_MINOR: "Menor Armónica",
+                MELODIC_MINOR: "Menor Melódica"
             },
             modes: {
                 scale: "Explorador de Escalas",

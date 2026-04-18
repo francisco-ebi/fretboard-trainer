@@ -66,6 +66,127 @@
     /* Touch target size */
 }
 
+/* Scale Selector Custom Components */
+.scale-selector-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 300px;
+}
+
+.scale-category-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 4px;
+    gap: 4px;
+}
+
+.category-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+    padding: 0.4rem 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.category-tab:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.category-tab.active {
+    background: rgba(100, 108, 255, 0.3);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.scale-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* Custom Scrollbar for scale list */
+.scale-list::-webkit-scrollbar {
+    width: 4px;
+}
+.scale-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+}
+.scale-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.scale-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.8rem;
+    background: rgba(20, 20, 20, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.0, 0.2, 1);
+}
+
+.scale-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(2px);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.scale-item.selected {
+    background: rgba(100, 108, 255, 0.15);
+    border-color: #646cff;
+    box-shadow: inset 0 0 0 1px #646cff;
+}
+
+.scale-name {
+    font-size: 0.9rem;
+    color: #f0f0f0;
+    font-weight: 500;
+}
+
+.scale-item.selected .scale-name {
+    color: white;
+    font-weight: 600;
+}
+
+.scale-alterations {
+    display: flex;
+    gap: 4px;
+}
+
+.alteration-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: rgba(255, 100, 100, 0.15);
+    color: #ff6b6b;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 100, 100, 0.2);
+}
+
+.scale-item.selected .alteration-badge {
+    background: rgba(100, 108, 255, 0.2);
+    color: #a8b1ff;
+    border-color: rgba(100, 108, 255, 0.3);
+}
+
 /* 3. Secondary Preferences */
 .secondary-group {
     align-items: center;
