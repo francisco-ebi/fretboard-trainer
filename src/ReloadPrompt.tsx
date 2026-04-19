@@ -33,7 +33,7 @@ function ReloadPrompt() {
                 ? <span>{t('reloadPrompt.offlineReady')}</span>
                 : <span>{t('reloadPrompt.newContentAvailable')}</span>}
             </div>
-            {needRefresh && <button className="ReloadPrompt-toast-button" onClick={() => updateServiceWorker(true)}>{t("reloadPrompt.reload")}</button>}
+            {needRefresh && <button className="ReloadPrompt-toast-button" onClick={() => updateServiceWorker()}>{t("reloadPrompt.reload")}</button>}
             <button className="ReloadPrompt-toast-button" onClick={() => close()}>{t("reloadPrompt.close")}</button>
           </div>
         )}
