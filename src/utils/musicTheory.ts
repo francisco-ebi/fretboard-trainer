@@ -376,18 +376,21 @@ export const GUITAR_TUNINGS: Record<string, Tuning> = {
     DROP_D: { name: 'Drop D', offsets: [0, 0, 0, 0, 0, -2] }, // Drop Low E (Last string)
     OPEN_G: { name: 'Open G', offsets: [-2, 0, 0, 0, -2, -2] }, // D B G D G D (High to Low) -> Original High E to D (-2), Low E to D (-2), A to G (-2)
     DADGAD: { name: 'DADGAD', offsets: [-2, -2, 0, 0, 0, -2] }, // D A G D A D (High to Low) -> High E to D (-2), B to A (-2), Low E to D (-2)
+    NEW_STANDARD: { name: 'New Standard (NST)', offsets: [3, 5, 2, 0, -2, -4] }, // G E A D G C (High to Low)
+    BARITONE_NST: { name: 'Baritone NST (GDAEBD)', offsets: [-2, 0, -3, -5, -7, -9] }, // D B E A D G (High to Low)
+    BARITONE_DROP_A: { name: 'Baritone Drop A', offsets: [-5, -5, -5, -5, -5, -7] }, // B F# D A E A (High to Low)
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1] }
 };
 
 export const GUITAR_TUNINGS_7: Record<string, Tuning> = {
-    STANDARD: { name: 'Standard (EBGDAEB)', offsets: [0, 0, 0, 0, 0, 0, 0] },
-    DROP_A: { name: 'Drop A (EBGDAEA)', offsets: [0, 0, 0, 0, 0, 0, -2] }, // Drop Low B (Index 6)
+    STANDARD: { name: 'Standard (BEADGBE)', offsets: [0, 0, 0, 0, 0, 0, 0] },
+    DROP_A: { name: 'Drop A (AEADGBE)', offsets: [0, 0, 0, 0, 0, 0, -2] }, // Drop Low B (Index 6)
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1, -1] }
 };
 
 export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
-    STANDARD: { name: 'Standard (EBGDAEBF#)', offsets: [0, 0, 0, 0, 0, 0, 0, 0] },
-    DROP_E: { name: 'Drop E (EBGDAEBE)', offsets: [0, 0, 0, 0, 0, 0, 0, -2] }, // Drop Low F#
+    STANDARD: { name: 'Standard (F#BEADGBE)', offsets: [0, 0, 0, 0, 0, 0, 0, 0] },
+    DROP_E: { name: 'Drop E (EBEADGBE)', offsets: [0, 0, 0, 0, 0, 0, 0, -2] }, // Drop Low F#
     HALF_STEP_DOWN: { name: 'Half Step Down', offsets: [-1, -1, -1, -1, -1, -1, -1, -1] }
 };
 
