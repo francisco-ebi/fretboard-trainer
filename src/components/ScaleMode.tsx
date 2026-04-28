@@ -4,7 +4,7 @@ import Controls from '@/components/Controls';
 import HelpSection from '@/components/HelpSection';
 import { useInstrument } from '@/context/InstrumentContext';
 
-import { getScale, CHARACTERISTIC_INTERVALS, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
+import { getScale, CHARACTERISTIC_INTERVALS, type Note, type ScaleType, type Instrument } from '@/utils/musicTheory';
 import { type PredictionResult } from '@/utils/audio/prediction-engine';
 import { useNaming } from '@/context/NamingContext';
 
