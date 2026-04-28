@@ -3,10 +3,10 @@ import Fretboard from '@/components/Fretboard';
 import Controls from '@/components/Controls';
 import HelpSection from '@/components/HelpSection';
 import { useInstrument } from '@/context/InstrumentContext';
-import { useNaming } from '@/context/NamingContext';
 
 import { getScale, CHARACTERISTIC_INTERVALS, type Note, type ScaleType, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type PredictionResult } from '@/utils/audio/prediction-engine';
+import { useNaming } from '@/context/NamingContext';
 
 interface ScaleModeProps {
     prediction?: PredictionResult | null;
@@ -14,6 +14,7 @@ interface ScaleModeProps {
 }
 
 const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false }) => {
+    const { namingSystem } = useNaming();
     const [selectedRoot, setSelectedRootState] = useState<Note>(() => {
         return (localStorage.getItem('scalemode-root') as Note) || 'C';
     });
@@ -76,6 +77,7 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false 
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
                     prediction={prediction}
+                    namingSystem={namingSystem}
                 />
             </div>
         </div>

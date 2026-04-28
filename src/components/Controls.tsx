@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type Instrument, type Tuning } from '@/utils/musicTheory';
+import { INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type Instrument, type Tuning, type NamingSystem } from '@/utils/musicTheory';
 import { useInstrument } from '@/context/InstrumentContext';
 import { useNaming } from '@/context/NamingContext';
 import CircleOfFifths from '@/components/CircleOfFifths';

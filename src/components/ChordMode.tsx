@@ -16,7 +16,6 @@ import {
     inferChordName,
     getNoteAtPosition,
     type Note,
-    type NamingSystem,
     type Instrument,
     type Tuning,
     type ChordInfo,
@@ -60,7 +59,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
     const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Custom Interactive Voicing State
-    const [interactiveRootNotePos, setInteractiveRootNotePos] = useState<{stringIndex: number, fret: number} | null>(null);
+    const [interactiveRootNotePos, setInteractiveRootNotePos] = useState<{ stringIndex: number, fret: number } | null>(null);
     const [customVoicingKeys, setCustomVoicingKeys] = useState<string[]>([]);
 
     // Reset custom voicing on chord parameter change
@@ -110,7 +109,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
 
     const handleInteractiveRootClick = (stringIndex: number, fret: number) => {
         setInteractiveRootNotePos({ stringIndex, fret });
-        
+
         if (voicings && voicings.length > 0) {
             const getPriority = (count: number) => {
                 if (count === 3 || count === 4) return 2;
@@ -118,12 +117,12 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                 return 0;
             };
 
-            const matchingVoicing = [...voicings].sort((a,b) => {
+            const matchingVoicing = [...voicings].sort((a, b) => {
                 const aActive = a.frets.filter(f => f >= 0).length; // 0 is open, -1 is muted
                 const bActive = b.frets.filter(f => f >= 0).length;
                 const priorityDiff = getPriority(bActive) - getPriority(aActive);
                 if (priorityDiff !== 0) return priorityDiff;
-                return bActive - aActive; 
+                return bActive - aActive;
             }).find(v => v.frets[stringIndex] === fret);
 
             if (matchingVoicing) {
@@ -143,7 +142,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
         setCustomVoicingKeys(prev => {
             const currentStrNodes = prev.filter(k => k.startsWith(`${stringIndex}-`));
             const toggleKey = `${stringIndex}-${fret}`;
-            
+
             if (currentStrNodes.includes(toggleKey)) {
                 // Prevent untoggling root
                 if (interactiveRootNotePos?.stringIndex === stringIndex && interactiveRootNotePos?.fret === fret) {
@@ -260,13 +259,13 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
             {!isFullScreen && (
                 <div className="chord-controls">
                     <div className="control-group">
-                        <CircleOfFifths 
-                            selectedRoot={selectedRoot} 
+                        <CircleOfFifths
+                            selectedRoot={selectedRoot}
                             onRootChange={(newRoot) => {
                                 setSelectedRoot(newRoot);
                                 setSelectedChordIndex(null);
                                 setChordModifiers({});
-                            }} 
+                            }}
                         />
                     </div>
                     <div className="control-group">
@@ -364,9 +363,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                                     <div className="roman">{chord.romanNumeral}</div>
                                     <div className="name">
                                         {isSelected && customVoicingKeys.length > 0 && interactiveRootNotePos && !activeModifier ? (
-                                            <span style={{color: '#D3AF37', textShadow: '0 0 5px rgba(211, 175, 55, 0.4)'}}>
+                                            <span style={{ color: '#D3AF37', textShadow: '0 0 5px rgba(211, 175, 55, 0.4)' }}>
                                                 {inferChordName(
-                                                    chord.root, 
+                                                    chord.root,
                                                     customVoicingKeys.map(k => {
                                                         const [s, f] = k.split('-').map(Number);
                                                         return getNoteAtPosition(instrument, s, f, tuningOffsets, stringCount, useFlats);
