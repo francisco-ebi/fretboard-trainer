@@ -152,7 +152,9 @@ const resources = {
                 previous: "Previous Chord",
                 remove: "Remove Chord",
                 clear: "Clear Sequence",
-                empty: "Sequence is empty"
+                empty: "Sequence is empty",
+                share: "Share Sequence",
+                shareCopied: "Copied!"
             }
         }
     },
@@ -305,7 +307,9 @@ const resources = {
                 previous: "Acorde Anterior",
                 remove: "Eliminar Acorde",
                 clear: "Limpiar Secuencia",
-                empty: "Secuencia vacía"
+                empty: "Secuencia vacía",
+                share: "Compartir Secuencia",
+                shareCopied: "¡Copiado!"
             }
         }
     }

@@ -28,6 +28,10 @@ const AppContent = () => {
   const { instrument, stringCount } = useInstrument();
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const [currentMode, setCurrentModeState] = useState<AppMode>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('chords')) {
+      return 'LIBRARY';
+    }
     return (localStorage.getItem('app-mode') as AppMode) || 'SCALE';
   });
 

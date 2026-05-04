@@ -8,6 +8,7 @@ import {
     GUITAR_TUNINGS,
     GUITAR_TUNINGS_7,
     GUITAR_TUNINGS_8,
+    ROOT_NOTES,
     getChordNotes,
     type Note,
     type ChordQuality,
@@ -108,12 +109,50 @@ const getDisplayName = (t: any, quality: ChordQuality) => {
     return t(`chords.${quality}`, quality.replace('_', ' '));
 };
 
+const ENCODING_QUALITIES: ChordQuality[] = [
+    'MAJOR', 'MINOR', 'DIMINISHED', 'AUGMENTED', 'SUS2', 'SUS4', 'ADD2', 'ADD4', 'ADD6', 'ADD9',
+    'DOM7', 'MAJ7', 'MIN7', 'MIN7B5', 'DIM7', 'MINMAJ7', 'DOM9', 'MAJ9', 'MIN9', 'DOM11', 'MAJ11',
+    'MIN11', 'DOM13', 'MAJ13', 'MIN13'
+];
+
+const encodeDense = (queue: QueuedChord[]) => {
+    return queue.map(c => {
+        const rootIdx = ROOT_NOTES.indexOf(c.root);
+        const qualIdx = ENCODING_QUALITIES.indexOf(c.quality);
+        if (rootIdx === -1 || qualIdx === -1) return '';
+        return String.fromCharCode(rootIdx + 65) + String.fromCharCode(qualIdx + 65);
+    }).join('');
+};
+
+const decodeDense = (str: string): QueuedChord[] => {
+    const queue: QueuedChord[] = [];
+    for (let i = 0; i < str.length; i += 2) {
+        const rootChar = str.charCodeAt(i) - 65;
+        const qualChar = str.charCodeAt(i + 1) - 65;
+        if (rootChar >= 0 && rootChar < ROOT_NOTES.length && qualChar >= 0 && qualChar < ENCODING_QUALITIES.length) {
+            queue.push({
+                id: Date.now().toString() + Math.random().toString(36).substring(7),
+                root: ROOT_NOTES[rootChar],
+                quality: ENCODING_QUALITIES[qualChar]
+            });
+        }
+    }
+    return queue;
+};
+
 const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => {
     const { t } = useTranslation();
     const [selectedRoot, setSelectedRoot] = useState<Note>('C');
     const [selectedQuality, setSelectedQuality] = useState<ChordQuality>('MAJOR');
+    const [isCopied, setIsCopied] = useState(false);
 
     const [chordQueue, setChordQueue] = useState<QueuedChord[]>(() => {
+        const params = new URLSearchParams(window.location.search);
+        const chordsParam = params.get('chords');
+        if (chordsParam && /^[a-zA-Z]+$/.test(chordsParam) && chordsParam.length % 2 === 0) {
+            return decodeDense(chordsParam.toUpperCase());
+        }
+
         const saved = localStorage.getItem('fretboard_chord_queue');
         if (saved) {
             try { return JSON.parse(saved); } catch (e) {}
@@ -124,7 +163,26 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
 
     React.useEffect(() => {
         localStorage.setItem('fretboard_chord_queue', JSON.stringify(chordQueue));
+        
+        // Update URL
+        const newUrl = new URL(window.location.href);
+        if (chordQueue.length > 0) {
+            newUrl.searchParams.set('chords', encodeDense(chordQueue));
+        } else {
+            newUrl.searchParams.delete('chords');
+        }
+        window.history.replaceState({}, '', newUrl.toString());
     }, [chordQueue]);
+
+    const handleShare = async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    };
 
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -401,12 +459,29 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
             <div className="chord-queue-floating">
                 <div className="chord-queue-header">
                     <h3>{t('queue.title')}</h3>
-                    <button className="icon-btn" onClick={clearQueue} title={t('queue.clear')} aria-label={t('queue.clear')}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                    </button>
+                    <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
+                        <button className="icon-btn" onClick={handleShare} title={isCopied ? t('queue.shareCopied') : t('queue.share')} aria-label={t('queue.share')}>
+                            {isCopied ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="18" cy="5" r="3"></circle>
+                                    <circle cx="6" cy="12" r="3"></circle>
+                                    <circle cx="18" cy="19" r="3"></circle>
+                                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                </svg>
+                            )}
+                        </button>
+                        <button className="icon-btn" onClick={clearQueue} title={t('queue.clear')} aria-label={t('queue.clear')}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div className="queue-items">
