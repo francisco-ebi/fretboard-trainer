@@ -31,12 +31,12 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
         setIsListening(false);
     };
 
-    const startListening = async (mode: PredictionMode) => {
+    const startListening = async (mode: PredictionMode, deviceId: string | null) => {
         setShowModeModal(false);
         setIsLoading(true);
         try {
             await guitarPredictionEngine.setMode(mode);
-            await guitarPredictionEngine.init();
+            await guitarPredictionEngine.init(deviceId);
             await guitarPredictionEngine.startRecording();
             setIsListening(true);
         } catch (error) {

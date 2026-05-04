@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import DeviceSelector from './DeviceSelector';
 import './ListeningModeModal.css';
 
 interface ListeningModeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (mode: 'performance' | 'precision') => void;
+    onConfirm: (mode: 'performance' | 'precision', deviceId: string | null) => void;
 }
 
 const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose, onConfirm }) => {
     const { t } = useTranslation();
     const [isWasmSupported, setIsWasmSupported] = useState(false);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
     useEffect(() => {
         // Check for WebAssembly support
@@ -43,11 +45,13 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
                     {t('listeningModal.description')}
                 </p>
 
+                <DeviceSelector onDeviceSelected={setSelectedDeviceId} />
+
                 <div className="listening-mode-options">
                     {/* Performance Mode Card */}
                     <div
                         className="mode-card performance"
-                        onClick={() => onConfirm('performance')}
+                        onClick={() => onConfirm('performance', selectedDeviceId)}
                     >
                         <div className="mode-icon">⚡</div>
                         <div className="mode-info">
@@ -60,7 +64,7 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
                     {/* Precision Mode Card */}
                     <div
                         className={`mode-card precision ${!isWasmSupported ? 'disabled' : ''}`}
-                        onClick={() => isWasmSupported && onConfirm('precision')}
+                        onClick={() => isWasmSupported && onConfirm('precision', selectedDeviceId)}
                     >
                         <div className="mode-icon">🎯</div>
                         <div className="mode-info">

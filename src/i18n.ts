@@ -40,6 +40,9 @@ const resources = {
                 setup: "Setup & Preferences",
                 startListening: "Start Listening",
                 stopListening: "Stop Listening",
+                inputDevice: "Input Device",
+                selectDevice: "Select a device",
+                requestMic: "Request Microphone Access",
                 selectedScale: "Selected Scale",
                 baseTonality: "Base Tonality",
                 categories: {
@@ -195,6 +198,9 @@ const resources = {
                 setup: "Configuración & Preferencias",
                 startListening: "Comenzar a Escuchar",
                 stopListening: "Dejar de Escuchar",
+                inputDevice: "Dispositivo de Entrada",
+                selectDevice: "Selecciona un dispositivo",
+                requestMic: "Solicitar Acceso al Micrófono",
                 selectedScale: "Escala Seleccionada",
                 baseTonality: "Tonalidad Base",
                 categories: {

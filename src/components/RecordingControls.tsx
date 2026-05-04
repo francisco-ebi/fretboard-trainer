@@ -1,9 +1,10 @@
 import { audioRecordingEngine } from '@/utils/audio/recording-engine';
-
 import { useEffect, useState } from 'react';
+import DeviceSelector from './DeviceSelector';
 
 const RecordingControls = () => {
     const [activeRecording, setActiveRecording] = useState<number | null>(null);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
     useEffect(() => {
         audioRecordingEngine.onDataCaptured = (nota, total) => {
@@ -27,8 +28,9 @@ const RecordingControls = () => {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <DeviceSelector onDeviceSelected={setSelectedDeviceId} />
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button className="mode-btn" onClick={() => audioRecordingEngine.init()}>Init</button>
+                <button className="mode-btn" onClick={() => audioRecordingEngine.init(selectedDeviceId)}>Init</button>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>

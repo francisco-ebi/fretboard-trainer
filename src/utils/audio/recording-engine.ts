@@ -128,7 +128,7 @@ class GuitarAudioRecordingEngine {
         }
     }
 
-    async init() {
+    async init(deviceId?: string | null) {
         if (this.audioContext) return;
 
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -149,9 +149,13 @@ class GuitarAudioRecordingEngine {
 
         try {
             await navigator.mediaDevices.getUserMedia({ audio: true });
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const inputs = devices.filter(device => device.kind === 'audioinput');
-            const selectedDeviceId = inputs.find(i => i.label.includes('USB Audio CODEC'))?.deviceId;
+            
+            let targetDeviceId = deviceId;
+            if (!targetDeviceId) {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const inputs = devices.filter(device => device.kind === 'audioinput');
+                targetDeviceId = inputs.find(i => i.deviceId === 'default')?.deviceId || inputs[0]?.deviceId;
+            }
 
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
@@ -159,7 +163,7 @@ class GuitarAudioRecordingEngine {
                     autoGainControl: false,
                     noiseSuppression: false,
                     channelCount: 1,
-                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
+                    deviceId: targetDeviceId ? { exact: targetDeviceId } : undefined
                 }
             });
             this.sourceNode = this.audioContext.createMediaStreamSource(stream);
