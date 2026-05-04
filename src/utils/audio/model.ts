@@ -1,7 +1,7 @@
 import type { DatasetEntry } from '@/utils/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
-import dataset from '@/utils/audio/datasets/essentia-ts/guitar_dataset.json';
+import dataset from '@/utils/audio/datasets/essentia-acoustic-ts/guitar_dataset.json';
 import { prepare3DDataset, groupDataByString } from './dataset-preparation';
 
 async function getTiF() {
@@ -63,7 +63,7 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
         ]
     });
     console.log('Training completed');
-    await model.save('downloads://guitar-essentia-ts');
+    await model.save('downloads://guitar-essentia-acoustic-ts');
 
     return model;
 }
