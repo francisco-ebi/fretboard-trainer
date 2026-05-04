@@ -10,10 +10,3 @@ export interface AnalysisResult {
     perceptualSpread?: number | null;
     perceptualSharpness?: number | null;
 }
-
-export interface AudioAnalysisBackend {
-    name: string;
-    init(context: AudioContext): Promise<void>;
-    process(buffer: Float32Array): Promise<AnalysisResult>;
-    destroy?(): void;
-}
