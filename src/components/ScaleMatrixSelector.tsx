@@ -33,6 +33,7 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
     const { t } = useTranslation();
     const { namingSystem } = useNaming();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [scaleLengthFilter, setScaleLengthFilter] = useState<'ALL' | 5 | 6 | 7>('ALL');
 
     // Statically resolve all possible (degree, pitchClass) pairings from our scale DB
     const COLUMN_NODES = useMemo(() => {
@@ -68,42 +69,12 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
         return active.sort((a, b) => a.col - b.col);
     }, [selectedScale]);
 
-    const handleNodeClick = (targetCol: number, targetPc: number) => {
-        // If they click a node already in the scale, ignore.
-        if (activeNodes.some(n => n.col === targetCol && n.pc === targetPc)) return;
-
-        // Current scale set
-        const currentPcs = new Set(SCALES[selectedScale]);
-
-        // Find candidate scales that HAVE this target node in this target column (or close to it)
-        const validScales: ScaleType[] = [];
-        const scaleKeys = Object.keys(SCALES) as ScaleType[];
-
-        scaleKeys.forEach(scaleKey => {
-            const scale = SCALES[scaleKey];
-            const degrees = SCALE_DEGREES[scaleKey];
-
-            const hasNode = scale.some((pc, i) => {
-                const d = degrees ? degrees[i] : i;
-                return pc === targetPc && d === targetCol;
-            });
-
-            if (hasNode) validScales.push(scaleKey);
-        });
-
-        // Fallback if no scale exactly maps this pitch to this column: allow any scale with this pitch
-        if (validScales.length === 0) {
-            scaleKeys.forEach(scaleKey => {
-                if (SCALES[scaleKey].includes(targetPc)) validScales.push(scaleKey);
-            });
-        }
-        if (validScales.length === 0) return; // Should never happen based on how nodes are rendered
-
-        // Find scale closest to our current scale using symmetric difference
-        let bestScale = validScales[0];
+    // Helper to find the closest scale from a set of valid scale keys
+    const findClosestScale = (validScaleKeys: ScaleType[], currentPcs: Set<number>) => {
+        let bestScale = validScaleKeys[0];
         let minDistance = 999;
 
-        validScales.forEach(scaleKey => {
+        validScaleKeys.forEach(scaleKey => {
             const targetPcs = new Set(SCALES[scaleKey]);
             let distance = 0;
             currentPcs.forEach(pc => { if (!targetPcs.has(pc)) distance++; });
@@ -114,17 +85,84 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                 bestScale = scaleKey;
             }
         });
+        return bestScale;
+    };
 
-        onScaleChange(bestScale);
+    const handleFilterChange = (newFilter: 'ALL' | 5 | 6 | 7) => {
+        setScaleLengthFilter(newFilter);
+        if (newFilter === 'ALL') return;
+        
+        // If the current scale already matches the length, do nothing
+        if (SCALES[selectedScale].length === newFilter) return;
+
+        const currentPcs = new Set(SCALES[selectedScale]);
+        const validScales = (Object.keys(SCALES) as ScaleType[]).filter(k => SCALES[k].length === newFilter);
+        
+        if (validScales.length > 0) {
+            onScaleChange(findClosestScale(validScales, currentPcs));
+        }
+    };
+
+    const handleNodeClick = (targetCol: number, targetPc: number) => {
+        const isDeselect = activeNodes.some(n => n.col === targetCol && n.pc === targetPc);
+
+        // Current scale set
+        const currentPcs = new Set(SCALES[selectedScale]);
+
+        // Find candidate scales that HAVE (or don't have) this target node in this target column (or close to it)
+        const validScales: ScaleType[] = [];
+        const scaleKeys = Object.keys(SCALES) as ScaleType[];
+
+        scaleKeys.forEach(scaleKey => {
+            const scale = SCALES[scaleKey];
+            if (scaleLengthFilter !== 'ALL' && scale.length !== scaleLengthFilter) return;
+
+            const degrees = SCALE_DEGREES[scaleKey];
+            const hasNode = scale.some((pc, i) => {
+                const d = degrees ? degrees[i] : i;
+                return pc === targetPc && d === targetCol;
+            });
+
+            if (isDeselect && !hasNode) validScales.push(scaleKey);
+            if (!isDeselect && hasNode) validScales.push(scaleKey);
+        });
+
+        // Fallback if no scale exactly maps this pitch to this column: allow any scale with/without this pitch
+        if (validScales.length === 0) {
+            scaleKeys.forEach(scaleKey => {
+                const scale = SCALES[scaleKey];
+                if (scaleLengthFilter !== 'ALL' && scale.length !== scaleLengthFilter) return;
+                
+                const hasNode = scale.includes(targetPc);
+                if (isDeselect && !hasNode) validScales.push(scaleKey);
+                if (!isDeselect && hasNode) validScales.push(scaleKey);
+            });
+        }
+        
+        if (validScales.length === 0) return;
+
+        onScaleChange(findClosestScale(validScales, currentPcs));
     };
 
     return (
         <div className="scale-matrix-selector">
             <div className="matrix-header">
-                <div className="matrix-header-name"></div>
-                <div className="matrix-scale-label">
-                    <span>{t('controls.selectedScale')}: </span>
-                    <strong>{t(`scales.${selectedScale}`)}</strong>
+                <div className="matrix-scale-label" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div>
+                        <span>{t('controls.selectedScale')}: </span>
+                        <strong>{t(`scales.${selectedScale}`)}</strong>
+                    </div>
+                    <select 
+                        value={scaleLengthFilter} 
+                        onChange={e => handleFilterChange(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value) as 5 | 6 | 7)}
+                        className="scale-length-select"
+                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', padding: '4px 8px' }}
+                    >
+                        <option value="ALL">{t('controls.scaleLengths.all')}</option>
+                        <option value="5">{t('controls.scaleLengths.5')}</option>
+                        <option value="6">{t('controls.scaleLengths.6')}</option>
+                        <option value="7">{t('controls.scaleLengths.7')}</option>
+                    </select>
                 </div>
                 <button
                     className="matrix-collapse-btn"

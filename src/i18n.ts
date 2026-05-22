@@ -50,6 +50,12 @@ const resources = {
                     MINOR_BASED: "Minor",
                     OTHER: "Other / Symmetrical"
                 },
+                scaleLengths: {
+                    all: "All Lengths",
+                    5: "Pentatonic (5 notes)",
+                    6: "Hexatonic (6 notes)",
+                    7: "Heptatonic (7 notes)"
+                },
                 alterations: "Alterations"
             },
             instruments: {
@@ -207,6 +213,12 @@ const resources = {
                     MAJOR_BASED: "Mayor",
                     MINOR_BASED: "Menor",
                     OTHER: "Otras / Simétricas"
+                },
+                scaleLengths: {
+                    all: "Todas las Longitudes",
+                    5: "Pentatónica (5 notas)",
+                    6: "Hexatónica (6 notas)",
+                    7: "Heptatónica (7 notas)"
                 },
                 alterations: "Alteraciones"
             },
