@@ -5,15 +5,13 @@ import HelpSection from '@/components/HelpSection';
 import { useInstrument } from '@/context/InstrumentContext';
 
 import { getScale, CHARACTERISTIC_INTERVALS, type Note, type ScaleType, type Instrument } from '@/utils/musicTheory';
-import { type PredictionResult } from '@/utils/audio/prediction-engine';
 import { useNaming } from '@/context/NamingContext';
 
 interface ScaleModeProps {
-    prediction?: PredictionResult | null;
     isFullScreen?: boolean;
 }
 
-const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false }) => {
+const ScaleMode: React.FC<ScaleModeProps> = ({ isFullScreen = false }) => {
     const { namingSystem } = useNaming();
     const [selectedRoot, setSelectedRootState] = useState<Note>(() => {
         return (localStorage.getItem('scalemode-root') as Note) || 'C';
@@ -76,7 +74,6 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ prediction, isFullScreen = false 
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
-                    prediction={prediction}
                     namingSystem={namingSystem}
                 />
             </div>

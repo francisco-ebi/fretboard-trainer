@@ -23,17 +23,15 @@ import {
 import { getChordVoicings } from '@/utils/chordVoicings';
 import './ChordMode.css';
 
-import { type PredictionResult } from '@/utils/audio/prediction-engine';
 
 interface ChordModeProps {
-    prediction?: PredictionResult | null;
     isFullScreen?: boolean;
 }
 
 import { useInstrument } from '@/context/InstrumentContext';
 import { useNaming } from '@/context/NamingContext';
 
-const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false }) => {
+const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     const { t } = useTranslation();
     const [selectedRoot, setSelectedRootState] = useState<Note>(() => {
         return (localStorage.getItem('chordmode-root') as Note) || 'C';
@@ -416,7 +414,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ prediction, isFullScreen = false 
                     instrument={instrument}
                     tuningOffsets={tuningOffsets}
                     stringCount={stringCount}
-                    prediction={prediction}
                     interactiveMode={selectedChordIndex !== null && !chordModifiers[selectedChordIndex]}
                     interactiveRootNotePos={interactiveRootNotePos}
                     interactiveTogglableNotes={interactiveRootNotePos ? CHROMATIC_SCALE : fullScaleNotes}

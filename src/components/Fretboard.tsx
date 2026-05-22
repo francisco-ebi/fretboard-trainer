@@ -1,14 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, type Note, type NamingSystem, type Instrument } from '@/utils/musicTheory';
 import { type Voicing } from '@/utils/chordVoicings';
 import { useOrientation } from '@/context/OrientationContext';
 import { useInstrument } from '@/context/InstrumentContext';
 
-import NoteMarker from '@/components/NoteMarker';
+import { FretCell } from '@/components/FretCell';
+import PredictionOverlay from '@/components/PredictionOverlay';
 import './Fretboard.css';
-
-import { type PredictionResult } from '@/utils/audio/prediction-engine';
 
 interface FretboardProps {
     selectedRoot: Note;
@@ -18,7 +16,6 @@ interface FretboardProps {
     instrument: Instrument;
     tuningOffsets: number[];
     stringCount: number;
-    prediction?: PredictionResult | null;
     voicings?: Voicing[];
     interactiveMode?: boolean;
     interactiveRootNotePos?: { stringIndex: number, fret: number } | null;
@@ -43,7 +40,7 @@ function usePrevious<T>(value: T): T | undefined {
 
 const Fretboard: React.FC<FretboardProps> = ({
     selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument,
-    tuningOffsets, stringCount, prediction, voicings,
+    tuningOffsets, stringCount, voicings,
     interactiveMode, interactiveRootNotePos, interactiveTogglableNotes, customVoicingKeys,
     onInteractiveRootClick, onInteractiveNoteToggle
 }) => {
@@ -155,16 +152,6 @@ const Fretboard: React.FC<FretboardProps> = ({
                 }
             }
 
-            const handleNoteClick = () => {
-                if (isClickableRoot && onInteractiveRootClick) {
-                    onInteractiveRootClick(stringIndex, fret);
-                } else if ((isOutline || isCustomActive) && onInteractiveNoteToggle) {
-                    onInteractiveNoteToggle(stringIndex, fret);
-                }
-            };
-
-            const isPredicted = prediction?.predictedStringNumber === stringIndex && prediction?.predictedFret === fret;
-
             const wasInScale = prevScaleNotes?.some(prevNote => areEnharmonicallyEquivalent(prevNote, physicalNote));
             const shouldShake = isActive && contextChanged && !!wasInScale;
 
@@ -179,94 +166,29 @@ const Fretboard: React.FC<FretboardProps> = ({
                 isDoubleInlayBottom = stringIndex === centerIndex - 2;
             }
 
-            const staggerDelay = fret * 0.02 + stringIndex * 0.01;
-
             fretElements.push(
-                <div
+                <FretCell
                     key={`fret-${stringIndex}-${fret}`}
-                    className={`fret ${fret === 0 ? 'open-string' : ''}`}
-                    role="gridcell"
-                    aria-label={isActive ? `${noteToDisplay} at Fret ${fret}` : `Fret ${fret} (Empty)`}
-                >
-                    <div className="string-line"></div>
-
-                    {isSingleInlay && <div className="inlay-dot" style={{ top: '100%', transform: 'translate(-50%, -50%)' }} />}
-                    {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
-
-                    <motion.div
-                        variants={{
-                            hidden: { 
-                                scale: 0, 
-                                opacity: 0,
-                                transitionEnd: {
-                                    pointerEvents: "none"
-                                }
-                            },
-                            visible: {
-                                scale: 1,
-                                opacity: 1,
-                                zIndex: 2,
-                                pointerEvents: "auto",
-                                transition: {
-                                    type: "spring",
-                                    stiffness: 400,
-                                    damping: 25,
-                                    delay: staggerDelay
-                                }
-                            },
-                            predicted: {
-                                scale: 1.3,
-                                opacity: 1,
-                                zIndex: 10,
-                                pointerEvents: "auto",
-                                x: [0, -2, 2, -2, 2, 0],
-                                transition: {
-                                    x: {
-                                        duration: 0.4,
-                                        repeat: Infinity,
-                                        repeatDelay: 1,
-                                        ease: "easeInOut"
-                                    },
-                                    scale: { duration: 0.2 }
-                                }
-                            }
-                        }}
-                        initial={false}
-                        animate={isPredicted ? "predicted" : (isActive ? "visible" : "hidden")}
-                        style={{ position: 'relative' }}
-                    >
-                        {isPredicted && (
-                            <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                style={{
-                                    position: 'absolute',
-                                    top: '-6px',
-                                    left: '-6px',
-                                    right: '-6px',
-                                    bottom: '-6px',
-                                    borderRadius: '50%',
-                                    border: '2px dashed #D3AF37',
-                                    pointerEvents: 'none'
-                                }}
-                            />
-                        )}
-                        <NoteMarker
-                            note={noteToDisplay}
-                            isRoot={isRoot}
-                            namingSystem={namingSystem}
-                            interval={interval}
-                            isCharacteristic={isCharacteristic}
-                            shouldShake={shouldShake}
-                            octave={octave}
-                            isInactiveOutline={!!isOutline}
-                            customInterval={customInterval}
-                            onClick={(isClickableRoot || isOutline || isCustomActive) ? handleNoteClick : undefined}
-                        />
-                    </motion.div>
-
-                    {/* Fret wire */}
-                </div>
+                    stringIndex={stringIndex}
+                    fret={fret}
+                    noteToDisplay={noteToDisplay}
+                    isRoot={isRoot}
+                    namingSystem={namingSystem}
+                    interval={interval}
+                    isCharacteristic={isCharacteristic}
+                    octave={octave}
+                    customInterval={customInterval}
+                    isClickableRoot={isClickableRoot || false}
+                    isOutline={isOutline || false}
+                    isCustomActive={isCustomActive || false}
+                    isActive={isActive || false}
+                    shouldShake={shouldShake || false}
+                    isSingleInlay={isSingleInlay || false}
+                    isDoubleInlayTop={isDoubleInlayTop || false}
+                    isDoubleInlayBottom={isDoubleInlayBottom || false}
+                    onInteractiveRootClick={onInteractiveRootClick}
+                    onInteractiveNoteToggle={onInteractiveNoteToggle}
+                />
             );
         }
         return fretElements;
@@ -295,6 +217,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                     aria-label={`${instrument} fretboard`}
                     style={orientation === 'VERTICAL' ? { gridTemplateColumns: `repeat(${STRINGS}, 4rem)` } : undefined}
                 >
+                    <PredictionOverlay stringCount={STRINGS} />
                     {renderStrings()}
                 </div>
                 {renderFretNumbers()}

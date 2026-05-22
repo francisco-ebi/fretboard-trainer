@@ -5,7 +5,7 @@ import '@/components/FullScreenStyles.css';
 import TopBar from '@/components/TopBar';
 import ScaleMode from '@/components/ScaleMode';
 import ChordMode from '@/components/ChordMode';
-import { guitarPredictionEngine, type PredictionResult } from '@/utils/audio/prediction-engine';
+
 import { OrientationProvider } from '@/context/OrientationContext';
 
 
@@ -26,7 +26,6 @@ const ChordLibrary = lazy(() => import('./components/ChordLibrary'));
 const AppContent = () => {
   const { t } = useTranslation();
   const { instrument, stringCount } = useInstrument();
-  const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
   const [currentMode, setCurrentModeState] = useState<AppMode>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('chords')) {
@@ -84,9 +83,7 @@ const AppContent = () => {
   }, [isFullScreen]);
 
   useEffect(() => {
-    if (guitarPredictionEngine) {
-      guitarPredictionEngine.fretPredicted$.subscribe(setCurrentPrediction);
-    }
+    // Prediction engine subscription moved directly to Fretboard components
   }, []);
 
   const isPredictionEnabled = instrument === 'GUITAR' && stringCount === 6;
@@ -154,9 +151,9 @@ const AppContent = () => {
         )}
 
         {currentMode === 'SCALE' ? (
-          <ScaleMode prediction={currentPrediction} isFullScreen={isFullScreen} />
+          <ScaleMode isFullScreen={isFullScreen} />
         ) : currentMode === 'CHORD' ? (
-          <ChordMode prediction={currentPrediction} isFullScreen={isFullScreen} />
+          <ChordMode isFullScreen={isFullScreen} />
         ) : currentMode === 'LIBRARY' ? (
           <Suspense fallback={<div>Loading Library...</div>}>
             <ChordLibrary isFullScreen={isFullScreen} />

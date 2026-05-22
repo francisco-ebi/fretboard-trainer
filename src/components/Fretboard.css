@@ -405,3 +405,37 @@
     align-items: center;
     justify-content: center;
 }
+
+/* --- PREDICTION & ANIMATION --- */
+
+.prediction-marker-ring {
+    position: absolute;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    border: 2px dashed #D3AF37;
+    pointer-events: none;
+    animation: rotateRing 3s linear infinite;
+    z-index: 10;
+}
+
+@keyframes rotateRing {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.note-marker-wrapper {
+    position: relative;
+    z-index: 2;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.note-marker-wrapper.hidden {
+    opacity: 0;
+    transform: scale(0);
+    pointer-events: none;
+    transition: transform 0.2s ease-in, opacity 0.2s ease-in;
+}

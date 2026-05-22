@@ -15,16 +15,18 @@ export interface NoteMarkerProps {
     onClick?: () => void;
 }
 
-const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, isCharacteristic, shouldShake, octave, isInactiveOutline, customInterval, onClick }) => {
-    const [shaking, setShaking] = useState(false);
+const NoteMarkerComponent: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, isCharacteristic, shouldShake, octave, isInactiveOutline, customInterval, onClick }) => {
+    const [isShaking, setIsShaking] = useState(false);
 
     useEffect(() => {
         if (shouldShake && !isInactiveOutline) {
-            setShaking(true);
-            const timer = setTimeout(() => setShaking(false), 400);
-            return () => clearTimeout(timer);
+            setIsShaking(true);
         }
-    }, [shouldShake, isInactiveOutline]);
+    }, [shouldShake, isInactiveOutline, note, interval]); // Add dependencies that indicate a change that warrants shaking
+
+    const handleAnimationEnd = () => {
+        setIsShaking(false);
+    };
 
     // Determine class based on interval (3rd, 5th, 7th)
     let intervalClass = '';
@@ -51,7 +53,7 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, int
 
     return (
         <div 
-            className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${shaking ? 'shake' : ''} ${isInactiveOutline ? 'outline-only' : ''} ${onClick ? 'clickable' : ''}`}
+            className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${isShaking ? 'shake' : ''} ${isInactiveOutline ? 'outline-only' : ''} ${onClick ? 'clickable' : ''}`}
             style={{ '--octave': normalizedOctave } as React.CSSProperties}
             onClick={(e) => {
                 if (onClick) {
@@ -59,6 +61,7 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, int
                     onClick();
                 }
             }}
+            onAnimationEnd={handleAnimationEnd}
         >
             <span className="note-name">{getNoteName(note, namingSystem)}<sub className="note-octave">{octave}</sub></span>
             <hr className="note-separator" />
@@ -67,4 +70,4 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, int
     );
 };
 
-export default NoteMarker;
+export default React.memo(NoteMarkerComponent);
