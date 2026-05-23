@@ -1,0 +1,69 @@
+import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
+// import * as tf from '@tensorflow/tfjs';
+import type { LayersModel } from '@tensorflow/tfjs';
+import dataset from '@/shared/lib/audio/datasets/essentia-acoustic-ts/guitar_dataset.json';
+import { prepare3DDataset, groupDataByString } from './dataset-preparation';
+
+async function getTiF() {
+    return await import('@tensorflow/tfjs');
+}
+
+export async function createModel(): Promise<LayersModel> {
+    const tf = await getTiF();
+    const model = tf.sequential();
+    model.add(tf.layers.conv1d({ inputShape: [5, 18], filters: 32, kernelSize: 3, activation: "relu" }));
+    model.add(tf.layers.globalAveragePooling1d());
+    // model.add(tf.layers.flatten());
+    // model.add(tf.layers.dropout({ rate: 0.3 }));
+    model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
+    model.add(tf.layers.dense({ units: 6, activation: 'softmax' }));
+    model.compile({
+        optimizer: "adam",
+        loss: 'categoricalCrossentropy',
+        metrics: ['accuracy']
+    });
+    console.log('Model created');
+    return model;
+}
+
+export async function trainModel(data: DatasetEntry[] = []) { // Keep data optional for now
+    console.log('Training model...');
+    const tf = await getTiF();
+
+    // Mock data if empty for testing
+    if (data.length === 0) {
+        console.warn("No data provided for training, using default dataset.");
+        data = dataset as unknown as DatasetEntry[];
+    }
+
+    const model = await createModel();
+    const { x, y } = prepare3DDataset(groupDataByString(data));
+    const yHot = tf.oneHot(y, 6);
+    console.log(`Input Shape: ${x.shape}`);
+
+    const earlyStopping = tf.callbacks.earlyStopping({
+        monitor: 'val_acc',
+        patience: 5,
+        minDelta: 0.005
+    });
+
+
+    await model.fit(x, yHot, {
+        epochs: 100,
+        batchSize: 64,
+        shuffle: true,
+        validationSplit: 0.2,
+        callbacks: [
+            earlyStopping,
+            new tf.CustomCallback({
+                onEpochEnd: (epoch, logs) => {
+                    console.log(`Epoch ${epoch + 1}: Precisión Entrenamiento = ${(logs!.acc * 100).toFixed(1)}% | Precisión Validación = ${(logs!.val_acc * 100).toFixed(1)}%`);
+                }
+            })
+        ]
+    });
+    console.log('Training completed');
+    await model.save('downloads://guitar-essentia-acoustic-ts');
+
+    return model;
+}

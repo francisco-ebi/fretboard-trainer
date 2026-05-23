@@ -26,6 +26,6 @@
   },
   "include": [
     "vite.config.ts",
-    "src/types/vite-plugin-cross-origin-isolation.d.ts"
+    "src/shared/types/vite-plugin-cross-origin-isolation.d.ts"
   ]
 }
