@@ -142,33 +142,33 @@ const Controls: React.FC<ControlsProps> = ({
 
                             {/* Preference: Color Scheme */}
                             <div className="control-group secondary-group">
-                                <label htmlFor="theme-select">Color Scheme:</label>
+                                <label htmlFor="theme-select">{t('controls.colorScheme')}:</label>
                                 <select
                                     id="theme-select"
                                     value={colorScheme}
                                     onChange={(e) => setColorScheme(e.target.value as any)}
                                 >
-                                    <option value="OKLCH">OKLCH (Perceptual)</option>
-                                    <option value="LEGACY">Legacy (Bright)</option>
+                                    <option value="OKLCH">{t('controls.themeOklch')}</option>
+                                    <option value="LEGACY">{t('controls.themeLegacy')}</option>
                                 </select>
                             </div>
 
                             {instrument === 'GUITAR' && (
                                 <>
                                     <div className="control-group">
-                                        <label htmlFor="string-count-select">Strings:</label>
+                                        <label htmlFor="string-count-select">{t('controls.strings')}:</label>
                                         <select
                                             id="string-count-select"
                                             value={stringCount}
                                             onChange={(e) => handleStringCountChange(parseInt(e.target.value))}
                                         >
-                                            <option value={6}>6 Strings</option>
-                                            <option value={7}>7 Strings</option>
-                                            <option value={8}>8 Strings</option>
+                                            <option value={6}>{t('controls.stringCountVal', { count: 6 })}</option>
+                                            <option value={7}>{t('controls.stringCountVal', { count: 7 })}</option>
+                                            <option value={8}>{t('controls.stringCountVal', { count: 8 })}</option>
                                         </select>
                                     </div>
                                     <div className="control-group">
-                                        <label htmlFor="tuning-select">Tuning:</label>
+                                        <label htmlFor="tuning-select">{t('controls.tuning')}:</label>
                                         <select
                                             id="tuning-select"
                                             value={getCurrentTuningKey()}

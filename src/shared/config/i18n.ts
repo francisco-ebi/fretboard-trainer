@@ -50,7 +50,11 @@ const resources = {
                     MINOR_BASED: "Minor",
                     OTHER: "Other / Symmetrical"
                 },
-                alterations: "Alterations"
+                alterations: "Alterations",
+                colorScheme: "Color Scheme",
+                themeOklch: "OKLCH (Perceptual)",
+                themeLegacy: "Legacy (Bright)",
+                stringCountVal: "{{count}} Strings"
             },
             instruments: {
                 GUITAR: "Guitar",
@@ -158,6 +162,13 @@ const resources = {
                 empty: "Sequence is empty",
                 share: "Share Sequence",
                 shareCopied: "Copied!"
+            },
+            harmony: {
+                explore: "Explore Extended Harmony",
+                hide: "Hide Extended Harmony",
+                secondaryDominants: "Secondary Dominants",
+                modalInterchange: "Modal Interchange",
+                chromaticMediants: "Chromatic Mediants"
             }
         }
     },
@@ -208,7 +219,11 @@ const resources = {
                     MINOR_BASED: "Menor",
                     OTHER: "Otras / Simétricas"
                 },
-                alterations: "Alteraciones"
+                alterations: "Alteraciones",
+                colorScheme: "Esquema de Colores",
+                themeOklch: "OKLCH (Perceptual)",
+                themeLegacy: "Heredado (Brillante)",
+                stringCountVal: "{{count}} Cuerdas"
             },
             instruments: {
                 GUITAR: "Guitarra",
@@ -316,6 +331,13 @@ const resources = {
                 empty: "Secuencia vacía",
                 share: "Compartir Secuencia",
                 shareCopied: "¡Copiado!"
+            },
+            harmony: {
+                explore: "Explorar Armonía Extendida",
+                hide: "Ocultar Armonía Extendida",
+                secondaryDominants: "Dominantes Secundarios",
+                modalInterchange: "Intercambio Modal",
+                chromaticMediants: "Mediantes Cromáticos"
             }
         }
     }

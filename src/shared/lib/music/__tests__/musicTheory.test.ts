@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getScale, getChordNotes, getDiatonicChords } from '../musicTheory';
+import { getScale, getChordNotes, getDiatonicChords, getSecondaryDominants, getBorrowedChords, getChromaticMediants } from '../musicTheory';
 
 describe('musicTheory - Enharmonic Spelling', () => {
     describe('getScale', () => {
@@ -23,7 +23,6 @@ describe('musicTheory - Enharmonic Spelling', () => {
             const result = getScale('Eb', 'BLUES');
             expect(result).toEqual(['Eb', 'Gb', 'Ab', 'A', 'Bb', 'Db']);
         });
-    });
 
         it('should spell Bb Dorian mode correctly', () => {
             // Bb, C, Db, Eb, F, G, Ab
@@ -118,4 +117,50 @@ describe('musicTheory - Enharmonic Spelling', () => {
             expect(vMin.quality).toBe('MINOR');
             expect(vMin.notes).toEqual(['Bb', 'Db', 'F']);
         });
+    });
+
+    describe('getSecondaryDominants', () => {
+        it('should return correct secondary dominants for C Major', () => {
+            const result = getSecondaryDominants('C', 'MAJOR');
+            // Expected targets: ii (D), iii (E), IV (F), V (G), vi (A)
+            // V/ii = A7, V/iii = B7, V/IV = C7, V/V = D7, V/vi = E7
+            expect(result.length).toBe(5);
+            expect(result.map(c => c.root)).toEqual(['A', 'B', 'C', 'D', 'E']);
+            expect(result.every(c => c.quality === 'DOM7')).toBe(true);
+            expect(result.map(c => c.romanNumeral)).toEqual(['V7/ii', 'V7/iii', 'V7/IV', 'V7/V', 'V7/vi']);
+        });
+    });
+
+    describe('getBorrowedChords', () => {
+        it('should return modal interchange chords for C Major from C Minor', () => {
+            const result = getBorrowedChords('C', 'MAJOR');
+            // C minor diatonic: Cm, Ddim, Eb, Fm, Gm, Ab, Bb
+            // None of these have identical root AND quality as C Major diatonics.
+            expect(result.length).toBe(7);
+            expect(result.map(c => c.root)).toEqual(['C', 'D', 'Eb', 'F', 'G', 'Ab', 'Bb']);
+            expect(result[0].quality).toBe('MINOR'); // Cm
+            expect(result[2].quality).toBe('MAJOR'); // Eb Major
+        });
+    });
+
+    describe('getChromaticMediants', () => {
+        it('should return chromatic mediants for C Major', () => {
+            const result = getChromaticMediants('C', 'MAJOR');
+            // min 3rd (Eb), Maj 3rd (E), min 6th (Ab), Maj 6th (A)
+            expect(result.length).toBe(4);
+            expect(result.map(c => c.root)).toEqual(['Eb', 'E', 'Ab', 'A']);
+            expect(result.every(c => c.quality === 'MAJOR')).toBe(true);
+            expect(result.map(c => c.romanNumeral)).toEqual(['bIII', 'III', 'bVI', 'VI']);
+        });
+
+        it('should return chromatic mediants for A Minor', () => {
+            const result = getChromaticMediants('A', 'MINOR');
+            // min 3rd (C), Maj 3rd (C#), min 6th (F), Maj 6th (F#)
+            // Tonic is Minor, so quality is MINOR.
+            expect(result.length).toBe(4);
+            expect(result.map(c => c.root)).toEqual(['C', 'C#', 'F', 'F#']);
+            expect(result.every(c => c.quality === 'MINOR')).toBe(true);
+            expect(result.map(c => c.romanNumeral)).toEqual(['biii', 'iii', 'bvi', 'vi']);
+        });
+    });
 });

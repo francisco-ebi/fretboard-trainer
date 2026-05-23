@@ -537,6 +537,92 @@ export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): 
     });
 };
 
+export const getSecondaryDominants = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+    const diatonicChords = getDiatonicChords(keyRoot, scaleType);
+    const useFlats = shouldUseFlats(keyRoot, scaleType);
+    const results: ChordInfo[] = [];
+
+    // Valid targets for secondary dominants (usually major or minor diatonic chords, not diminished)
+    diatonicChords.forEach((chord) => {
+        if (chord.quality === 'DIMINISHED') return;
+        // Don't do V/I or V/i because that's just the primary dominant
+        if (chord.romanNumeral.toLowerCase() === 'i') return;
+
+        const targetRootIndex = getNoteIndex(chord.root);
+        // V is a perfect fifth (7 semitones) up from target
+        const rotated = getRotatedScale(targetRootIndex, useFlats);
+        const secDomRoot = rotated[7];
+
+        const quality: ChordQuality = 'DOM7'; // Secondary dominants are typically dominant 7ths
+        const notes = getChordNotes(secDomRoot, quality, useFlats);
+
+        results.push({
+            root: secDomRoot,
+            quality,
+            notes,
+            displayName: `${secDomRoot}7`,
+            romanNumeral: `V7/${chord.romanNumeral}`
+        });
+    });
+
+    return results;
+};
+
+export const getBorrowedChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+    const originalChords = getDiatonicChords(keyRoot, scaleType);
+    const borrowedScaleType = scaleType === 'MAJOR' ? 'MINOR' : 'MAJOR';
+    const borrowedChords = getDiatonicChords(keyRoot, borrowedScaleType);
+
+    // Filter out chords that are identical in root and quality
+    return borrowedChords.filter(bc => 
+        !originalChords.some(oc => oc.root === bc.root && oc.quality === bc.quality)
+    );
+};
+
+export const getChromaticMediants = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+    const rootIndex = getNoteIndex(keyRoot);
+    const useFlats = shouldUseFlats(keyRoot, scaleType);
+    const diatonicChords = getDiatonicChords(keyRoot, scaleType);
+    const tonicQuality = scaleType === 'MAJOR' ? 'MAJOR' : 'MINOR';
+    const suffix = tonicQuality === 'MINOR' ? 'm' : '';
+
+    const mediantIntervals = [3, 4, 8, 9]; // min 3rd, Maj 3rd, min 6th, Maj 6th
+
+    const results: ChordInfo[] = [];
+
+    mediantIntervals.forEach(interval => {
+        let degreeIndex = 0;
+        if (interval === 3 || interval === 4) degreeIndex = 2; // mediant (3rd)
+        if (interval === 8 || interval === 9) degreeIndex = 5; // submediant (6th)
+
+        const mediantRoot = getProperSpelling(keyRoot, (rootIndex + interval) % 12, degreeIndex);
+        const notes = getChordNotes(mediantRoot, tonicQuality, useFlats);
+        
+        const isDiatonic = diatonicChords.some(dc => dc.root === mediantRoot && dc.quality === tonicQuality);
+        if (!isDiatonic) {
+            let roman = '';
+            if (interval === 3) roman = 'bIII';
+            if (interval === 4) roman = 'III';
+            if (interval === 8) roman = 'bVI';
+            if (interval === 9) roman = 'VI';
+
+            if (tonicQuality === 'MINOR') {
+                roman = roman.toLowerCase();
+            }
+
+            results.push({
+                root: mediantRoot,
+                quality: tonicQuality,
+                notes,
+                displayName: `${mediantRoot}${suffix}`,
+                romanNumeral: roman
+            });
+        }
+    });
+
+    return results;
+};
+
 /**
  * Infers a chord name based on a root note and an array of notes it contains.
  */
@@ -625,4 +711,69 @@ export const getOctave = (instrument: Instrument, stringIndex: number, fretIndex
     }
 
     return Math.floor(totalSemitones / 12);
+};
+
+export interface QueuedChord {
+    id: string;
+    root: Note;
+    quality: ChordQuality;
+}
+
+export const CHORD_SYMBOLS: Record<ChordQuality, string> = {
+    MAJOR: '',
+    MINOR: 'm',
+    DIMINISHED: 'dim',
+    AUGMENTED: 'aug',
+    SUS2: 'sus2',
+    SUS4: 'sus4',
+    ADD2: 'add2',
+    ADD4: 'add4',
+    ADD6: 'add6',
+    ADD9: 'add9',
+    DOM7: '7',
+    MAJ7: 'maj7',
+    MIN7: 'm7',
+    MIN7B5: 'm7b5',
+    DIM7: 'dim7',
+    MINMAJ7: 'mM7',
+    DOM9: '9',
+    MAJ9: 'maj9',
+    MIN9: 'm9',
+    DOM11: '11',
+    MAJ11: 'maj11',
+    MIN11: 'm11',
+    DOM13: '13',
+    MAJ13: 'maj13',
+    MIN13: 'm13'
+};
+
+export const ENCODING_QUALITIES: ChordQuality[] = [
+    'MAJOR', 'MINOR', 'DIMINISHED', 'AUGMENTED', 'SUS2', 'SUS4', 'ADD2', 'ADD4', 'ADD6', 'ADD9',
+    'DOM7', 'MAJ7', 'MIN7', 'MIN7B5', 'DIM7', 'MINMAJ7', 'DOM9', 'MAJ9', 'MIN9', 'DOM11', 'MAJ11',
+    'MIN11', 'DOM13', 'MAJ13', 'MIN13'
+];
+
+export const encodeDense = (queue: QueuedChord[]): string => {
+    return queue.map(c => {
+        const rootIdx = ROOT_NOTES.indexOf(c.root);
+        const qualIdx = ENCODING_QUALITIES.indexOf(c.quality);
+        if (rootIdx === -1 || qualIdx === -1) return '';
+        return String.fromCharCode(rootIdx + 65) + String.fromCharCode(qualIdx + 65);
+    }).join('');
+};
+
+export const decodeDense = (str: string): QueuedChord[] => {
+    const queue: QueuedChord[] = [];
+    for (let i = 0; i < str.length; i += 2) {
+        const rootChar = str.charCodeAt(i) - 65;
+        const qualChar = str.charCodeAt(i + 1) - 65;
+        if (rootChar >= 0 && rootChar < ROOT_NOTES.length && qualChar >= 0 && qualChar < ENCODING_QUALITIES.length) {
+            queue.push({
+                id: Date.now().toString() + Math.random().toString(36).substring(7),
+                root: ROOT_NOTES[rootChar],
+                quality: ENCODING_QUALITIES[qualChar]
+            });
+        }
+    }
+    return queue;
 };

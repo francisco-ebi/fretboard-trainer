@@ -8,13 +8,16 @@ import {
     GUITAR_TUNINGS,
     GUITAR_TUNINGS_7,
     GUITAR_TUNINGS_8,
-    ROOT_NOTES,
     getChordNotes,
     type Note,
     type ChordQuality,
     type NamingSystem,
     type Instrument,
-    type Tuning
+    type Tuning,
+    type QueuedChord,
+    CHORD_SYMBOLS,
+    encodeDense,
+    decodeDense
 } from '@/shared/lib/music/musicTheory';
 import { getChordVoicings } from '@/shared/lib/music/chordVoicings';
 import { useInstrument } from '@/app/providers';
@@ -22,12 +25,6 @@ import './ui.css';
 
 interface ChordLibraryProps {
     isFullScreen?: boolean;
-}
-
-interface QueuedChord {
-    id: string;
-    root: Note;
-    quality: ChordQuality;
 }
 
 const INTERVAL_ALIASES: Record<string, Record<number, string>> = {
@@ -47,34 +44,6 @@ const CHORD_GROUPS = [
     { id: 'extended', qualities: ['DOM9', 'MAJ9', 'MIN9', 'DOM11', 'MAJ11', 'MIN11', 'DOM13', 'MAJ13', 'MIN13'] as ChordQuality[] },
     { id: 'suspended', qualities: ['SUS2', 'SUS4', 'ADD2', 'ADD4', 'ADD6', 'ADD9'] as ChordQuality[] }
 ];
-
-const CHORD_SYMBOLS: Record<ChordQuality, string> = {
-    MAJOR: '',
-    MINOR: 'm',
-    DIMINISHED: 'dim',
-    AUGMENTED: 'aug',
-    SUS2: 'sus2',
-    SUS4: 'sus4',
-    ADD2: 'add2',
-    ADD4: 'add4',
-    ADD6: 'add6',
-    ADD9: 'add9',
-    DOM7: '7',
-    MAJ7: 'maj7',
-    MIN7: 'm7',
-    MIN7B5: 'm7b5',
-    DIM7: 'dim7',
-    MINMAJ7: 'mM7',
-    DOM9: '9',
-    MAJ9: 'maj9',
-    MIN9: 'm9',
-    DOM11: '11',
-    MAJ11: 'maj11',
-    MIN11: 'm11',
-    DOM13: '13',
-    MAJ13: 'maj13',
-    MIN13: 'm13'
-};
 
 // Re-defining intervals local mapping to calculate the exact strings for textual display
 const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
@@ -109,36 +78,7 @@ const getDisplayName = (t: any, quality: ChordQuality) => {
     return t(`chords.${quality}`, quality.replace('_', ' '));
 };
 
-const ENCODING_QUALITIES: ChordQuality[] = [
-    'MAJOR', 'MINOR', 'DIMINISHED', 'AUGMENTED', 'SUS2', 'SUS4', 'ADD2', 'ADD4', 'ADD6', 'ADD9',
-    'DOM7', 'MAJ7', 'MIN7', 'MIN7B5', 'DIM7', 'MINMAJ7', 'DOM9', 'MAJ9', 'MIN9', 'DOM11', 'MAJ11',
-    'MIN11', 'DOM13', 'MAJ13', 'MIN13'
-];
 
-const encodeDense = (queue: QueuedChord[]) => {
-    return queue.map(c => {
-        const rootIdx = ROOT_NOTES.indexOf(c.root);
-        const qualIdx = ENCODING_QUALITIES.indexOf(c.quality);
-        if (rootIdx === -1 || qualIdx === -1) return '';
-        return String.fromCharCode(rootIdx + 65) + String.fromCharCode(qualIdx + 65);
-    }).join('');
-};
-
-const decodeDense = (str: string): QueuedChord[] => {
-    const queue: QueuedChord[] = [];
-    for (let i = 0; i < str.length; i += 2) {
-        const rootChar = str.charCodeAt(i) - 65;
-        const qualChar = str.charCodeAt(i + 1) - 65;
-        if (rootChar >= 0 && rootChar < ROOT_NOTES.length && qualChar >= 0 && qualChar < ENCODING_QUALITIES.length) {
-            queue.push({
-                id: Date.now().toString() + Math.random().toString(36).substring(7),
-                root: ROOT_NOTES[rootChar],
-                quality: ENCODING_QUALITIES[qualChar]
-            });
-        }
-    }
-    return queue;
-};
 
 const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => {
     const { t } = useTranslation();
