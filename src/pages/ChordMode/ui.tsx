@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fretboard from '@/widgets/Fretboard';
@@ -24,11 +24,10 @@ import {
     type ChordInfo,
     type QueuedChord,
     type ChordQuality,
-    CHORD_SYMBOLS,
-    encodeDense,
-    decodeDense
+    CHORD_SYMBOLS
 } from '@/shared/lib/music/musicTheory';
 import { getChordVoicings } from '@/shared/lib/music/chordVoicings';
+import { useChordQueue } from '@/shared/hooks/useChordQueue';
 import './ui.css';
 
 
@@ -62,34 +61,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     const [chordModifiers, setChordModifiers] = useState<Record<string, any>>({});
     const [isCopied, setIsCopied] = useState(false);
     const [queuedActiveChord, setQueuedActiveChord] = useState<{ root: Note, quality: ChordQuality } | null>(null);
-
-    const [chordQueue, setChordQueue] = useState<QueuedChord[]>(() => {
-        const params = new URLSearchParams(window.location.search);
-        const chordsParam = params.get('chords');
-        if (chordsParam && /^[a-zA-Z]+$/.test(chordsParam) && chordsParam.length % 2 === 0) {
-            return decodeDense(chordsParam.toUpperCase());
-        }
-
-        const saved = localStorage.getItem('fretboard_chord_queue');
-        if (saved) {
-            try { return JSON.parse(saved); } catch (e) {}
-        }
-        return [];
-    });
-    const [activeQueueIndex, setActiveQueueIndex] = useState<number>(-1);
-
-    React.useEffect(() => {
-        localStorage.setItem('fretboard_chord_queue', JSON.stringify(chordQueue));
-        
-        // Update URL
-        const newUrl = new URL(window.location.href);
-        if (chordQueue.length > 0) {
-            newUrl.searchParams.set('chords', encodeDense(chordQueue));
-        } else {
-            newUrl.searchParams.delete('chords');
-        }
-        window.history.replaceState({}, '', newUrl.toString());
-    }, [chordQueue]);
 
     const handleShare = async () => {
         try {
@@ -327,22 +298,8 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
 
     const fullScaleNotes = React.useMemo(() => getScale(selectedRoot, selectedScaleType), [selectedRoot, selectedScaleType]);
 
-    // Queue Handlers
-    const addToQueue = () => {
-        if (!selectedChordId || !activeChord || !activeChordQuality) return;
-        const newChord: QueuedChord = {
-            id: Date.now().toString() + Math.random().toString(36).substring(7),
-            root: activeChord.root,
-            quality: activeChordQuality
-        };
-        const newQueue = [...chordQueue, newChord];
-        setChordQueue(newQueue);
-        setActiveQueueIndex(newQueue.length - 1);
-    };
-
-    const selectFromQueue = (index: number) => {
-        setActiveQueueIndex(index);
-        const queued = chordQueue[index];
+    // Queue Handlers using custom hook
+    const handleSelectChordFromQueue = useCallback((queued: QueuedChord) => {
         // 1. Try to find if this chord exists in the current key/scale list.
         let foundId: string | null = null;
         let foundModifier: ChordQuality | null = null;
@@ -359,7 +316,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                     const modifiers = ['SUS2', 'SUS4', 'ADD9', 'DOM7', 'MAJ7'];
                     if (modifiers.includes(queued.quality)) {
                         foundId = `${prefix}-${i}`;
-                        foundModifier = queued.quality;
+                        foundModifier = queued.quality as ChordQuality;
                         break;
                     }
                 }
@@ -387,60 +344,28 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                 quality: queued.quality
             });
         }
-    };
+    }, [diatonicChords, secondaryDominants, borrowedChords, chromaticMediants]);
 
-    const removeFromQueue = (index: number, e: React.MouseEvent) => {
-        e.stopPropagation();
-        const newQueue = [...chordQueue];
-        newQueue.splice(index, 1);
-        setChordQueue(newQueue);
-        
-        if (activeQueueIndex === index) {
-            setActiveQueueIndex(-1);
-            setQueuedActiveChord(null);
-        } else if (activeQueueIndex > index) {
-            setActiveQueueIndex(activeQueueIndex - 1);
+    const {
+        chordQueue,
+        activeQueueIndex,
+        setActiveQueueIndex,
+        addToQueue,
+        removeFromQueue,
+        clearQueue,
+        nextInQueue,
+        prevInQueue,
+        selectFromQueue
+    } = useChordQueue({
+        onSelectChord: handleSelectChordFromQueue,
+        onRemoveActiveChord: useCallback(() => setQueuedActiveChord(null), []),
+    });
+
+    const handleAddToQueue = () => {
+        if (activeChord && activeChordQuality) {
+            addToQueue(activeChord.root, activeChordQuality);
         }
     };
-
-    const clearQueue = () => {
-        setChordQueue([]);
-        setActiveQueueIndex(-1);
-        setQueuedActiveChord(null);
-    };
-
-    const nextInQueue = () => {
-        if (activeQueueIndex < chordQueue.length - 1) {
-            selectFromQueue(activeQueueIndex + 1);
-        }
-    };
-
-    const prevInQueue = () => {
-        if (activeQueueIndex > 0) {
-            selectFromQueue(activeQueueIndex - 1);
-        }
-    };
-
-    React.useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (document.activeElement?.tagName === 'SELECT' || document.activeElement?.tagName === 'INPUT') return;
-
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (activeQueueIndex > 0) {
-                    selectFromQueue(activeQueueIndex - 1);
-                }
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (activeQueueIndex < chordQueue.length - 1) {
-                    selectFromQueue(activeQueueIndex + 1);
-                }
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeQueueIndex, chordQueue, diatonicChords, secondaryDominants, borrowedChords, chromaticMediants]);
 
     const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
         'SUS2': 'sus2',
@@ -722,7 +647,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button 
                         className="add-to-queue-btn" 
-                        onClick={addToQueue} 
+                        onClick={handleAddToQueue} 
                         title={t('queue.addToQueue')}
                         disabled={!selectedChordId}
                         style={!selectedChordId ? { opacity: 0.5, cursor: 'not-allowed' } : {}}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fretboard from '@/widgets/Fretboard';
@@ -15,11 +15,10 @@ import {
     type Instrument,
     type Tuning,
     type QueuedChord,
-    CHORD_SYMBOLS,
-    encodeDense,
-    decodeDense
+    CHORD_SYMBOLS
 } from '@/shared/lib/music/musicTheory';
 import { getChordVoicings } from '@/shared/lib/music/chordVoicings';
+import { useChordQueue } from '@/shared/hooks/useChordQueue';
 import { useInstrument } from '@/app/providers';
 import './ui.css';
 
@@ -86,33 +85,26 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
     const [selectedQuality, setSelectedQuality] = useState<ChordQuality>('MAJOR');
     const [isCopied, setIsCopied] = useState(false);
 
-    const [chordQueue, setChordQueue] = useState<QueuedChord[]>(() => {
-        const params = new URLSearchParams(window.location.search);
-        const chordsParam = params.get('chords');
-        if (chordsParam && /^[a-zA-Z]+$/.test(chordsParam) && chordsParam.length % 2 === 0) {
-            return decodeDense(chordsParam.toUpperCase());
-        }
-
-        const saved = localStorage.getItem('fretboard_chord_queue');
-        if (saved) {
-            try { return JSON.parse(saved); } catch (e) {}
-        }
-        return [];
+    const {
+        chordQueue,
+        activeQueueIndex,
+        setActiveQueueIndex,
+        addToQueue,
+        removeFromQueue,
+        clearQueue,
+        nextInQueue,
+        prevInQueue,
+        selectFromQueue
+    } = useChordQueue({
+        onSelectChord: useCallback((chord: QueuedChord) => {
+            setSelectedRoot(chord.root);
+            setSelectedQuality(chord.quality);
+        }, [setSelectedRoot, setSelectedQuality])
     });
-    const [activeQueueIndex, setActiveQueueIndex] = useState<number>(-1);
 
-    React.useEffect(() => {
-        localStorage.setItem('fretboard_chord_queue', JSON.stringify(chordQueue));
-        
-        // Update URL
-        const newUrl = new URL(window.location.href);
-        if (chordQueue.length > 0) {
-            newUrl.searchParams.set('chords', encodeDense(chordQueue));
-        } else {
-            newUrl.searchParams.delete('chords');
-        }
-        window.history.replaceState({}, '', newUrl.toString());
-    }, [chordQueue]);
+    const handleAddToQueue = () => {
+        addToQueue(selectedRoot, selectedQuality);
+    };
 
     const handleShare = async () => {
         try {
@@ -123,33 +115,6 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
             console.error('Failed to copy text: ', err);
         }
     };
-
-    React.useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (document.activeElement?.tagName === 'SELECT' || document.activeElement?.tagName === 'INPUT') return;
-
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (activeQueueIndex > 0) {
-                    const newIndex = activeQueueIndex - 1;
-                    setActiveQueueIndex(newIndex);
-                    setSelectedRoot(chordQueue[newIndex].root);
-                    setSelectedQuality(chordQueue[newIndex].quality);
-                }
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (activeQueueIndex < chordQueue.length - 1) {
-                    const newIndex = activeQueueIndex + 1;
-                    setActiveQueueIndex(newIndex);
-                    setSelectedRoot(chordQueue[newIndex].root);
-                    setSelectedQuality(chordQueue[newIndex].quality);
-                }
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeQueueIndex, chordQueue]);
 
     // Context for instrument settings
     const [namingSystem] = useState<NamingSystem>('ENGLISH');
@@ -163,53 +128,6 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
     } = useInstrument();
 
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-
-    // Queue Handlers
-    const addToQueue = () => {
-        const newChord: QueuedChord = {
-            id: Date.now().toString() + Math.random().toString(36).substring(7),
-            root: selectedRoot,
-            quality: selectedQuality
-        };
-        setChordQueue([...chordQueue, newChord]);
-        setActiveQueueIndex(chordQueue.length);
-    };
-
-    const selectFromQueue = (index: number) => {
-        setActiveQueueIndex(index);
-        setSelectedRoot(chordQueue[index].root);
-        setSelectedQuality(chordQueue[index].quality);
-    };
-
-    const removeFromQueue = (index: number, e: React.MouseEvent) => {
-        e.stopPropagation();
-        const newQueue = [...chordQueue];
-        newQueue.splice(index, 1);
-        setChordQueue(newQueue);
-        
-        if (activeQueueIndex === index) {
-            setActiveQueueIndex(-1);
-        } else if (activeQueueIndex > index) {
-            setActiveQueueIndex(activeQueueIndex - 1);
-        }
-    };
-
-    const clearQueue = () => {
-        setChordQueue([]);
-        setActiveQueueIndex(-1);
-    };
-
-    const nextInQueue = () => {
-        if (activeQueueIndex < chordQueue.length - 1) {
-            selectFromQueue(activeQueueIndex + 1);
-        }
-    };
-
-    const prevInQueue = () => {
-        if (activeQueueIndex > 0) {
-            selectFromQueue(activeQueueIndex - 1);
-        }
-    };
 
     // Handlers
     const handleInstrumentChange = (newInstrument: Instrument) => {
@@ -449,7 +367,7 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="add-to-queue-btn" onClick={addToQueue} title={t('queue.addToQueue')}>
+                    <button className="add-to-queue-btn" onClick={handleAddToQueue} title={t('queue.addToQueue')}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
