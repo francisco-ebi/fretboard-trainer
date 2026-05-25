@@ -166,9 +166,9 @@ const resources = {
             harmony: {
                 explore: "Explore Extended Harmony",
                 hide: "Hide Extended Harmony",
-                secondaryDominants: "Secondary Dominants",
-                modalInterchange: "Modal Interchange",
-                chromaticMediants: "Chromatic Mediants"
+                secondary: "Secondary Dominants",
+                borrowed: "Modal Interchange",
+                mediant: "Chromatic Mediants"
             }
         }
     },
@@ -335,9 +335,9 @@ const resources = {
             harmony: {
                 explore: "Explorar Armonía Extendida",
                 hide: "Ocultar Armonía Extendida",
-                secondaryDominants: "Dominantes Secundarios",
-                modalInterchange: "Intercambio Modal",
-                chromaticMediants: "Mediantes Cromáticos"
+                secondary: "Dominantes Secundarios",
+                borrowed: "Intercambio Modal",
+                mediant: "Mediantes Cromáticos"
             }
         }
     }

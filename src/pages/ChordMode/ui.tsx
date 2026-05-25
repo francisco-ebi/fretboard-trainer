@@ -35,6 +35,19 @@ interface ChordModeProps {
     isFullScreen?: boolean;
 }
 
+interface GroupedChordItem {
+    id: string;
+    chord: ChordInfo;
+    category: 'diatonic' | 'secondary' | 'borrowed' | 'mediant';
+}
+
+interface DegreeColumn {
+    degreeIndex: number;
+    degreeName: string;
+    rootNote: Note;
+    chords: GroupedChordItem[];
+}
+
 import { useInstrument } from '@/app/providers';
 import { useNaming } from '@/app/providers';
 
@@ -238,18 +251,90 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
         getDiatonicChords(selectedRoot, selectedScaleType),
         [selectedRoot, selectedScaleType]
     );
-    const secondaryDominants = React.useMemo(() => 
-        getSecondaryDominants(selectedRoot, selectedScaleType), 
+    const secondaryDominants = React.useMemo(() =>
+        getSecondaryDominants(selectedRoot, selectedScaleType),
         [selectedRoot, selectedScaleType]
     );
-    const borrowedChords = React.useMemo(() => 
-        getBorrowedChords(selectedRoot, selectedScaleType), 
+    const borrowedChords = React.useMemo(() =>
+        getBorrowedChords(selectedRoot, selectedScaleType),
         [selectedRoot, selectedScaleType]
     );
-    const chromaticMediants = React.useMemo(() => 
-        getChromaticMediants(selectedRoot, selectedScaleType), 
+    const chromaticMediants = React.useMemo(() =>
+        getChromaticMediants(selectedRoot, selectedScaleType),
         [selectedRoot, selectedScaleType]
     );
+
+    const groupedDegrees = React.useMemo(() => {
+        if (diatonicChords.length < 7) return [];
+
+        const columns: DegreeColumn[] = diatonicChords.map((diatonicChord, index) => ({
+            degreeIndex: index,
+            degreeName: diatonicChord.romanNumeral,
+            rootNote: diatonicChord.root,
+            chords: [
+                {
+                    id: `diatonic-${index}`,
+                    chord: diatonicChord,
+                    category: 'diatonic'
+                }
+            ]
+        }));
+
+        // Helper to find matching column by root note letter
+        const findColumnIndex = (root: Note) => {
+            const letter = root.charAt(0);
+            return columns.findIndex(col => col.rootNote.charAt(0) === letter);
+        };
+
+        // Group secondary dominants
+        secondaryDominants.forEach((chord, index) => {
+            const colIdx = findColumnIndex(chord.root);
+            if (colIdx !== -1) {
+                columns[colIdx].chords.push({
+                    id: `secondary-${index}`,
+                    chord,
+                    category: 'secondary'
+                });
+            }
+        });
+
+        // Group borrowed chords
+        borrowedChords.forEach((chord, index) => {
+            const colIdx = findColumnIndex(chord.root);
+            if (colIdx !== -1) {
+                // Avoid duplicates
+                const exists = columns[colIdx].chords.some(
+                    item => item.chord.root === chord.root && item.chord.quality === chord.quality
+                );
+                if (!exists) {
+                    columns[colIdx].chords.push({
+                        id: `borrowed-${index}`,
+                        chord,
+                        category: 'borrowed'
+                    });
+                }
+            }
+        });
+
+        // Group chromatic mediants
+        chromaticMediants.forEach((chord, index) => {
+            const colIdx = findColumnIndex(chord.root);
+            if (colIdx !== -1) {
+                const exists = columns[colIdx].chords.some(
+                    item => item.chord.root === chord.root && item.chord.quality === chord.quality
+                );
+                if (!exists) {
+                    columns[colIdx].chords.push({
+                        id: `mediant-${index}`,
+                        chord,
+                        category: 'mediant'
+                    });
+                }
+            }
+        });
+
+        return columns;
+    }, [diatonicChords, secondaryDominants, borrowedChords, chromaticMediants]);
 
     const getActiveChordInfo = (): ChordInfo | null => {
         if (!selectedChordId) return null;
@@ -380,11 +465,12 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     const renderChordCard = (chord: ChordInfo, id: string) => {
         const isSelected = selectedChordId === id;
         const activeModifier = chordModifiers[id];
+        const category = id.split('-')[0];
 
         return (
             <div
                 key={id}
-                className="chord-card-wrapper"
+                className={`chord-card-wrapper ${category}`}
                 onMouseEnter={() => handleMouseEnter(id)}
                 onMouseLeave={handleMouseLeave}
             >
@@ -408,6 +494,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                             getFullChordName(chord, id)
                         )}
                     </div>
+                    {category !== 'diatonic' && (
+                        <div className="category-tag">{t(`harmony.${category}`)}</div>
+                    )}
                 </button>
 
                 {/* Modifiers */}
@@ -435,6 +524,17 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                 </AnimatePresence>
             </div>
         );
+    };
+    const handleScrollColumn = (degreeIndex: number, direction: 'up' | 'down') => {
+        const container = document.getElementById(`degree-carousel-${degreeIndex}`);
+        if (container) {
+            // Scroll by one card height + gap (approx 80px)
+            const cardHeight = 80;
+            container.scrollBy({
+                top: direction === 'up' ? -cardHeight : cardHeight,
+                behavior: 'smooth'
+            });
+        }
     };
 
     return (
@@ -535,9 +635,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                     <div className="chord-list">
                         {diatonicChords.map((chord, index) => renderChordCard(chord, `diatonic-${index}`))}
                     </div>
-                    
+
                     <button className="harmonic-palette-toggle" onClick={() => setIsPaletteOpen(!isPaletteOpen)}>
-                        <span className="sparkle">✨</span> {isPaletteOpen ? 'Hide Extended Harmony' : 'Explore Extended Harmony'}
+                        {isPaletteOpen ? t('harmony.hide') : t('harmony.explore')}
                     </button>
 
                     <AnimatePresence>
@@ -549,23 +649,41 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                                 exit={{ height: 0, opacity: 0, y: -20 }}
                                 transition={{ duration: 0.4, ease: "easeInOut" }}
                             >
-                                <div className="harmonic-section">
-                                    <h4 className="harmonic-section-title">Secondary Dominants</h4>
-                                    <div className="chord-list secondary">
-                                        {secondaryDominants.map((chord, index) => renderChordCard(chord, `secondary-${index}`))}
-                                    </div>
-                                </div>
-                                <div className="harmonic-section">
-                                    <h4 className="harmonic-section-title">Modal Interchange</h4>
-                                    <div className="chord-list borrowed">
-                                        {borrowedChords.map((chord, index) => renderChordCard(chord, `borrowed-${index}`))}
-                                    </div>
-                                </div>
-                                <div className="harmonic-section">
-                                    <h4 className="harmonic-section-title">Chromatic Mediants</h4>
-                                    <div className="chord-list mediants">
-                                        {chromaticMediants.map((chord, index) => renderChordCard(chord, `mediant-${index}`))}
-                                    </div>
+                                <div className="harmony-columns-container">
+                                    {groupedDegrees.map((col) => (
+                                        <div key={col.degreeIndex} className="harmony-degree-column">
+                                            <div className="degree-column-header">
+                                                <span className="degree-roman">{col.degreeName}</span>
+                                                <span className="degree-root">{col.rootNote}</span>
+                                            </div>
+                                            <div className="degree-column-carousel-wrapper">
+                                                <button
+                                                    className="carousel-nav-btn up"
+                                                    onClick={() => handleScrollColumn(col.degreeIndex, 'up')}
+                                                    aria-label="Scroll up"
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="18 15 12 9 6 15"></polyline>
+                                                    </svg>
+                                                </button>
+                                                <div
+                                                    id={`degree-carousel-${col.degreeIndex}`}
+                                                    className="degree-column-carousel"
+                                                >
+                                                    {col.chords.map((item) => renderChordCard(item.chord, item.id))}
+                                                </div>
+                                                <button
+                                                    className="carousel-nav-btn down"
+                                                    onClick={() => handleScrollColumn(col.degreeIndex, 'down')}
+                                                    aria-label="Scroll down"
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </motion.div>
                         )}
@@ -619,14 +737,14 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                         </button>
                     </div>
                 </div>
-                
+
                 <div className="queue-items">
                     {chordQueue.length === 0 ? (
                         <div className="empty-queue-msg">{t('queue.empty')}</div>
                     ) : (
                         chordQueue.map((chord, index) => (
-                            <div 
-                                key={chord.id} 
+                            <div
+                                key={chord.id}
                                 className={`queue-item ${activeQueueIndex === index ? 'active' : ''}`}
                                 onClick={() => selectFromQueue(index)}
                             >
@@ -645,9 +763,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                        className="add-to-queue-btn" 
-                        onClick={handleAddToQueue} 
+                    <button
+                        className="add-to-queue-btn"
+                        onClick={handleAddToQueue}
                         title={t('queue.addToQueue')}
                         disabled={!selectedChordId}
                         style={!selectedChordId ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
@@ -662,9 +780,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
 
                 {chordQueue.length > 0 && (
                     <div className="queue-controls">
-                        <button 
-                            className="icon-btn" 
-                            onClick={prevInQueue} 
+                        <button
+                            className="icon-btn"
+                            onClick={prevInQueue}
                             disabled={activeQueueIndex <= 0}
                             title={t('queue.previous')}
                             aria-label={t('queue.previous')}
@@ -673,9 +791,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
                         </button>
-                        <button 
-                            className="icon-btn" 
-                            onClick={nextInQueue} 
+                        <button
+                            className="icon-btn"
+                            onClick={nextInQueue}
                             disabled={activeQueueIndex >= chordQueue.length - 1}
                             title={t('queue.next')}
                             aria-label={t('queue.next')}
