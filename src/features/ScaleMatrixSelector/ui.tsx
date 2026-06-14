@@ -10,9 +10,7 @@ interface ScaleMatrixSelectorProps {
     selectedRoot: Note;
 }
 
-const DIATONIC_COLUMNS = [0, 1, 2, 3, 4, 5, 6];
 const NATURAL_PITCHES = [0, 2, 4, 5, 7, 9, 11];
-const DIATONIC_LABELS = ['1', '2', '3', '4', '5', '6', '7'];
 
 const INTERVAL_NAMES: Record<number, string> = {
     0: '1', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4/b5', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7'
@@ -35,24 +33,48 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [scaleLengthFilter, setScaleLengthFilter] = useState<'ALL' | 5 | 6 | 7>('ALL');
 
-    // Statically resolve all possible (degree, pitchClass) pairings from our scale DB
+    const scaleLength = useMemo(() => SCALES[selectedScale].length, [selectedScale]);
+
+    const columns = useMemo(() => {
+        return Array.from({ length: scaleLength }, (_, i) => i);
+    }, [scaleLength]);
+
+    const labels = useMemo(() => {
+        return Array.from({ length: scaleLength }, (_, i) => (i + 1).toString());
+    }, [scaleLength]);
+
+    // Statically resolve all possible (index, pitchClass, degree) pairings from our scale DB, grouped by scale length
     const COLUMN_NODES = useMemo(() => {
-        const nodes: Record<number, Set<number>> = { 0: new Set(), 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set(), 5: new Set(), 6: new Set() };
+        const result: Record<number, Record<number, Array<{ pc: number, d: number }>>> = {};
+
         Object.keys(SCALES).forEach(scaleKey => {
             const scale = SCALES[scaleKey as ScaleType];
-            const degrees = SCALE_DEGREES[scaleKey as ScaleType];
+            const degrees = SCALE_DEGREES[scaleKey as ScaleType] || [];
+            const len = scale.length;
+            if (!result[len]) {
+                result[len] = {};
+            }
             scale.forEach((pc, i) => {
-                const d = degrees ? degrees[i] : i;
-                if (d >= 0 && d <= 6) {
-                    nodes[d].add(pc);
+                if (!result[len][i]) {
+                    result[len][i] = [];
+                }
+                const d = degrees[i] !== undefined ? degrees[i] : i;
+                const alreadyExists = result[len][i].some(item => item.pc === pc && item.d === d);
+                if (!alreadyExists) {
+                    result[len][i].push({ pc, d });
                 }
             });
         });
 
-        const result: Record<number, number[]> = {};
-        for (let d = 0; d <= 6; d++) {
-            result[d] = Array.from(nodes[d]).sort((a, b) => a - b);
-        }
+        // Sort the pitch classes in each column
+        Object.keys(result).forEach(lenStr => {
+            const len = Number(lenStr);
+            Object.keys(result[len]).forEach(colStr => {
+                const col = Number(colStr);
+                result[len][col].sort((a, b) => a.pc - b.pc);
+            });
+        });
+
         return result;
     }, []);
 
@@ -60,13 +82,11 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
     const activeNodes = useMemo(() => {
         const intervals = SCALES[selectedScale];
         const degrees = SCALE_DEGREES[selectedScale];
-        const active: Array<{ col: number, pc: number }> = [];
-        intervals.forEach((pc, i) => {
+        const active: Array<{ col: number, pc: number, d: number }> = intervals.map((pc, i) => {
             const d = degrees ? degrees[i] : i;
-            if (d >= 0 && d <= 6) active.push({ col: d, pc });
+            return { col: i, pc, d };
         });
-        // Sort by column strictly for polyline drawing
-        return active.sort((a, b) => a.col - b.col);
+        return active;
     }, [selectedScale]);
 
     // Helper to find the closest scale from a set of valid scale keys
@@ -117,11 +137,10 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
             const scale = SCALES[scaleKey];
             if (scaleLengthFilter !== 'ALL' && scale.length !== scaleLengthFilter) return;
 
-            const degrees = SCALE_DEGREES[scaleKey];
-            const hasNode = scale.some((pc, i) => {
-                const d = degrees ? degrees[i] : i;
-                return pc === targetPc && d === targetCol;
-            });
+            const currentLength = scaleLengthFilter === 'ALL' ? scaleLength : scaleLengthFilter;
+            if (scale.length !== currentLength) return;
+
+            const hasNode = scale[targetCol] === targetPc;
 
             if (isDeselect && !hasNode) validScales.push(scaleKey);
             if (!isDeselect && hasNode) validScales.push(scaleKey);
@@ -131,7 +150,8 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
         if (validScales.length === 0) {
             scaleKeys.forEach(scaleKey => {
                 const scale = SCALES[scaleKey];
-                if (scaleLengthFilter !== 'ALL' && scale.length !== scaleLengthFilter) return;
+                const currentLength = scaleLengthFilter === 'ALL' ? scaleLength : scaleLengthFilter;
+                if (scale.length !== currentLength) return;
                 
                 const hasNode = scale.includes(targetPc);
                 if (isDeselect && !hasNode) validScales.push(scaleKey);
@@ -175,7 +195,7 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
 
             <div className={`matrix-body single-view ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className="matrix-grid-header">
-                    {DIATONIC_LABELS.map((label, i) => (
+                    {labels.map((label, i) => (
                         <div key={i} className="matrix-col-label">
                             {label}
                         </div>
@@ -189,18 +209,18 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                             if (i === activeNodes.length - 1) return null;
                             const nextNode = activeNodes[i + 1];
 
-                            const getRawPos = (colIndex: number, pc: number) => {
-                                let diff = pc - NATURAL_PITCHES[colIndex];
+                            const getRawPos = (colIndex: number, pc: number, d: number) => {
+                                let diff = pc - NATURAL_PITCHES[d];
                                 if (diff > 6) diff -= 12;
                                 if (diff < -6) diff += 12;
                                 return {
-                                    xPct: (colIndex + 0.5) / 7 * 100,
+                                    xPct: (colIndex + 0.5) / scaleLength * 100,
                                     yDiff: diff
                                 };
                             };
 
-                            const rp1 = getRawPos(node.col, node.pc);
-                            const rp2 = getRawPos(nextNode.col, nextNode.pc);
+                            const rp1 = getRawPos(node.col, node.pc, node.d);
+                            const rp2 = getRawPos(nextNode.col, nextNode.pc, nextNode.d);
 
                             const rp1Y = isCollapsed ? 0 : rp1.yDiff;
                             const rp2Y = isCollapsed ? 0 : rp2.yDiff;
@@ -238,13 +258,13 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                     </svg>
 
                     <div className="matrix-nodes-layer">
-                        {DIATONIC_COLUMNS.map(colIndex => {
-                            const nodesInCol = COLUMN_NODES[colIndex] || [];
+                        {columns.map(colIndex => {
+                            const nodesInCol = (COLUMN_NODES[scaleLength] && COLUMN_NODES[scaleLength][colIndex]) || [];
                             return (
                                 <div key={colIndex} className="matrix-col">
-                                    {nodesInCol.map(pc => {
+                                    {nodesInCol.map(({ pc, d }) => {
                                         // Position node vertically based on pitch diff
-                                        let diff = pc - NATURAL_PITCHES[colIndex];
+                                        let diff = pc - NATURAL_PITCHES[d];
                                         if (diff > 6) diff -= 12;
                                         if (diff < -6) diff += 12;
 
@@ -257,7 +277,7 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                                         // Compute exact note spelling
                                         const rootIndex = getNoteIndex(selectedRoot);
                                         const absolutePitchClass = (rootIndex + pc) % 12;
-                                        const properNote = getProperSpelling(selectedRoot, absolutePitchClass, colIndex);
+                                        const properNote = getProperSpelling(selectedRoot, absolutePitchClass, d);
                                         const noteDisplayName = getNoteName(properNote, namingSystem);
 
                                         const yOffset = isCollapsed ? 0 : diff;

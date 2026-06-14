@@ -61,7 +61,6 @@ const resources = {
                     6: "Hexatonic (6 notes)",
                     7: "Heptatonic (7 notes)",
                 },
-                alterations: "Alterations"
             },
             instruments: {
                 GUITAR: "Guitar",
