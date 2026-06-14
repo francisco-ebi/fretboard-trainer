@@ -100,7 +100,10 @@ export const SCALE_DEGREES: Record<ScaleType, number[]> = {
     NEAPOLITAN_MINOR: [0, 1, 2, 3, 4, 5, 6],
     NEAPOLITAN_MAJOR: [0, 1, 2, 3, 4, 5, 6],
     HARMONIC_MINOR: [0, 1, 2, 3, 4, 5, 6],
-    MELODIC_MINOR: [0, 1, 2, 3, 4, 5, 6]
+    MELODIC_MINOR: [0, 1, 2, 3, 4, 5, 6],
+    DOUBLE_HARMONIC_PENTATONIC: [0, 1, 2, 4, 5],
+    DOUBLE_HARMONIC_HEXATONIC_M2: [0, 1, 1, 2, 4, 5], // 1, b2, 2, 3, 5, b6
+    DOUBLE_HARMONIC_HEXATONIC_AUG4: [0, 1, 2, 3, 4, 5] // 1, b2, 3, #4, 5, b6
 };
 
 export const getProperSpelling = (root: Note, targetPitchClass: number, degreeIndex: number): Note => {
@@ -156,7 +159,12 @@ export const SCALES = {
     
     // Technical Minors
     HARMONIC_MINOR: [0, 2, 3, 5, 7, 8, 11], // 1, 2, b3, 4, 5, b6, 7
-    MELODIC_MINOR: [0, 2, 3, 5, 7, 9, 11]   // 1, 2, b3, 4, 5, 6, 7
+    MELODIC_MINOR: [0, 2, 3, 5, 7, 9, 11],   // 1, 2, b3, 4, 5, 6, 7
+
+    // Double Harmonic Derivatives
+    DOUBLE_HARMONIC_PENTATONIC: [0, 1, 4, 7, 8], // 1, b2, 3, 5, b6 (Omitting 4th and 7th)
+    DOUBLE_HARMONIC_HEXATONIC_M2: [0, 1, 2, 4, 7, 8], // 1, b2, 2, 3, 5, b6 (Pentatonic + Major 2nd)
+    DOUBLE_HARMONIC_HEXATONIC_AUG4: [0, 1, 4, 6, 7, 8] // 1, b2, 3, #4, 5, b6 (Pentatonic + Aug 4th)
 };
 
 export type ScaleType = keyof typeof SCALES;
@@ -191,7 +199,10 @@ const RELATIVE_MAJOR_OFFSETS: Record<ScaleType, number> = {
     NEAPOLITAN_MINOR: 3,
     NEAPOLITAN_MAJOR: 3,
     HARMONIC_MINOR: 3,
-    MELODIC_MINOR: 3
+    MELODIC_MINOR: 3,
+    DOUBLE_HARMONIC_PENTATONIC: 0,
+    DOUBLE_HARMONIC_HEXATONIC_M2: 0,
+    DOUBLE_HARMONIC_HEXATONIC_AUG4: 0
 };
 
 export const shouldUseFlats = (root: Note, scaleType: ScaleType): boolean => {
@@ -252,7 +263,7 @@ export const SCALE_CATEGORIES: Record<ScaleCategory, ScaleType[]> = {
         'PENTATONIC_MINOR', 'HUNGARIAN_MINOR', 'NEAPOLITAN_MINOR', 'NEAPOLITAN_MAJOR'
     ],
     OTHER: [
-        'BLUES', 'LOCRIAN'
+        'BLUES', 'LOCRIAN', 'DOUBLE_HARMONIC_PENTATONIC', 'DOUBLE_HARMONIC_HEXATONIC_M2', 'DOUBLE_HARMONIC_HEXATONIC_AUG4'
     ]
 };
 

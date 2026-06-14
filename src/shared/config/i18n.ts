@@ -86,7 +86,10 @@ const resources = {
                 NEAPOLITAN_MINOR: "Neapolitan Minor",
                 NEAPOLITAN_MAJOR: "Neapolitan Major",
                 HARMONIC_MINOR: "Harmonic Minor",
-                MELODIC_MINOR: "Melodic Minor"
+                MELODIC_MINOR: "Melodic Minor",
+                DOUBLE_HARMONIC_PENTATONIC: "Double Harmonic Pentatonic",
+                DOUBLE_HARMONIC_HEXATONIC_M2: "Double Harmonic Hexatonic (Add M2)",
+                DOUBLE_HARMONIC_HEXATONIC_AUG4: "Double Harmonic Hexatonic (Add Aug4)"
             },
             modes: {
                 scale: "Scale Explorer",
@@ -260,7 +263,10 @@ const resources = {
                 NEAPOLITAN_MINOR: "Menor Napolitana",
                 NEAPOLITAN_MAJOR: "Mayor Napolitana",
                 HARMONIC_MINOR: "Menor Armónica",
-                MELODIC_MINOR: "Menor Melódica"
+                MELODIC_MINOR: "Menor Melódica",
+                DOUBLE_HARMONIC_PENTATONIC: "Pentatónica Doble Armónica",
+                DOUBLE_HARMONIC_HEXATONIC_M2: "Hexatónica Doble Armónica (Añade 2M)",
+                DOUBLE_HARMONIC_HEXATONIC_AUG4: "Hexatónica Doble Armónica (Añade 4A)"
             },
             modes: {
                 scale: "Explorador de Escalas",
