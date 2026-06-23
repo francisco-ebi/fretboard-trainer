@@ -45,6 +45,7 @@ const FretCellComponent: React.FC<FretCellProps> = ({
 
     return (
         <div
+            id={`fret-${stringIndex}-${fret}`}
             className={`fret ${fret === 0 ? 'open-string' : ''}`}
             role="gridcell"
             aria-label={isActive ? `${noteToDisplay} at Fret ${fret}` : `Fret ${fret} (Empty)`}

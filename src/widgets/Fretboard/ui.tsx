@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, getDetailedInterval, getNoteName, type Note, type NamingSystem, type Instrument } from '@/shared/lib/music/musicTheory';
+import { useTranslation } from 'react-i18next';
+import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, getDetailedInterval, type Note, type NamingSystem, type Instrument } from '@/shared/lib/music/musicTheory';
 import { type Voicing } from '@/shared/lib/music/chordVoicings';
 import { useOrientation } from '@/app/providers';
 import { useInstrument } from '@/app/providers';
@@ -44,6 +45,7 @@ const Fretboard: React.FC<FretboardProps> = ({
     interactiveMode, interactiveRootNotePos, interactiveTogglableNotes, customVoicingKeys,
     onInteractiveRootClick, onInteractiveNoteToggle
 }) => {
+    const { t } = useTranslation();
     const { orientation } = useOrientation();
     const { colorScheme } = useInstrument();
 
@@ -51,8 +53,52 @@ const Fretboard: React.FC<FretboardProps> = ({
     const prevRoot = usePrevious(selectedRoot);
     const [selectedVoicingIndex, setSelectedVoicingIndex] = React.useState<number | null>(null);
 
+    const fretboardRef = useRef<HTMLDivElement>(null);
+
     type MeasuredNote = { stringIndex: number; fret: number; note: Note; octave: number };
     const [measuredNotes, setMeasuredNotes] = React.useState<MeasuredNote[]>([]);
+    const [overlayCoords, setOverlayCoords] = React.useState<{ x1: number, y1: number, x2: number, y2: number, cx: number, cy: number } | null>(null);
+
+    useEffect(() => {
+        const updateCoords = () => {
+            if (measuredNotes.length !== 2) {
+                setOverlayCoords(null);
+                return;
+            }
+            const board = fretboardRef.current;
+            if (!board) return;
+
+            const n1 = measuredNotes[0];
+            const n2 = measuredNotes[1];
+
+            const cell1 = document.getElementById(`fret-${n1.stringIndex}-${n1.fret}`);
+            const cell2 = document.getElementById(`fret-${n2.stringIndex}-${n2.fret}`);
+
+            if (cell1 && cell2) {
+                const bRect = board.getBoundingClientRect();
+                const c1Rect = cell1.getBoundingClientRect();
+                const c2Rect = cell2.getBoundingClientRect();
+
+                const x1 = c1Rect.left + c1Rect.width / 2 - bRect.left;
+                const y1 = c1Rect.top + c1Rect.height / 2 - bRect.top;
+                const x2 = c2Rect.left + c2Rect.width / 2 - bRect.left;
+                const y2 = c2Rect.top + c2Rect.height / 2 - bRect.top;
+
+                setOverlayCoords({
+                    x1, y1, x2, y2,
+                    cx: (x1 + x2) / 2,
+                    cy: (y1 + y2) / 2
+                });
+            }
+        };
+
+        const timerId = setTimeout(updateCoords, 50);
+        window.addEventListener('resize', updateCoords);
+        return () => {
+            clearTimeout(timerId);
+            window.removeEventListener('resize', updateCoords);
+        };
+    }, [measuredNotes, orientation, stringCount]);
 
     const handleNoteMeasureClick = (stringIndex: number, fret: number, note: Note, octave: number) => {
         if (interactiveMode) return;
@@ -229,27 +275,36 @@ const Fretboard: React.FC<FretboardProps> = ({
         return <div className="fret-numbers-row">{fretNumbers}</div>;
     }
 
-    const renderIntervalModal = () => {
-        if (measuredNotes.length !== 2) return null;
+    const renderMeasurementOverlay = () => {
+        if (measuredNotes.length !== 2 || !overlayCoords) return null;
         
         const note1 = measuredNotes[0];
         const note2 = measuredNotes[1];
         
         const detailedInterval = getDetailedInterval(note1.note, note1.octave, note2.note, note2.octave);
-        const note1Name = `${getNoteName(note1.note, namingSystem)}${note1.octave}`;
-        const note2Name = `${getNoteName(note2.note, namingSystem)}${note2.octave}`;
+        if (!detailedInterval) return null;
+
+        let intervalName = t(`intervals.${detailedInterval.key}`);
+        if (detailedInterval.octaves > 0) {
+            intervalName += ` + ${detailedInterval.octaves} ${t('intervals.octaves', { count: detailedInterval.octaves })}`;
+        }
 
         return (
-            <div className="interval-modal-overlay" onClick={() => setMeasuredNotes([])}>
-                <div className="interval-modal-content" onClick={e => e.stopPropagation()}>
-                    <h3>Interval</h3>
-                    <div className="interval-modal-result">{detailedInterval}</div>
-                    <div className="interval-modal-notes">
-                        <span>{note1Name}</span>
-                        <span>↔</span>
-                        <span>{note2Name}</span>
-                    </div>
-                    <button className="interval-modal-close" onClick={() => setMeasuredNotes([])}>Close</button>
+            <div className="measurement-overlay-container">
+                <svg className="measurement-svg-overlay" xmlns="http://www.w3.org/2000/svg">
+                    <line 
+                        x1={overlayCoords.x1} y1={overlayCoords.y1} 
+                        x2={overlayCoords.x2} y2={overlayCoords.y2} 
+                        className="measurement-line" 
+                    />
+                </svg>
+                <div 
+                    className="interval-popup" 
+                    style={{ left: overlayCoords.cx, top: overlayCoords.cy }}
+                    onClick={() => setMeasuredNotes([])}
+                >
+                    <div className="interval-popup-result">{intervalName}</div>
+                    <button className="interval-popup-close" onClick={(e) => { e.stopPropagation(); setMeasuredNotes([]); }}>×</button>
                 </div>
             </div>
         );
@@ -257,14 +312,15 @@ const Fretboard: React.FC<FretboardProps> = ({
 
     return (
         <>
-            {renderIntervalModal()}
             <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()} theme-${colorScheme.toLowerCase()}`}>
                 <div
+                    ref={fretboardRef}
                     className={`fretboard ${orientation.toLowerCase()}`}
                     role="grid"
                     aria-label={`${instrument} fretboard`}
                     style={orientation === 'VERTICAL' ? { gridTemplateColumns: `repeat(${STRINGS}, 4rem)` } : undefined}
                 >
+                    {renderMeasurementOverlay()}
                     <PredictionOverlay stringCount={STRINGS} />
                     {renderStrings()}
                 </div>

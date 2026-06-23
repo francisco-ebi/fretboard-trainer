@@ -178,6 +178,34 @@ const resources = {
                 secondary: "Secondary Dominants",
                 borrowed: "Modal Interchange",
                 mediant: "Chromatic Mediants"
+            },
+            intervals: {
+                unison: "Unison",
+                min2: "Minor 2nd",
+                maj2: "Major 2nd",
+                min3: "Minor 3rd",
+                maj3: "Major 3rd",
+                perf4: "Perfect 4th",
+                tritone: "Tritone",
+                perf5: "Perfect 5th",
+                min6: "Minor 6th",
+                maj6: "Major 6th",
+                min7: "Minor 7th",
+                maj7: "Major 7th",
+                octave: "Octave",
+                min9: "Minor 9th",
+                maj9: "Major 9th",
+                min10: "Minor 10th",
+                maj10: "Major 10th",
+                perf11: "Perfect 11th",
+                aug11: "Augmented 11th",
+                perf12: "Perfect 12th",
+                min13: "Minor 13th",
+                maj13: "Major 13th",
+                min14: "Minor 14th",
+                maj14: "Major 14th",
+                octaves_one: "Octave",
+                octaves_other: "Octaves"
             }
         }
     },
@@ -354,7 +382,35 @@ const resources = {
                 hide: "Ocultar Armonía Extendida",
                 secondary: "Dominantes Secundarios",
                 borrowed: "Intercambio Modal",
-                mediant: "Mediantes Cromáticos"
+                mediant: "Mediantes Cromáticas"
+            },
+            intervals: {
+                unison: "Unísono",
+                min2: "2ª Menor",
+                maj2: "2ª Mayor",
+                min3: "3ª Menor",
+                maj3: "3ª Mayor",
+                perf4: "4ª Justa",
+                tritone: "Tritono",
+                perf5: "5ª Justa",
+                min6: "6ª Menor",
+                maj6: "6ª Mayor",
+                min7: "7ª Menor",
+                maj7: "7ª Mayor",
+                octave: "Octava",
+                min9: "9ª Menor",
+                maj9: "9ª Mayor",
+                min10: "10ª Menor",
+                maj10: "10ª Mayor",
+                perf11: "11ª Justa",
+                aug11: "11ª Aumentada",
+                perf12: "12ª Justa",
+                min13: "13ª Menor",
+                maj13: "13ª Mayor",
+                min14: "14ª Menor",
+                maj14: "14ª Mayor",
+                octaves_one: "Octava",
+                octaves_other: "Octavas"
             }
         }
     }

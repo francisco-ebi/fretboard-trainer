@@ -440,79 +440,81 @@
     transition: transform 0.2s ease-in, opacity 0.2s ease-in;
 }
 
-/* Interval Measurement Modal */
-.interval-modal-overlay {
+/* Measurement Overlay & Inline Popup */
+.measurement-overlay-container {
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(2px);
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 40;
 }
 
-.interval-modal-content {
-    background: rgba(30, 30, 30, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    padding: 1.5rem 2rem;
-    border-radius: var(--radius-lg);
+.measurement-svg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.measurement-line {
+    stroke: #4ade80;
+    stroke-width: 4;
+    stroke-dasharray: 8 8;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.8));
+    animation: dashFloat 20s linear infinite;
+}
+
+@keyframes dashFloat {
+    from { stroke-dashoffset: 1000; }
+    to { stroke-dashoffset: 0; }
+}
+
+.interval-popup {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 25, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(74, 222, 128, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    color: white;
-    max-width: 90%;
-    text-align: center;
+    gap: 0.75rem;
+    pointer-events: auto; /* Let popup receive clicks */
     animation: modalPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.interval-modal-content h3 {
-    margin: 0;
-    font-size: 1.2rem;
-    color: rgba(255, 255, 255, 0.7);
-}
-
-.interval-modal-result {
-    font-size: 2rem;
+.interval-popup-result {
+    font-size: 1.25rem;
     font-weight: bold;
     color: #4ade80;
-    margin: 0.5rem 0;
+    white-space: nowrap;
 }
 
-.interval-modal-notes {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    font-size: 1.1rem;
-    background: rgba(0,0,0,0.3);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-md);
-}
-
-.interval-modal-close {
-    margin-top: 1rem;
-    background: rgba(255, 255, 255, 0.1);
+.interval-popup-close {
+    background: transparent;
     border: none;
-    color: white;
-    padding: 0.5rem 1.5rem;
-    border-radius: var(--radius-md);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.25rem;
+    line-height: 1;
     cursor: pointer;
-    transition: background 0.2s;
+    padding: 0;
+    margin: 0;
+    transition: color 0.2s;
 }
 
-.interval-modal-close:hover {
-    background: rgba(255, 255, 255, 0.2);
+.interval-popup-close:hover {
+    color: white;
 }
 
 @keyframes modalPopIn {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
