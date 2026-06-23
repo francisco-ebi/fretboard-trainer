@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, type Note, type NamingSystem, type Instrument } from '@/shared/lib/music/musicTheory';
+import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, getDetailedInterval, getNoteName, type Note, type NamingSystem, type Instrument } from '@/shared/lib/music/musicTheory';
 import { type Voicing } from '@/shared/lib/music/chordVoicings';
 import { useOrientation } from '@/app/providers';
 import { useInstrument } from '@/app/providers';
@@ -50,6 +50,24 @@ const Fretboard: React.FC<FretboardProps> = ({
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
     const [selectedVoicingIndex, setSelectedVoicingIndex] = React.useState<number | null>(null);
+
+    type MeasuredNote = { stringIndex: number; fret: number; note: Note; octave: number };
+    const [measuredNotes, setMeasuredNotes] = React.useState<MeasuredNote[]>([]);
+
+    const handleNoteMeasureClick = (stringIndex: number, fret: number, note: Note, octave: number) => {
+        if (interactiveMode) return;
+
+        setMeasuredNotes(prev => {
+            const existingIndex = prev.findIndex(n => n.stringIndex === stringIndex && n.fret === fret);
+            if (existingIndex >= 0) {
+                return prev.filter((_, i) => i !== existingIndex);
+            }
+            if (prev.length >= 2) {
+                return [{ stringIndex, fret, note, octave }];
+            }
+            return [...prev, { stringIndex, fret, note, octave }];
+        });
+    };
 
     // Reset selected voicing when the chord changes
     useEffect(() => {
@@ -166,6 +184,8 @@ const Fretboard: React.FC<FretboardProps> = ({
                 isDoubleInlayBottom = stringIndex === centerIndex - 2;
             }
 
+            const isMeasured = measuredNotes.some(mn => mn.stringIndex === stringIndex && mn.fret === fret);
+
             fretElements.push(
                 <FretCell
                     key={`fret-${stringIndex}-${fret}`}
@@ -186,6 +206,8 @@ const Fretboard: React.FC<FretboardProps> = ({
                     isSingleInlay={isSingleInlay || false}
                     isDoubleInlayTop={isDoubleInlayTop || false}
                     isDoubleInlayBottom={isDoubleInlayBottom || false}
+                    isMeasured={isMeasured}
+                    onNoteMeasureClick={interactiveMode ? undefined : handleNoteMeasureClick}
                     onInteractiveRootClick={onInteractiveRootClick}
                     onInteractiveNoteToggle={onInteractiveNoteToggle}
                 />
@@ -207,9 +229,35 @@ const Fretboard: React.FC<FretboardProps> = ({
         return <div className="fret-numbers-row">{fretNumbers}</div>;
     }
 
+    const renderIntervalModal = () => {
+        if (measuredNotes.length !== 2) return null;
+        
+        const note1 = measuredNotes[0];
+        const note2 = measuredNotes[1];
+        
+        const detailedInterval = getDetailedInterval(note1.note, note1.octave, note2.note, note2.octave);
+        const note1Name = `${getNoteName(note1.note, namingSystem)}${note1.octave}`;
+        const note2Name = `${getNoteName(note2.note, namingSystem)}${note2.octave}`;
+
+        return (
+            <div className="interval-modal-overlay" onClick={() => setMeasuredNotes([])}>
+                <div className="interval-modal-content" onClick={e => e.stopPropagation()}>
+                    <h3>Interval</h3>
+                    <div className="interval-modal-result">{detailedInterval}</div>
+                    <div className="interval-modal-notes">
+                        <span>{note1Name}</span>
+                        <span>↔</span>
+                        <span>{note2Name}</span>
+                    </div>
+                    <button className="interval-modal-close" onClick={() => setMeasuredNotes([])}>Close</button>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <>
+            {renderIntervalModal()}
             <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()} theme-${colorScheme.toLowerCase()}`}>
                 <div
                     className={`fretboard ${orientation.toLowerCase()}`}

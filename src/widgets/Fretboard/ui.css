@@ -439,3 +439,80 @@
     pointer-events: none;
     transition: transform 0.2s ease-in, opacity 0.2s ease-in;
 }
+
+/* Interval Measurement Modal */
+.interval-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+}
+
+.interval-modal-content {
+    background: rgba(30, 30, 30, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    padding: 1.5rem 2rem;
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: white;
+    max-width: 90%;
+    text-align: center;
+    animation: modalPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.interval-modal-content h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.interval-modal-result {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4ade80;
+    margin: 0.5rem 0;
+}
+
+.interval-modal-notes {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    font-size: 1.1rem;
+    background: rgba(0,0,0,0.3);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+}
+
+.interval-modal-close {
+    margin-top: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.interval-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes modalPopIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}

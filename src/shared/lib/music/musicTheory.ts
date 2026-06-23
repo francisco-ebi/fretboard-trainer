@@ -38,6 +38,46 @@ export const getInterval = (root: Note, note: Note): string => {
     return INTERVAL_NAMES[semitones] || '?';
 };
 
+export const DETAILED_INTERVAL_NAMES: Record<number, string> = {
+    0: 'Unison',
+    1: 'Minor 2nd', 2: 'Major 2nd',
+    3: 'Minor 3rd', 4: 'Major 3rd',
+    5: 'Perfect 4th',
+    6: 'Tritone', 7: 'Perfect 5th',
+    8: 'Minor 6th', 9: 'Major 6th',
+    10: 'Minor 7th', 11: 'Major 7th',
+    12: 'Octave',
+    13: 'Minor 9th', 14: 'Major 9th',
+    15: 'Minor 10th', 16: 'Major 10th',
+    17: 'Perfect 11th',
+    18: 'Augmented 11th', 19: 'Perfect 12th',
+    20: 'Minor 13th', 21: 'Major 13th',
+    22: 'Minor 14th', 23: 'Major 14th'
+};
+
+export const getDetailedInterval = (note1: Note, octave1: number, note2: Note, octave2: number): string => {
+    const index1 = getNoteIndex(note1);
+    const index2 = getNoteIndex(note2);
+
+    if (index1 === -1 || index2 === -1) return '?';
+
+    const absolutePitch1 = octave1 * 12 + index1;
+    const absolutePitch2 = octave2 * 12 + index2;
+
+    const semitones = Math.abs(absolutePitch2 - absolutePitch1);
+
+    if (DETAILED_INTERVAL_NAMES[semitones]) {
+        return DETAILED_INTERVAL_NAMES[semitones];
+    }
+    
+    // For larger intervals, simplify
+    const octaves = Math.floor(semitones / 12);
+    const remainder = semitones % 12;
+    const baseInterval = DETAILED_INTERVAL_NAMES[remainder];
+    
+    return `${baseInterval} + ${octaves} Octave${octaves > 1 ? 's' : ''}`;
+};
+
 export const SHARPS_SCALE: Note[] = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export const FLATS_SCALE: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 export const CHROMATIC_SCALE = SHARPS_SCALE;

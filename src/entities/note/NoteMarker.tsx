@@ -11,11 +11,12 @@ export interface NoteMarkerProps {
     shouldShake: boolean;
     octave: number;
     isInactiveOutline?: boolean;
+    isMeasured?: boolean;
     customInterval?: string | null;
     onClick?: () => void;
 }
 
-const NoteMarkerComponent: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, isCharacteristic, shouldShake, octave, isInactiveOutline, customInterval, onClick }) => {
+const NoteMarkerComponent: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, isCharacteristic, shouldShake, octave, isInactiveOutline, isMeasured, customInterval, onClick }) => {
     const [isShaking, setIsShaking] = useState(false);
 
     useEffect(() => {
@@ -53,7 +54,7 @@ const NoteMarkerComponent: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSy
 
     return (
         <div 
-            className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${isShaking ? 'shake' : ''} ${isInactiveOutline ? 'outline-only' : ''} ${onClick ? 'clickable' : ''}`}
+            className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${isShaking ? 'shake' : ''} ${isInactiveOutline ? 'outline-only' : ''} ${isMeasured ? 'measured-highlight' : ''} ${onClick ? 'clickable' : ''}`}
             style={{ '--octave': normalizedOctave } as React.CSSProperties}
             onClick={(e) => {
                 if (onClick) {

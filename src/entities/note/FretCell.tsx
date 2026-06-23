@@ -20,19 +20,23 @@ interface FretCellProps {
     isSingleInlay: boolean;
     isDoubleInlayTop: boolean;
     isDoubleInlayBottom: boolean;
+    isMeasured?: boolean;
     onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
     onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
+    onNoteMeasureClick?: (stringIndex: number, fret: number, note: Note, octave: number) => void;
 }
 
 const FretCellComponent: React.FC<FretCellProps> = ({
     stringIndex, fret, noteToDisplay, isRoot, namingSystem, interval,
     isCharacteristic, octave, customInterval, isClickableRoot,
     isOutline, isCustomActive, isActive, shouldShake,
-    isSingleInlay, isDoubleInlayTop, isDoubleInlayBottom,
-    onInteractiveRootClick, onInteractiveNoteToggle
+    isSingleInlay, isDoubleInlayTop, isDoubleInlayBottom, isMeasured,
+    onInteractiveRootClick, onInteractiveNoteToggle, onNoteMeasureClick
 }) => {
     const handleNoteClick = () => {
-        if (isClickableRoot && onInteractiveRootClick) {
+        if (onNoteMeasureClick) {
+            onNoteMeasureClick(stringIndex, fret, noteToDisplay, octave);
+        } else if (isClickableRoot && onInteractiveRootClick) {
             onInteractiveRootClick(stringIndex, fret);
         } else if ((isOutline || isCustomActive) && onInteractiveNoteToggle) {
             onInteractiveNoteToggle(stringIndex, fret);
@@ -60,8 +64,9 @@ const FretCellComponent: React.FC<FretCellProps> = ({
                     shouldShake={shouldShake}
                     octave={octave}
                     isInactiveOutline={!!isOutline}
+                    isMeasured={!!isMeasured}
                     customInterval={customInterval}
-                    onClick={(isClickableRoot || isOutline || isCustomActive) ? handleNoteClick : undefined}
+                    onClick={(onNoteMeasureClick || isClickableRoot || isOutline || isCustomActive) ? handleNoteClick : undefined}
                 />
             </div>
         </div>
@@ -86,5 +91,6 @@ export const FretCell = React.memo(FretCellComponent, (prev, next) => {
         prev.shouldShake === next.shouldShake &&
         prev.isSingleInlay === next.isSingleInlay &&
         prev.isDoubleInlayTop === next.isDoubleInlayTop &&
-        prev.isDoubleInlayBottom === next.isDoubleInlayBottom;
+        prev.isDoubleInlayBottom === next.isDoubleInlayBottom &&
+        prev.isMeasured === next.isMeasured;
 });
