@@ -1,7 +1,7 @@
 import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
-import dataset from '@/shared/lib/audio/datasets/essentia-acoustic-ts/guitar_dataset.json';
+import { fetchDataset } from './dataset-loader';
 import { prepareStratifiedSplit } from './dataset-preparation';
 
 async function getTiF() {
@@ -32,8 +32,8 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
 
     // Mock data if empty for testing
     if (data.length === 0) {
-        console.warn("No data provided for training, using default dataset.");
-        data = dataset as unknown as DatasetEntry[];
+        console.warn("No data provided for training, fetching default dataset.");
+        data = await fetchDataset<DatasetEntry[]>('essentia-acoustic-ts/guitar_dataset.json');
     }
 
     const model = await createModel();

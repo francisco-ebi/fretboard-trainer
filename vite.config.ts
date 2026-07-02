@@ -47,7 +47,9 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 100 * 1024 * 1024 // 100 MB
+        // Workbox default (2MB) acts as a tripwire: if a chunk ever grows past
+        // it again (e.g. a dataset gets bundled), the build warns instead of
+        // silently precaching tens of MB on first visit.
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {

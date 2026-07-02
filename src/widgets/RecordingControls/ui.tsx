@@ -27,8 +27,9 @@ const RecordingControls = () => {
     };
     const handleStats = async () => {
         const { calculateStatistics } = await import('@/shared/lib/audio/dataset-preparation');
-        const dataset = await import('@/shared/lib/audio/datasets/essentia-acoustic-ts/guitar_dataset.json')
-        const stats = calculateStatistics(dataset.default as DatasetEntry[]);
+        const { fetchDataset } = await import('@/shared/lib/audio/dataset-loader');
+        const dataset = await fetchDataset<DatasetEntry[]>('essentia-acoustic-ts/guitar_dataset.json');
+        const stats = calculateStatistics(dataset);
         const blob = new Blob([JSON.stringify(stats, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

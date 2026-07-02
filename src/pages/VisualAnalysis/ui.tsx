@@ -1,19 +1,24 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { drawCepstrogram } from '@/shared/lib/analysis';
-import dataset from '@/shared/lib/audio/datasets/meyda-ts-plus/synthetic_guitar_dataset.json';
+import { fetchDataset } from '@/shared/lib/audio/dataset-loader';
 import { groupDataByString } from '@/shared/lib/audio/dataset-preparation';
+import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
 // Using groupDataByString to get a flat list of frames for a string
-import '@/app/styles/FullScreenStyles.css'; // Reusing full screen styles 
+import '@/app/styles/FullScreenStyles.css'; // Reusing full screen styles
 
 const VisualAnalysis: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [selectedString, setSelectedString] = useState<number>(0);
+    const [dataset, setDataset] = useState<DatasetEntry[] | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
-    // Group data once on mount (or outside component)
-    // Cast dataset to expected type if needed, although direct import often works
-    const groupedData = useMemo(() => groupDataByString(dataset as any), []);
+    useEffect(() => {
+        fetchDataset<DatasetEntry[]>('meyda-ts-plus/synthetic_guitar_dataset.json')
+            .then(setDataset)
+            .catch(err => setLoadError(String(err)));
+    }, []);
 
-    console.log(groupedData);
+    const groupedData = useMemo(() => dataset ? groupDataByString(dataset) : [], [dataset]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -34,6 +39,14 @@ const VisualAnalysis: React.FC = () => {
         }
 
     }, [selectedString, groupedData]);
+
+    if (loadError) {
+        return <div style={{ padding: '20px', color: '#f87171' }}>Failed to load dataset: {loadError}</div>;
+    }
+
+    if (!dataset) {
+        return <div style={{ padding: '20px', color: 'white' }}>Loading dataset…</div>;
+    }
 
     return (
         <div className="visual-analysis-container" style={{ padding: '20px', color: 'white' }}>
