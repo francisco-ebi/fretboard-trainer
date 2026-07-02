@@ -19,11 +19,11 @@ const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
 const MAX_FRAME_GAP_MS = 150;
 
 // Standard feature set definition (essentia model input):
-// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset
+// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset + snr
 export const FEATURE_CONFIG = {
     MFCC_COUNT: 13,
-    EXTRA_FEATURES: 8,
-    TOTAL_FEATURES: 21
+    EXTRA_FEATURES: 9,
+    TOTAL_FEATURES: 22
 };
 
 export interface DatasetEntry {
@@ -213,7 +213,8 @@ class GuitarAudioRecordingEngine {
                 rms: features[FEATURE_POSITIONS.RMS],
                 pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
                 inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
-                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5
+                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5,
+                snr: features[FEATURE_POSITIONS.SNR]
             };
 
             if (mfcc) {
@@ -253,7 +254,8 @@ class GuitarAudioRecordingEngine {
                 extraFeatures.inharmonicity || 0,
                 extraFeatures.rms || 0,
                 extraFeatures.inharmonicityB || 0,
-                extraFeatures.isOnset ? 1 : 0
+                extraFeatures.isOnset ? 1 : 0,
+                extraFeatures.snr || 0
             ];
 
             if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check

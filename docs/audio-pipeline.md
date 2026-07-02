@@ -33,10 +33,10 @@ The neural network's job is to read those differences from short feature sequenc
  │ {essentia|meyda}-recorder-processor.ts                    │
  │   128-sample quanta → ChromeLabs ring buffer              │
  │   → 2048-sample window, 1024 hop (50% overlap, ~23ms)     │
- │   → RMS gate (0.02) + onset detection                     │
+ │   → adaptive RMS gate (noise-floor tracking) + onsets     │
  │   → backend.process(window)  ── null → frame dropped      │
  │       EssentiaBackend / MeydaBackend (feature extraction) │
- │   → Float32Array[22] into SharedArrayBuffer ring buffer   │
+ │   → Float32Array[23] into SharedArrayBuffer ring buffer   │
  └───────────────────────────────────────────────────────────┘
      │  SAB (lock-free, cross-thread; needs cross-origin isolation)
      ▼
@@ -61,6 +61,7 @@ Key files:
 | `src/shared/lib/audio/essentia-worklet-backend.ts` | Feature extraction with essentia.js (WASM) |
 | `src/shared/lib/audio/meyda-worklet-backend.ts` | Feature extraction with Meyda + pitchfinder |
 | `src/shared/lib/audio/inharmonicity.ts` | Pure math: partial tracking + stiffness-coefficient fit (unit-tested) |
+| `src/shared/lib/audio/adaptive-gate.ts` | Pure state machine: noise-floor-tracking RMS gate + onset + SNR (unit-tested) |
 | `src/shared/lib/audio/worklet-types.ts` | The SAB frame layout (`FEATURE_POSITIONS`) — single source of truth |
 | `src/shared/lib/audio/sab-ring-buffer.ts` | Lock-free SharedArrayBuffer ring buffer (worklet → main thread) |
 | `src/shared/lib/audio/ring-buffer.ts` | In-worklet FIFO for building 2048 windows from 128-sample quanta |
@@ -88,12 +89,12 @@ The mode is chosen in the prediction engine (`setMode`), which swaps both the wo
 
 1. **Capture constraints** (`recording-engine.init` / `prediction-engine.init`): mono, `echoCancellation/autoGainControl/noiseSuppression` all disabled — browser DSP would distort the very timbre features we need.
 2. **Windowing**: Web Audio delivers 128-sample quanta. The processor accumulates them in a FIFO and analyzes **2048-sample windows with a 1024 hop** (50% overlap). At 44.1 kHz that's a ~46 ms window every ~23 ms.
-3. **RMS gate**: windows with RMS ≤ 0.02 are ignored (silence / noise floor). Note the threshold is in raw sample units — it depends on interface gain (see limitations).
-4. **Onset detection** (in the processor, backend-agnostic): a window is an *onset* if the gate was just crossed from silence, or RMS jumped >2× over the previous window (re-pluck of a ringing string). The flag is carried "pending" so that if the backend drops the attack frame, the *next* delivered frame still announces the pluck.
+3. **Adaptive RMS gate** (`adaptive-gate.ts`): instead of a fixed threshold, the gate tracks the ambient noise floor with an EMA **while closed** (frozen while a note rings, so long notes can't inflate it and eat their own decay tail) and opens at `floor × 4`, closing at `floor × 2.5` (hysteresis — no flutter as a note decays through the boundary). An absolute minimum (`0.003`) prevents a dead-silent input from opening on anything. The initial floor is chosen so the very first frames behave like the legacy fixed `0.02` gate until the estimator converges (~120 ms of silence). Because both thresholds scale with the floor, frame selection is approximately **gain-invariant**: different interfaces/gains capture the same population of frames.
+4. **Onset detection** (in the gate, backend-agnostic): a window is an *onset* if the gate just opened, or RMS jumped >2× over the previous window (re-pluck of a ringing string). The flag is carried "pending" in the processor so that if the backend drops the attack frame, the *next* delivered frame still announces the pluck. The gate also emits **SNR** = `log10(rms / floor)`, a gain-invariant loudness measure used as a model feature.
 5. **Feature extraction** (backend): described in §4. The backend returns `null` for any frame it cannot analyze reliably — unvoiced input, low pitch confidence, failed extraction, too few partials. **Dropped frames are never zero-filled**; fabricated zeros would be indistinguishable from legitimate feature values and poison the dataset.
 6. **Transport**: the 22-slot `Float32Array` is enqueued into a SharedArrayBuffer ring buffer. The main thread polls it every 16 ms. Whole frames are written atomically, so the reader always dequeues a multiple of 22 floats.
 
-### SAB frame layout (`FEATURE_POSITIONS`, 22 slots)
+### SAB frame layout (`FEATURE_POSITIONS`, 23 slots)
 
 | Slot | Name | Producer | Notes |
 |---|---|---|---|
@@ -107,17 +108,18 @@ The mode is chosen in the prediction engine (`setMode`), which swaps both the wo
 | 19 | PITCH_CONFIDENCE | backend | YIN confidence / Macleod probability |
 | 20 | INHARMONICITY_B | backend | **log10(fitted B)** (0 in meyda) |
 | 21 | ONSET | processor | 1 on the first frame of a pluck |
+| 22 | SNR | processor | log10(rms / noise floor), gain-invariant |
 
 ---
 
 ## 4. The features, and why each one helps
 
-### 4.1 Model input vector — essentia path (21 per frame)
+### 4.1 Model input vector — essentia path (22 per frame)
 
 Order matters and must match between `recording-engine.saveData` and `prediction-engine.makeSequencePrediction`:
 
 ```
-[ mfcc×13, midiNote, centroid, flux, rolloff, inharmonicity, rms, log10(B), onset ]
+[ mfcc×13, midiNote, centroid, flux, rolloff, inharmonicity, rms, log10(B), onset, snr ]
 ```
 
 | Feature | What it measures | Why it discriminates strings |
@@ -131,6 +133,7 @@ Order matters and must match between `recording-engine.saveData` and `prediction
 | **RMS** | Window energy | Decay slope across the sequence — thicker strings and higher frets decay differently |
 | **log10(B)** — *the star feature* | Fitted stiffness coefficient of the inharmonic string model | Directly measures string construction; see below |
 | **Onset flag** | 1 on the pluck's first frame | Tells the net whether a frame is attack or decay, so both are usable |
+| **SNR** | log10(rms / noise floor) from the adaptive gate | Gain-invariant loudness/decay: unlike raw RMS, comparable across interfaces and rooms |
 
 ### 4.2 The fitted inharmonicity coefficient B
 
@@ -153,7 +156,7 @@ Additionally, the *generic* essentia `Inharmonicity` input is made meaningful by
 
 ### 4.3 Quality gates (why frames disappear)
 
-A frame must pass **all** of: RMS > 0.02 → YIN pitch > 0 → YIN confidence ≥ 0.4 → windowing/spectrum/MFCC succeed → spectral peaks exist and match the pitch → ≥4 partials for the B fit. Anything else returns `null` and the frame never leaves the worklet. Downstream, the engines additionally range-check the note (per-string MIDI ranges while recording; instrument range at inference).
+A frame must pass **all** of: adaptive gate open → YIN pitch > 0 → YIN confidence ≥ 0.4 → windowing/spectrum/MFCC succeed → spectral peaks exist and match the pitch → ≥4 partials for the B fit. Anything else returns `null` and the frame never leaves the worklet. Downstream, the engines additionally range-check the note (per-string MIDI ranges while recording; instrument range at inference).
 
 ### 4.4 Meyda path (17 per frame)
 
@@ -179,7 +182,7 @@ A sequence must represent *one note from one continuous pluck*. Both engines flu
 
 ```ts
 { midiNote, stringNum /* 0=high E … 5=low E */, noteName,
-  features: number[5][21], normalizedFeatures: number[5][21] }
+  features: number[5][22], normalizedFeatures: number[5][22] }
 ```
 
 Recording flow (`RecordingControls`, opened with the "record" cheat code): pick a string index, play notes along it; frames are filtered to that string's plausible MIDI range; every 5 buffered frames become one labeled entry. `downloadDataset()` z-score-normalizes with dataset-wide per-feature mean/std and downloads **both** the dataset and the stats file — the stats are part of the model contract (see §7).
@@ -190,7 +193,7 @@ Datasets live in `public/datasets/` and are **fetched at runtime** (`dataset-loa
 
 - One training sample per recorded sequence — no sliding windows across entries (windows that straddled two recordings were a major historical bug, see §8).
 - Entries are grouped per class, shuffled with a **seeded PRNG** (mulberry32, default seed 42 — reproducible), and 20% of *each class* goes to validation. This matters because the capture flow records string-by-string: a naive tail split (TF.js `validationSplit`) would have validated on a single class.
-- Shape check: entries whose `normalizedFeatures` aren't `[5][21]` are skipped, and an explicit error is thrown if nothing survives (the tell-tale sign of a dataset recorded with an older feature pipeline).
+- Shape check: entries whose `normalizedFeatures` aren't `[5][22]` are skipped, and an explicit error is thrown if nothing survives (the tell-tale sign of a dataset recorded with an older feature pipeline).
 
 ---
 
@@ -199,7 +202,7 @@ Datasets live in `public/datasets/` and are **fetched at runtime** (`dataset-loa
 Defined in `model.ts` (TensorFlow.js, lazily imported):
 
 ```
-Input  [5 frames × 21 features]
+Input  [5 frames × 22 features]
   → Conv1D(filters=32, kernel=3, relu)     # local temporal patterns (attack→decay)
   → GlobalAveragePooling1D                 # time-position invariance
   → Dense(32, relu)
@@ -241,6 +244,7 @@ These were made in one review-and-fix pass; the "before" states are documented b
 | **Backend branch by `activeBackendType`** | Meyda recordings silently took the essentia feature layout (dead-code 17-feature branch) |
 | **`brightnessPerNote` direction unified** (`note/centroid`) | Recording and inference computed reciprocal features |
 | **Datasets to `public/datasets/` + 2MB precache tripwire** | 46 MB PWA precache on first visit; datasets were bundled as JS |
+| **Adaptive RMS gate + SNR feature** | Fixed 0.02 gate was interface-gain dependent (quiet setups captured nothing, hot ones passed noise tails, datasets coupled to hardware); raw RMS feature carried the same gain dependence — SNR = log10(rms/floor) is the gain-invariant replacement signal |
 
 **Consequences for artifacts**: the bundled dataset (18-feature frames) and both deployed *essentia* models predate these changes. The essentia/"precision" path will not predict until a new dataset is recorded and a model retrained; `prepareStratifiedSplit` fails fast with an explanatory error. The meyda/"performance" path (17 features, unchanged layout) still works.
 
@@ -253,7 +257,6 @@ These were made in one review-and-fix pass; the "before" states are documented b
 - **Heavy DSP on the realtime audio thread.** The essentia chain (2 windowings, 2 FFTs, YIN, MFCC, peaks, partial fit) runs inside `process()` with a ~2.7 ms budget per quantum. Slow devices may glitch, dropping the very input being analyzed. The correct architecture is: worklet ships raw audio over the SAB, a Worker extracts features.
 - **Ring-buffer wraparound assumption.** The in-worklet FIFO resets indices to 0 on wrap, which is only correct because every push (128 quanta, 1024 overlap re-push) divides the 2048 capacity exactly. A non-128 render quantum would corrupt audio silently.
 - **SharedArrayBuffer requires cross-origin isolation** (`vite-plugin-cross-origin-isolation` in dev; COOP/COEP headers in production). Browsers without it get no audio features at all.
-- **Fixed RMS gate (0.02)** is interface-gain dependent: quiet setups capture nothing, hot ones pass noise tails; it also couples the dataset to the recording hardware.
 - **Manual model+stats pairing.** Nothing enforces that `public/model/X.json` was trained with the stats file the prediction engine loads next to it. A version/hash manifest would remove a whole failure class.
 - **Duplicated processor code** (`essentia-` vs `meyda-recorder-processor.ts`) — one parameterized processor would prevent drift (the onset logic now exists twice).
 

@@ -9,6 +9,7 @@ export interface AnalysisResult {
     pitchConfidence?: number;
     inharmonicityB?: number; // log10 of the fitted string-stiffness coefficient B
     isOnset?: boolean;
+    snr?: number; // log10(rms / noise floor) from the adaptive gate — gain-invariant loudness
 }
 
 export const FEATURE_POSITIONS = {
@@ -22,7 +23,8 @@ export const FEATURE_POSITIONS = {
     PITCH_CONFIDENCE: 19,
     INHARMONICITY_B: 20, // log10(B) from the inharmonic partial fit
     ONSET: 21, // 1 on the first frame of a pluck, 0 otherwise
-    TOTAL_FEATURES: 22,
+    SNR: 22, // log10(rms / noise floor), gain-invariant
+    TOTAL_FEATURES: 23,
 };
 
 export interface AudioBackend {

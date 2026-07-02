@@ -85,6 +85,7 @@ export class MeydaBackend implements AudioBackend {
         featureArray[FEATURE_POSITIONS.PITCH_CONFIDENCE] = confidence;
         featureArray[FEATURE_POSITIONS.INHARMONICITY_B] = 0; // Not available in Meyda (needs spectrum partials)
         featureArray[FEATURE_POSITIONS.ONSET] = 0; // Handled by caller
+        featureArray[FEATURE_POSITIONS.SNR] = 0; // Handled by caller
 
         return featureArray;
     }

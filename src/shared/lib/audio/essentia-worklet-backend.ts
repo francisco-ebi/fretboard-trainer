@@ -110,6 +110,7 @@ export class EssentiaBackend implements AudioBackend {
             featureArray[FEATURE_POSITIONS.PITCH_CONFIDENCE] = confidence;
             featureArray[FEATURE_POSITIONS.INHARMONICITY_B] = encodeInharmonicityB(fittedB);
             featureArray[FEATURE_POSITIONS.ONSET] = 0; // Handled by caller
+            featureArray[FEATURE_POSITIONS.SNR] = 0; // Handled by caller
             return featureArray;
         } catch (e) {
             console.error("Essentia feature extraction failed", e);

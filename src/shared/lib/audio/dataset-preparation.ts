@@ -73,8 +73,8 @@ export function groupDataByString(data: DatasetEntry[]) {
 }
 
 export const SEQUENCE_LENGTH = 5;
-// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset
-export const NUM_FEATURES = 21;
+// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset + snr
+export const NUM_FEATURES = 22;
 
 function mulberry32(seed: number) {
     return function () {

@@ -300,7 +300,8 @@ class GuitarAudioPredictionEngine {
                 rms: features[FEATURE_POSITIONS.RMS],
                 pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
                 inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
-                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5
+                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5,
+                snr: features[FEATURE_POSITIONS.SNR]
             };
 
             if (mfcc) {
@@ -362,6 +363,7 @@ class GuitarAudioPredictionEngine {
                 featuresList.push(frame.rms || 0);
                 featuresList.push(frame.inharmonicityB || 0);
                 featuresList.push(frame.isOnset ? 1 : 0);
+                featuresList.push(frame.snr || 0);
             }
             return featuresList;
         });

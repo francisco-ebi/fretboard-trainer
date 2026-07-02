@@ -12,4 +12,5 @@ export interface AnalysisResult {
     pitchConfidence?: number;
     inharmonicityB?: number; // log10 of the fitted string-stiffness coefficient B
     isOnset?: boolean;
+    snr?: number; // log10(rms / noise floor) from the adaptive gate — gain-invariant loudness
 }
