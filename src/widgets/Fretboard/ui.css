@@ -347,6 +347,14 @@
 
     min-width: unset;
     min-height: 1120px;
+    /* Center the board + numbers pair when narrower than the container
+       (4-string bass/ukulele). Auto margins collapse to 0 on overflow, so
+       wide boards (7/8 strings) stay scrollable from their left edge. */
+    margin-left: auto;
+}
+
+.fretboard-container.vertical .fret-numbers-row {
+    margin-right: auto;
 }
 
 .fretboard-container.vertical .string-row {
