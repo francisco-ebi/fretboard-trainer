@@ -10,13 +10,21 @@
     flex-direction: column;
 }
 
-/* Header */
+/* Header (whole row toggles collapse) */
 .matrix-header {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 12px 16px;
     background: rgba(0, 0, 0, 0.3);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.matrix-header:hover {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .matrix-header-name {
@@ -53,10 +61,18 @@
     flex-direction: column;
     height: 300px; /* fixed height for absolute positioning of dots */
     padding: 10px 0;
+    transition: height 0.25s ease;
 }
 
+/* Collapsed: just the flat strip of active-scale dots */
 .matrix-body.single-view.collapsed {
-    height: 120px;
+    height: 72px;
+    padding: 4px 0;
+}
+
+.matrix-body.single-view.collapsed .matrix-workspace {
+    /* No center-line gradient behind the flat dot strip */
+    background: none;
 }
 
 /* Grid Header */
@@ -68,16 +84,14 @@
 }
 
 .matrix-collapse-btn {
-    position: absolute;
-    right: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
     background: none;
     border: none;
     color: rgba(255, 255, 255, 0.6);
     font-size: 1rem;
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin: -0.5rem -0.5rem -0.5rem 0;
+    flex-shrink: 0;
     transition: color 0.2s ease;
 }
 
@@ -251,7 +265,7 @@
         height: 250px;
     }
     .matrix-body.single-view.collapsed {
-        height: 100px;
+        height: 64px;
     }
     /* Keep dots ≥36px visual (44px+ with the ::after hit area) for touch */
     .matrix-dot {

@@ -176,7 +176,8 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
 
     return (
         <div className="scale-matrix-selector">
-            <div className="matrix-header">
+            {/* The whole header toggles the collapse; the select opts out */}
+            <div className="matrix-header" onClick={() => setIsCollapsed(!isCollapsed)}>
                 <div className="matrix-scale-label" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                     <div>
                         <span>{t('controls.selectedScale')}: </span>
@@ -184,6 +185,7 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                     </div>
                     <select
                         value={scaleLengthFilter}
+                        onClick={e => e.stopPropagation()}
                         onChange={e => handleFilterChange(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value) as 5 | 6 | 7)}
                         className="scale-length-select"
                     >
@@ -195,7 +197,8 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                 </div>
                 <button
                     className="matrix-collapse-btn"
-                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}
+                    aria-expanded={!isCollapsed}
                     aria-label={isCollapsed ? "Expand Matrix" : "Collapse Matrix"}
                 >
                     {isCollapsed ? '▼' : '▲'}
@@ -203,15 +206,18 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
             </div>
 
             <div className={`matrix-body single-view ${isCollapsed ? 'collapsed' : ''}`}>
-                <div className="matrix-grid-header">
-                    {labels.map((label, i) => (
-                        <div key={i} className="matrix-col-label">
-                            {label}
-                        </div>
-                    ))}
-                </div>
+                {!isCollapsed && (
+                    <div className="matrix-grid-header">
+                        {labels.map((label, i) => (
+                            <div key={i} className="matrix-col-label">
+                                {label}
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="matrix-workspace">
+                    {!isCollapsed && (
                     <svg className="matrix-svg-layer" preserveAspectRatio="none">
                         {/* Render individual line segments for the active scale */}
                         {activeNodes.map((node, i) => {
@@ -265,6 +271,7 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                             );
                         })}
                     </svg>
+                    )}
 
                     <div className="matrix-nodes-layer">
                         {columns.map(colIndex => {
