@@ -18,10 +18,11 @@ const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
 // (hop is ~23ms at 44.1kHz, so this tolerates ~6 gated/dropped frames)
 const MAX_FRAME_GAP_MS = 150;
 
-// Standard feature set definition
+// Standard feature set definition (essentia model input):
+// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset
 export const FEATURE_CONFIG = {
     MFCC_COUNT: 13,
-    EXTRA_FEATURES: 7,
+    EXTRA_FEATURES: 8,
     TOTAL_FEATURES: 21
 };
 
@@ -209,7 +210,10 @@ class GuitarAudioRecordingEngine {
                 spectralRolloff: features[FEATURE_POSITIONS.ROLLOFF],
                 spectralFlux: features[FEATURE_POSITIONS.FLUX],
                 inharmonicity: features[FEATURE_POSITIONS.INHARMONICITY],
-                rms: features[FEATURE_POSITIONS.RMS]
+                rms: features[FEATURE_POSITIONS.RMS],
+                pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
+                inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
+                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5
             };
 
             if (mfcc) {
@@ -224,9 +228,10 @@ class GuitarAudioRecordingEngine {
         }
 
         // A sequence must be one note from one continuous pluck: discard
-        // buffered frames when the note changes or the signal was interrupted.
+        // buffered frames when the note changes, the signal was interrupted,
+        // or a new pluck onset arrives (sequences align to pluck boundaries).
         const now = performance.now();
-        if (this.lastFrameNote !== note || now - this.lastFrameTime > MAX_FRAME_GAP_MS) {
+        if (this.lastFrameNote !== note || now - this.lastFrameTime > MAX_FRAME_GAP_MS || extraFeatures.isOnset) {
             this.frameBuffer = [];
         }
         this.lastFrameNote = note;
@@ -245,7 +250,10 @@ class GuitarAudioRecordingEngine {
                 extraFeatures.spectralCentroid || 0,
                 extraFeatures.spectralFlux || 0,
                 extraFeatures.spectralRolloff || 0,
-                extraFeatures.inharmonicity || 0
+                extraFeatures.inharmonicity || 0,
+                extraFeatures.rms || 0,
+                extraFeatures.inharmonicityB || 0,
+                extraFeatures.isOnset ? 1 : 0
             ];
 
             if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check

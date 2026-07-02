@@ -9,4 +9,7 @@ export interface AnalysisResult {
     spectralSkewness?: number | null;
     perceptualSpread?: number | null;
     perceptualSharpness?: number | null;
+    pitchConfidence?: number;
+    inharmonicityB?: number; // log10 of the fitted string-stiffness coefficient B
+    isOnset?: boolean;
 }

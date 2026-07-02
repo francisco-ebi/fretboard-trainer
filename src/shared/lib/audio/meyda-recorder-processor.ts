@@ -12,6 +12,8 @@ class MeydaRecorderProcessor extends AudioWorkletProcessor {
     private _inputRingBuffer: ChromeLabsRingBuffer;
     private _accumData: Float32Array[];
     private _audioWriter: AudioWriter | null = null;
+    private _prevRms: number = 0;
+    private _pendingOnset: boolean = false;
 
     constructor(options: AudioWorkletNodeOptions) {
         super();
@@ -54,16 +56,25 @@ class MeydaRecorderProcessor extends AudioWorkletProcessor {
             this._inputRingBuffer.pull(this._accumData);
 
             let rms = this.calculateRMS(this._accumData[0]);
+            // Onset = crossing the gate from silence, or a sharp energy jump
+            // (re-pluck of a sustained note). Kept pending until a frame
+            // actually ships, so backend-dropped attack frames don't lose it.
+            if (rms > 0.02 && (this._prevRms <= 0.02 || rms > this._prevRms * 2)) {
+                this._pendingOnset = true;
+            }
             if (rms > 0.02 && this.isBackendReady) {
                 const featureArray = this.backend.process(this._accumData[0]);
                 if (featureArray) {
                     featureArray[FEATURE_POSITIONS.RMS] = rms;
+                    featureArray[FEATURE_POSITIONS.ONSET] = this._pendingOnset ? 1 : 0;
                     // Push directly to SAB if available
                     if (this._audioWriter && this._audioWriter.available_write() >= featureArray.length) {
                         this._audioWriter.enqueue(featureArray);
+                        this._pendingOnset = false;
                     }
                 }
             }
+            this._prevRms = rms;
 
             // Re-push overlap data (bufferSize - hopSize) back into the ring buffer
             // to support sliding windows correctly.

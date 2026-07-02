@@ -7,17 +7,22 @@ const PITCH_ALGORITHM: 'yin' | 'macleod' = 'macleod';
 
 export class MeydaBackend implements AudioBackend {
     name = 'meyda';
-    private detectPitch: ((buffer: Float32Array) => number | null) | null = null;
+    private detectPitch: ((buffer: Float32Array) => { freq: number | null; confidence: number }) | null = null;
 
     async init(sampleRate: number, bufferSize: number, _hopSize: number) {
         if (PITCH_ALGORITHM === 'macleod') {
             const macleodDetector = Macleod({ sampleRate, bufferSize });
             this.detectPitch = (buffer: Float32Array) => {
                 const result = macleodDetector(buffer);
-                return result && result.probability > 0.5 ? result.freq : null;
+                const confidence = result?.probability ?? 0;
+                return { freq: result && confidence > 0.5 ? result.freq : null, confidence };
             };
         } else {
-            this.detectPitch = YIN({ sampleRate });
+            const yinDetector = YIN({ sampleRate });
+            this.detectPitch = (buffer: Float32Array) => {
+                const freq = yinDetector(buffer);
+                return { freq, confidence: freq ? 1 : 0 }; // YIN in pitchfinder exposes no confidence
+            };
         }
 
         if (Meyda) {
@@ -36,7 +41,7 @@ export class MeydaBackend implements AudioBackend {
     process(buffer: Float32Array): Float32Array | null {
         if (!this.detectPitch) return null;
 
-        const pitch = this.detectPitch(buffer);
+        const { freq: pitch, confidence } = this.detectPitch(buffer);
         if (!pitch || pitch <= 0) return null; // unvoiced frame
 
         let mfcc: number[] | null = null;
@@ -77,6 +82,9 @@ export class MeydaBackend implements AudioBackend {
         featureArray[FEATURE_POSITIONS.FLUX] = 0; // Not available in Meyda (needs previous frame)
         featureArray[FEATURE_POSITIONS.INHARMONICITY] = 0; // Not available in Meyda
         featureArray[FEATURE_POSITIONS.RMS] = 0; // Handled by caller
+        featureArray[FEATURE_POSITIONS.PITCH_CONFIDENCE] = confidence;
+        featureArray[FEATURE_POSITIONS.INHARMONICITY_B] = 0; // Not available in Meyda (needs spectrum partials)
+        featureArray[FEATURE_POSITIONS.ONSET] = 0; // Handled by caller
 
         return featureArray;
     }

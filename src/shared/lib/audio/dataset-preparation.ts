@@ -72,8 +72,9 @@ export function groupDataByString(data: DatasetEntry[]) {
     }));
 }
 
-const SEQUENCE_LENGTH = 5;
-const NUM_FEATURES = 18;
+export const SEQUENCE_LENGTH = 5;
+// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset
+export const NUM_FEATURES = 21;
 
 function mulberry32(seed: number) {
     return function () {
@@ -109,6 +110,13 @@ export function prepareStratifiedSplit(data: DatasetEntry[], valFraction = 0.2, 
             continue;
         }
         (byLabel[entry.stringNum] ??= []).push(sequence);
+    }
+
+    if (Object.keys(byLabel).length === 0) {
+        throw new Error(
+            `prepareStratifiedSplit: no sequences with shape [${SEQUENCE_LENGTH}, ${NUM_FEATURES}] found. ` +
+            `The dataset was likely recorded with an older feature pipeline — re-record it with the current one.`
+        );
     }
 
     const random = mulberry32(seed);

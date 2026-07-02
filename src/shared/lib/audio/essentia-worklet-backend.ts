@@ -1,6 +1,7 @@
 import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
 import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
 import { FEATURE_POSITIONS, type AudioBackend } from './worklet-types';
+import { findPartials, fitInharmonicityB, encodeInharmonicityB } from './inharmonicity';
 
 // SpectralPeaks tuning for Inharmonicity: the algorithm treats the first
 // (lowest) peak as the fundamental, so peaks below the detected pitch must be
@@ -10,16 +11,22 @@ const PEAK_MAX_FREQUENCY = 5000;
 const PEAK_MAX_COUNT = 100;
 // Tolerated relative deviation between the first spectral peak and the YIN pitch
 const FUNDAMENTAL_TOLERANCE = 0.15;
+// Frames whose YIN confidence falls below this are dropped: their pitch (and
+// therefore the note label at capture time) is not trustworthy. Kept moderate
+// so attack transients still pass.
+const MIN_PITCH_CONFIDENCE = 0.4;
 
 export class EssentiaBackend implements AudioBackend {
     name = 'essentia';
     private essentia: any = null;
     private sampleRate: number = 44100;
+    private frameSize: number = 2048;
     private lowestFreq: number = 440 * Math.pow(Math.pow(2, 1 / 12), -33); // C2 ~65Hz
     private highestFreq: number = 440 * Math.pow(Math.pow(2, 1 / 12), -33 + (6 * 12) - 1);
 
-    async init(sampleRate: number, _bufferSize: number, _hopSize: number) {
+    async init(sampleRate: number, bufferSize: number, _hopSize: number) {
         this.sampleRate = sampleRate;
+        this.frameSize = bufferSize;
         if (!this.essentia) {
             this.essentia = new Essentia(EssentiaWASM);
         }
@@ -39,8 +46,9 @@ export class EssentiaBackend implements AudioBackend {
         try {
             vectorSignal = this.essentia.arrayToVector(buffer);
 
-            const pitch = this.extractPitch(vectorSignal, buffer.length);
+            const { pitch, confidence } = this.extractPitch(vectorSignal, buffer.length);
             if (pitch <= 0) return null; // unvoiced frame
+            if (confidence < MIN_PITCH_CONFIDENCE) return null; // unreliable pitch → unreliable label
 
             windowedFrame = this.essentia.Windowing(vectorSignal, true, buffer.length, "hamming").frame;
             spectrum = this.essentia.Spectrum(windowedFrame, buffer.length).spectrum;
@@ -79,6 +87,16 @@ export class EssentiaBackend implements AudioBackend {
             const scalars = [spectralCentroid, spectralRolloff, spectralFlux, inharmonicity];
             if (scalars.some(v => typeof v !== 'number' || Number.isNaN(v))) return null;
 
+            // Fitted stiffness coefficient B: pitch-guided partial tracking on
+            // the magnitude spectrum, then a least-squares fit of
+            // (f_n/(n·f0))² − 1 = B·n². Far more stable than the generic
+            // Inharmonicity scalar and the main same-note string discriminator.
+            const spectrumArray = this.essentia.vectorToArray(spectrum);
+            const binHz = this.sampleRate / this.frameSize;
+            const partials = findPartials(spectrumArray, pitch, binHz);
+            const fittedB = fitInharmonicityB(partials);
+            if (fittedB === null) return null; // too few partials to characterize the string
+
             const featureArray = new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
             featureArray[FEATURE_POSITIONS.PITCH] = pitch;
             for (let i = 0; i < 13; i++) {
@@ -89,6 +107,9 @@ export class EssentiaBackend implements AudioBackend {
             featureArray[FEATURE_POSITIONS.FLUX] = spectralFlux;
             featureArray[FEATURE_POSITIONS.INHARMONICITY] = inharmonicity;
             featureArray[FEATURE_POSITIONS.RMS] = 0; // Handled by caller
+            featureArray[FEATURE_POSITIONS.PITCH_CONFIDENCE] = confidence;
+            featureArray[FEATURE_POSITIONS.INHARMONICITY_B] = encodeInharmonicityB(fittedB);
+            featureArray[FEATURE_POSITIONS.ONSET] = 0; // Handled by caller
             return featureArray;
         } catch (e) {
             console.error("Essentia feature extraction failed", e);
@@ -104,17 +125,20 @@ export class EssentiaBackend implements AudioBackend {
         }
     }
 
-    private extractPitch(vectorSignal: any, frameSize: number): number {
+    private extractPitch(vectorSignal: any, frameSize: number): { pitch: number; confidence: number } {
         let windowedFrame: any = null;
         let spectrum: any = null;
         try {
             windowedFrame = this.essentia.Windowing(vectorSignal).frame;
             spectrum = this.essentia.Spectrum(windowedFrame, frameSize).spectrum;
             const pitchResult = this.essentia.PitchYinFFT(spectrum, frameSize, true, this.highestFreq, this.lowestFreq, this.sampleRate);
-            return typeof pitchResult.pitch === 'number' ? pitchResult.pitch : 0;
+            return {
+                pitch: typeof pitchResult.pitch === 'number' ? pitchResult.pitch : 0,
+                confidence: typeof pitchResult.pitchConfidence === 'number' ? pitchResult.pitchConfidence : 0
+            };
         } catch (e) {
             console.error("Essentia PitchYinFFT Error", e);
-            return 0;
+            return { pitch: 0, confidence: 0 };
         } finally {
             if (windowedFrame) windowedFrame.delete();
             if (spectrum) spectrum.delete();

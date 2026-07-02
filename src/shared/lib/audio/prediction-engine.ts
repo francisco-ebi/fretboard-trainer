@@ -297,14 +297,18 @@ class GuitarAudioPredictionEngine {
                 spectralRolloff: features[FEATURE_POSITIONS.ROLLOFF],
                 spectralFlux: features[FEATURE_POSITIONS.FLUX],
                 inharmonicity: features[FEATURE_POSITIONS.INHARMONICITY],
-                rms: features[FEATURE_POSITIONS.RMS]
+                rms: features[FEATURE_POSITIONS.RMS],
+                pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
+                inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
+                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5
             };
 
             if (mfcc) {
                 // A sequence must be one note from one continuous pluck: discard
-                // buffered frames when the note changes or the signal was interrupted.
+                // buffered frames when the note changes, the signal was
+                // interrupted, or a new pluck onset arrives.
                 const now = performance.now();
-                if (this.lastFrameNote !== midiNote || now - this.lastFrameTime > MAX_FRAME_GAP_MS) {
+                if (this.lastFrameNote !== midiNote || now - this.lastFrameTime > MAX_FRAME_GAP_MS || resultObj.isOnset) {
                     this.frameBuffer = [];
                 }
                 this.lastFrameNote = midiNote;
@@ -350,11 +354,14 @@ class GuitarAudioPredictionEngine {
                 // Must match recording-engine's brightnessPerNote = note / centroid
                 featuresList.push((midiNote / (spectralCentroid || 1)) || 0);
             } else {
-                // Expecting 18
+                // Essentia layout: must match recording-engine's saveData order
                 featuresList.push(frame.spectralCentroid || 0);
                 featuresList.push(frame.spectralFlux || 0);
                 featuresList.push(frame.spectralRolloff || 0);
                 featuresList.push(frame.inharmonicity || 0);
+                featuresList.push(frame.rms || 0);
+                featuresList.push(frame.inharmonicityB || 0);
+                featuresList.push(frame.isOnset ? 1 : 0);
             }
             return featuresList;
         });
@@ -376,12 +383,28 @@ class GuitarAudioPredictionEngine {
         // Tensor Input: [1, 5, 16] or [1, 5, 18]
         const inputSequence = normalizedDataset[0].normalizedFeatures; // number[][]
 
-        const predictedClass = this.tf.tidy(() => {
+        const probabilities = this.tf.tidy(() => {
             // Create 3D tensor: [batch_size, time_steps, features] -> [1, 5, F]
             const inputTensor = this.tf.tensor([inputSequence]);
             const prediction = this.model!.predict(inputTensor) as Tensor;
-            return prediction.argMax(1).dataSync()[0];
+            return prediction.dataSync();
         });
+
+        // Feasibility masking: for the detected pitch only strings whose
+        // implied fret lies in [0, 24] are physically possible, so restrict
+        // the argmax to those instead of letting the model pick an
+        // impossible string that would be discarded downstream.
+        let predictedClass = -1;
+        let bestProbability = -Infinity;
+        for (let stringNum = 0; stringNum < 6; stringNum++) {
+            const fret = paramsMidiNote - baseNotes[stringNum];
+            if (fret < 0 || fret > 24) continue;
+            if (probabilities[stringNum] > bestProbability) {
+                bestProbability = probabilities[stringNum];
+                predictedClass = stringNum;
+            }
+        }
+        if (predictedClass < 0) return; // note outside the instrument's range
 
         const predicted = this.calculateLocation(paramsMidiNote, predictedClass);
 

@@ -2,7 +2,7 @@ import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
 import { fetchDataset } from './dataset-loader';
-import { prepareStratifiedSplit } from './dataset-preparation';
+import { prepareStratifiedSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
 
 async function getTiF() {
     return await import('@tensorflow/tfjs');
@@ -11,7 +11,7 @@ async function getTiF() {
 export async function createModel(): Promise<LayersModel> {
     const tf = await getTiF();
     const model = tf.sequential();
-    model.add(tf.layers.conv1d({ inputShape: [5, 18], filters: 32, kernelSize: 3, activation: "relu" }));
+    model.add(tf.layers.conv1d({ inputShape: [SEQUENCE_LENGTH, NUM_FEATURES], filters: 32, kernelSize: 3, activation: "relu" }));
     model.add(tf.layers.globalAveragePooling1d());
     // model.add(tf.layers.flatten());
     // model.add(tf.layers.dropout({ rate: 0.3 }));

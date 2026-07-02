@@ -6,6 +6,9 @@ export interface AnalysisResult {
     spectralFlux?: number | null;
     spectralRolloff?: number | null;
     inharmonicity?: number | null;
+    pitchConfidence?: number;
+    inharmonicityB?: number; // log10 of the fitted string-stiffness coefficient B
+    isOnset?: boolean;
 }
 
 export const FEATURE_POSITIONS = {
@@ -16,7 +19,10 @@ export const FEATURE_POSITIONS = {
     FLUX: 16,
     INHARMONICITY: 17,
     RMS: 18,
-    TOTAL_FEATURES: 21,
+    PITCH_CONFIDENCE: 19,
+    INHARMONICITY_B: 20, // log10(B) from the inharmonic partial fit
+    ONSET: 21, // 1 on the first frame of a pluck, 0 otherwise
+    TOTAL_FEATURES: 22,
 };
 
 export interface AudioBackend {

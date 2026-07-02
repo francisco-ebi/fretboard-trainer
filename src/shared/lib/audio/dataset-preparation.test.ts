@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { prepareStratifiedSplit } from './dataset-preparation';
+import { prepareStratifiedSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
 import type { DatasetEntry } from './recording-engine';
 
-const SEQUENCE_LENGTH = 5;
-const NUM_FEATURES = 18;
 const NUM_CLASSES = 6;
 
 // Each frame encodes its entry id in feature 0 so tests can verify that a
