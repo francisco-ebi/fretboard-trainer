@@ -30,8 +30,18 @@ const getIntervalHueClass = (intervalLabel: string): string => {
 const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale, onScaleChange, selectedRoot }) => {
     const { t } = useTranslation();
     const { namingSystem } = useNaming();
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsedState] = useState(() => {
+        const stored = localStorage.getItem('scale-matrix-collapsed');
+        if (stored !== null) return stored === 'true';
+        // Default collapsed on mobile: the expanded matrix is ~300px tall
+        return window.matchMedia('(max-width: 600px)').matches;
+    });
     const [scaleLengthFilter, setScaleLengthFilter] = useState<'ALL' | 5 | 6 | 7>('ALL');
+
+    const setIsCollapsed = (collapsed: boolean) => {
+        setIsCollapsedState(collapsed);
+        localStorage.setItem('scale-matrix-collapsed', String(collapsed));
+    };
 
     const scaleLength = useMemo(() => SCALES[selectedScale].length, [selectedScale]);
 
@@ -172,11 +182,10 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                         <span>{t('controls.selectedScale')}: </span>
                         <strong>{t(`scales.${selectedScale}`)}</strong>
                     </div>
-                    <select 
-                        value={scaleLengthFilter} 
+                    <select
+                        value={scaleLengthFilter}
                         onChange={e => handleFilterChange(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value) as 5 | 6 | 7)}
                         className="scale-length-select"
-                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', padding: '4px 8px' }}
                     >
                         <option value="ALL">{t('controls.scaleLengths.all')}</option>
                         <option value="5">{t('controls.scaleLengths.5')}</option>

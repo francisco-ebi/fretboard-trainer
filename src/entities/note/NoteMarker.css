@@ -1,6 +1,6 @@
 .note-marker {
-    width: 44px;
-    height: 44px;
+    width: var(--marker-size, 44px);
+    height: var(--marker-size, 44px);
     border-radius: 50%;
     /* Default: White background, Dark text */
     background: #ffffff;
@@ -150,6 +150,27 @@
 
 .shake {
     animation: shake 0.4s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shake {
+        animation: none;
+    }
+}
+
+/* Smaller markers to match the narrower string columns on mobile */
+@media (max-width: 600px) {
+    .note-marker {
+        --marker-size: 36px;
+    }
+
+    .note-name {
+        font-size: 0.8rem;
+    }
+
+    .note-interval {
+        font-size: 0.6rem;
+    }
 }
 
 

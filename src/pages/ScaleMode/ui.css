@@ -1,0 +1,40 @@
+/* Mobile fretboard-first layout: sticky summary bar on top, fretboard as the
+   main stage, controls in a bottom sheet. Only applied under 600px. */
+
+.scale-mode.mobile-stage {
+    /* Keep the fixed bottom-sheet peek bar from covering the last frets */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+.scale-summary-bar {
+    position: sticky;
+    /* Stay below the fixed TopBar (~44px tall, z-index 90) when scrolling */
+    top: 52px;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    margin-bottom: 0.5rem;
+    background: rgba(28, 28, 34, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.scale-summary-edit {
+    font-size: 0.9rem;
+    opacity: 0.6;
+}
+
+.scale-mode.mobile-stage .fretboard-wrapper {
+    width: 100%;
+}

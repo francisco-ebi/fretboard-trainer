@@ -32,6 +32,16 @@
     font-size: 0.9rem;
     color: #ccc;
 }
+
+.scale-length-select {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: inherit;
+    cursor: pointer;
+}
 .matrix-scale-label strong {
     color: #fff;
     font-weight: 600;
@@ -182,8 +192,24 @@
     cursor: pointer;
 }
 
-.matrix-dot.interactable:hover {
-    transform: scale(1.2);
+/* Expand the touch target beyond the visual dot (≥44px total) */
+.matrix-dot.interactable::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+}
+
+/* Hover feedback only on devices that actually hover */
+@media (hover: hover) {
+    .matrix-dot.interactable:hover {
+        transform: scale(1.2);
+        z-index: 10;
+    }
+}
+
+.matrix-dot.interactable:active {
+    transform: scale(1.15);
     z-index: 10;
 }
 
@@ -227,16 +253,21 @@
     .matrix-body.single-view.collapsed {
         height: 100px;
     }
+    /* Keep dots ≥36px visual (44px+ with the ::after hit area) for touch */
     .matrix-dot {
-        width: 28px;
-        height: 28px;
-        margin-left: -14px;
-        margin-top: -14px;
+        width: 36px;
+        height: 36px;
+        margin-left: -18px;
+        margin-top: -18px;
     }
     .matrix-dot-interval {
-        font-size: 0.45rem;
+        font-size: 0.5rem;
     }
     .matrix-dot-note {
-        font-size: 0.65rem;
+        font-size: 0.7rem;
+    }
+    /* 16px minimum prevents iOS Safari zoom-on-focus */
+    .scale-length-select {
+        font-size: 16px;
     }
 }

@@ -1,4 +1,7 @@
 .fretboard-container {
+    /* Width of one string column in vertical mode; shrinks on mobile so a
+       6-string board fits the viewport without horizontal scrolling. */
+    --string-col: 4rem;
     display: block;
     width: 100%;
     /* min-width: 1120px;  Ensure trigger scroll on mobile */
@@ -23,6 +26,34 @@
 @media (max-width: 600px) {
     .fretboard-container {
         padding: 0;
+        /* Fit the vertical board to the viewport: subtract #root padding,
+           the fret-number column and borders, divide by string count. */
+        --string-col: clamp(2.5rem, calc((100vw - 4.5rem) / var(--string-count, 6)), 4rem);
+        /* backdrop-filter is expensive while scrolling on mobile GPUs */
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: rgba(30, 30, 35, 0.95);
+    }
+
+    /* The page is the single scroll area on mobile: no nested scroll trap */
+    .fretboard-container.vertical {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    /* Compact rows: fixed heights instead of 1120px minimum */
+    .fretboard.vertical {
+        min-height: unset;
+        grid-template-rows: minmax(36px, auto) repeat(18, 56px);
+    }
+
+    .fretboard-container.vertical .fret-numbers-row {
+        min-height: unset;
+        grid-template-rows: minmax(36px, auto) repeat(18, 56px);
+        /* Keep the fret numbers visible when 7/8 strings overflow horizontally */
+        position: sticky;
+        right: 0;
+        background: rgba(30, 30, 35, 0.92);
     }
 
     .desktop-voicing-carousel {
@@ -311,7 +342,7 @@
 
 .fretboard.vertical {
     display: grid;
-    grid-template-columns: repeat(6, 4rem);
+    grid-template-columns: repeat(var(--string-count, 6), var(--string-col));
     grid-template-rows: minmax(40px, 0.66fr) repeat(18, minmax(60px, 1fr));
 
     min-width: unset;
@@ -331,7 +362,7 @@
 
     height: auto;
     /* Let grid control height */
-    width: 4rem;
+    width: var(--string-col);
     flex-direction: column;
     /* Internal stacking if needed */
 }
@@ -505,8 +536,9 @@
     font-size: 1.25rem;
     line-height: 1;
     cursor: pointer;
-    padding: 0;
-    margin: 0;
+    /* Expand the touch target to ~44px without growing the popup visually */
+    padding: 0.75rem;
+    margin: -0.75rem;
     transition: color 0.2s;
 }
 
@@ -517,4 +549,11 @@
 @keyframes modalPopIn {
     from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
     to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .measurement-line,
+    .prediction-marker-ring {
+        animation: none;
+    }
 }

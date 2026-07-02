@@ -312,13 +312,15 @@ const Fretboard: React.FC<FretboardProps> = ({
 
     return (
         <>
-            <div className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()} theme-${colorScheme.toLowerCase()}`}>
+            <div
+                className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()} theme-${colorScheme.toLowerCase()}`}
+                style={{ '--string-count': STRINGS } as React.CSSProperties}
+            >
                 <div
                     ref={fretboardRef}
                     className={`fretboard ${orientation.toLowerCase()}`}
                     role="grid"
                     aria-label={`${instrument} fretboard`}
-                    style={orientation === 'VERTICAL' ? { gridTemplateColumns: `repeat(${STRINGS}, 4rem)` } : undefined}
                 >
                     {renderMeasurementOverlay()}
                     <PredictionOverlay stringCount={STRINGS} />

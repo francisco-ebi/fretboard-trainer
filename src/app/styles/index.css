@@ -66,43 +66,5 @@ body {
   color: var(--text-secondary);
 }
 
-/* Controls */
-.controls {
-  margin-bottom: 2rem;
-  background-color: var(--bg-secondary);
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.control-group label {
-  font-weight: 600;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.control-group select {
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  border-radius: 8px;
-  border: 1px solid #333;
-  background-color: #2c2c2c;
-  color: white;
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.control-group select:focus {
-  border-color: var(--highlight-color);
-}
-
-/* Fretboard styles have been moved to components/Fretboard.css */
+/* Controls styles live in widgets/Controls/ui.css (loaded globally via the
+   main bundle). Fretboard styles live in widgets/Fretboard/ui.css. */

@@ -17,6 +17,13 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@media (max-width: 600px) {
+    .prediction-controls {
+        /* Clear the bottom-sheet peek bar */
+        bottom: calc(76px + env(safe-area-inset-bottom));
+    }
+}
+
 .prediction-controls:hover {
     background: rgba(23, 23, 23, 0.85);
     transform: translateX(-50%) translateY(-2px);

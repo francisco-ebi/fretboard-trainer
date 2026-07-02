@@ -45,6 +45,13 @@
     border-color: #646cff;
 }
 
+@media (max-width: 600px) {
+    /* 16px minimum prevents iOS Safari zoom-on-focus */
+    .top-bar-select {
+        font-size: 16px;
+    }
+}
+
 .top-bar-divider {
     width: 1px;
     height: 1.5rem;

@@ -55,6 +55,7 @@ const resources = {
                 themeOklch: "OKLCH (Perceptual)",
                 themeLegacy: "Legacy (Bright)",
                 stringCountVal: "{{count}} Strings",
+                editSettings: "Edit key & scale",
                 scaleLengths: {
                     all: "All Lengths",
                     5: "Pentatonic (5 notes)",
@@ -260,6 +261,7 @@ const resources = {
                 themeOklch: "OKLCH (Perceptual)",
                 themeLegacy: "Heredado (Brillante)",
                 stringCountVal: "{{count}} Cuerdas",
+                editSettings: "Editar tonalidad y escala",
                 scaleLengths: {
                     all: "Todas las Longitudes",
                     5: "Pentatónica (5 notas)",
