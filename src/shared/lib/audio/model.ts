@@ -2,7 +2,7 @@ import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
 import dataset from '@/shared/lib/audio/datasets/essentia-acoustic-ts/guitar_dataset.json';
-import { prepare3DDataset, groupDataByString } from './dataset-preparation';
+import { prepareStratifiedSplit } from './dataset-preparation';
 
 async function getTiF() {
     return await import('@tensorflow/tfjs');
@@ -37,9 +37,10 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
     }
 
     const model = await createModel();
-    const { x, y } = prepare3DDataset(groupDataByString(data));
-    const yHot = tf.oneHot(y, 6);
-    console.log(`Input Shape: ${x.shape}`);
+    const { trainX, trainY, valX, valY } = prepareStratifiedSplit(data);
+    const trainYHot = tf.oneHot(trainY, 6);
+    const valYHot = tf.oneHot(valY, 6);
+    console.log(`Train Shape: ${trainX.shape} | Validation Shape: ${valX.shape}`);
 
     const earlyStopping = tf.callbacks.earlyStopping({
         monitor: 'val_acc',
@@ -48,11 +49,11 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
     });
 
 
-    await model.fit(x, yHot, {
+    await model.fit(trainX, trainYHot, {
         epochs: 100,
         batchSize: 64,
         shuffle: true,
-        validationSplit: 0.2,
+        validationData: [valX, valYHot],
         callbacks: [
             earlyStopping,
             new tf.CustomCallback({

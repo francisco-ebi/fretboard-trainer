@@ -22,5 +22,7 @@ export const FEATURE_POSITIONS = {
 export interface AudioBackend {
     name: string;
     init(sampleRate: number, bufferSize: number, hopSize: number): Promise<void>;
-    process(buffer: Float32Array): Float32Array; // Now returns a contiguous float array
+    // Returns a contiguous float array, or null when the frame should be dropped
+    // (extraction failure or unvoiced input) instead of emitting fabricated zeros.
+    process(buffer: Float32Array): Float32Array | null;
 }

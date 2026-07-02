@@ -75,24 +75,62 @@ export function groupDataByString(data: DatasetEntry[]) {
 const SEQUENCE_LENGTH = 5;
 const NUM_FEATURES = 18;
 
-export function prepare3DDataset(allDatasets: { label: number, frames: number[][] }[]) {
-    const inputs: number[][][] = [];
-    const labels: number[] = [];
+function mulberry32(seed: number) {
+    return function () {
+        let t = (seed += 0x6D2B79F5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
 
-    for (const dataset of allDatasets) {
-        const rawFrames = dataset.frames;
-        const label = dataset.label;
-        for (let i = 0; i <= rawFrames.length - SEQUENCE_LENGTH; i++) {
-            const window = rawFrames.slice(i, i + SEQUENCE_LENGTH);
-            if (window.length === SEQUENCE_LENGTH) {
-                inputs.push(window);
-                labels.push(label);
-            }
+function shuffleInPlace<T>(items: T[], random: () => number) {
+    for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+    }
+}
+
+export interface StratifiedSplit {
+    trainX: tf.Tensor3D;
+    trainY: tf.Tensor1D;
+    valX: tf.Tensor3D;
+    valY: tf.Tensor1D;
+}
+
+// Each DatasetEntry is one recorded sequence and becomes exactly one sample;
+// windows never mix frames from different recordings. The validation set is
+// stratified per string so every class is represented at valFraction.
+export function prepareStratifiedSplit(data: DatasetEntry[], valFraction = 0.2, seed = 42): StratifiedSplit {
+    const byLabel: Record<number, number[][][]> = {};
+    for (const entry of data) {
+        const sequence = entry.normalizedFeatures;
+        if (sequence.length !== SEQUENCE_LENGTH || sequence.some(frame => frame.length !== NUM_FEATURES)) {
+            continue;
         }
+        (byLabel[entry.stringNum] ??= []).push(sequence);
     }
 
+    const random = mulberry32(seed);
+    const train: { sequence: number[][], label: number }[] = [];
+    const val: { sequence: number[][], label: number }[] = [];
+
+    for (const key of Object.keys(byLabel)) {
+        const label = Number(key);
+        const sequences = byLabel[label];
+        shuffleInPlace(sequences, random);
+        const valCount = Math.round(sequences.length * valFraction);
+        sequences.forEach((sequence, i) => {
+            (i < valCount ? val : train).push({ sequence, label });
+        });
+    }
+
+    shuffleInPlace(train, random);
+
     return {
-        x: tf.tensor3d(inputs, [inputs.length, SEQUENCE_LENGTH, NUM_FEATURES]),
-        y: tf.tensor1d(labels, 'int32')
+        trainX: tf.tensor3d(train.map(s => s.sequence), [train.length, SEQUENCE_LENGTH, NUM_FEATURES]),
+        trainY: tf.tensor1d(train.map(s => s.label), 'int32'),
+        valX: tf.tensor3d(val.map(s => s.sequence), [val.length, SEQUENCE_LENGTH, NUM_FEATURES]),
+        valY: tf.tensor1d(val.map(s => s.label), 'int32')
     };
 }

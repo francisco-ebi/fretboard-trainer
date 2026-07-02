@@ -56,10 +56,12 @@ class EssentiaRecorderProcessor extends AudioWorkletProcessor {
             let rms = this.calculateRMS(this._accumData[0]);
             if (rms > 0.02 && this.isBackendReady) {
                 const featureArray = this.backend.process(this._accumData[0]);
-                featureArray[FEATURE_POSITIONS.RMS] = rms;
-                // Push directly to SAB if available
-                if (this._audioWriter && this._audioWriter.available_write() >= featureArray.length) {
-                    this._audioWriter.enqueue(featureArray);
+                if (featureArray) {
+                    featureArray[FEATURE_POSITIONS.RMS] = rms;
+                    // Push directly to SAB if available
+                    if (this._audioWriter && this._audioWriter.available_write() >= featureArray.length) {
+                        this._audioWriter.enqueue(featureArray);
+                    }
                 }
             }
 

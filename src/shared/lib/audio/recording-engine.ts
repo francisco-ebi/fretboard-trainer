@@ -14,6 +14,10 @@ const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     5: { min: 40, max: 58 }  // Low E: E2 (40) - A#3 (58)
 };
 
+// Max time between accepted frames before a sequence is considered broken
+// (hop is ~23ms at 44.1kHz, so this tolerates ~6 gated/dropped frames)
+const MAX_FRAME_GAP_MS = 150;
+
 // Standard feature set definition
 export const FEATURE_CONFIG = {
     MFCC_COUNT: 13,
@@ -41,6 +45,8 @@ class GuitarAudioRecordingEngine {
     currentLabel: number;
     onDataCaptured: ((note: number, count: number) => void) | null;
     private frameBuffer: { features: number[] }[] = [];
+    private lastFrameNote: number | null = null;
+    private lastFrameTime: number = 0;
     private sharedBuffer: SharedArrayBuffer | null = null;
     private audioReader: AudioReader | null = null;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
@@ -217,6 +223,15 @@ class GuitarAudioRecordingEngine {
             return;
         }
 
+        // A sequence must be one note from one continuous pluck: discard
+        // buffered frames when the note changes or the signal was interrupted.
+        const now = performance.now();
+        if (this.lastFrameNote !== note || now - this.lastFrameTime > MAX_FRAME_GAP_MS) {
+            this.frameBuffer = [];
+        }
+        this.lastFrameNote = note;
+        this.lastFrameTime = now;
+
         let currentFrameFeatures: number[] = [];
 
         // If we want to support the strict Essentia 18 features (MFCC+Note+Centroid+Flux+Rolloff+Inharm)
@@ -290,6 +305,8 @@ class GuitarAudioRecordingEngine {
         this.currentLabel = stringIndex;
         this.isRecording = true;
         this.frameBuffer = []; // Reset buffer
+        this.lastFrameNote = null;
+        this.lastFrameTime = 0;
 
         console.log("Recording started for string", stringIndex);
 

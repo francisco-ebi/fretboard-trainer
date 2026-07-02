@@ -10,6 +10,10 @@ import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
 import { FEATURE_POSITIONS } from '@/shared/lib/audio/worklet-types';
 
 
+// Max time between accepted frames before a sequence is considered broken
+// (hop is ~23ms at 44.1kHz, so this tolerates ~6 gated/dropped frames)
+const MAX_FRAME_GAP_MS = 150;
+
 const baseNotes: Record<number, number> = {
     0: 64,
     1: 59,
@@ -40,6 +44,8 @@ class GuitarAudioPredictionEngine {
 
     // Buffering
     private frameBuffer: AnalysisResult[] = [];
+    private lastFrameNote: number | null = null;
+    private lastFrameTime: number = 0;
     private readonly SEQUENCE_LENGTH = 5;
     private sharedBuffer: SharedArrayBuffer | null = null;
     private audioReader: AudioReader | null = null;
@@ -295,6 +301,15 @@ class GuitarAudioPredictionEngine {
             };
 
             if (mfcc) {
+                // A sequence must be one note from one continuous pluck: discard
+                // buffered frames when the note changes or the signal was interrupted.
+                const now = performance.now();
+                if (this.lastFrameNote !== midiNote || now - this.lastFrameTime > MAX_FRAME_GAP_MS) {
+                    this.frameBuffer = [];
+                }
+                this.lastFrameNote = midiNote;
+                this.lastFrameTime = now;
+
                 // Buffer frames
                 this.frameBuffer.push(resultObj);
 
@@ -412,6 +427,8 @@ class GuitarAudioPredictionEngine {
 
         this.isRecording = true;
         this.frameBuffer = []; // Reset buffer
+        this.lastFrameNote = null;
+        this.lastFrameTime = 0;
 
         if (this.workletNode) {
             this.startPolling();
