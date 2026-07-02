@@ -234,8 +234,11 @@ class GuitarAudioRecordingEngine {
 
         let currentFrameFeatures: number[] = [];
 
-        // If we want to support the strict Essentia 18 features (MFCC+Note+Centroid+Flux+Rolloff+Inharm)
-        if (extraFeatures.inharmonicity !== undefined && extraFeatures.inharmonicity !== null) {
+        // The active backend determines the feature layout. The meyda worklet
+        // serializes flux/inharmonicity slots as 0, so those values cannot be
+        // used to tell the backends apart.
+        // Essentia: strict 18 features (MFCC + Note + Centroid + Flux + Rolloff + Inharm)
+        if (this.activeBackendType === 'essentia') {
             const extendedFeatures = [
                 ...mfcc,
                 note,

@@ -347,7 +347,8 @@ class GuitarAudioPredictionEngine {
                 const spectralCentroid = frame.spectralCentroid || 0;
                 featuresList.push(spectralCentroid);
                 featuresList.push(frame.spectralRolloff || 0);
-                featuresList.push((spectralCentroid / midiNote || 1) || 0);
+                // Must match recording-engine's brightnessPerNote = note / centroid
+                featuresList.push((midiNote / (spectralCentroid || 1)) || 0);
             } else {
                 // Expecting 18
                 featuresList.push(frame.spectralCentroid || 0);
