@@ -2,7 +2,21 @@ import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
 import { fetchDataset } from './dataset-loader';
-import { prepareStratifiedSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
+import { calculateStatistics, prepareStratifiedSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
+import { PIPELINE_VERSIONS } from './worklet-types';
+import type { ModelManifestEntry } from './model-manifest';
+
+const MODEL_NAME = 'guitar-essentia-acoustic-ts';
+
+function downloadJSON(data: unknown, filename: string) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 async function getTiF() {
     return await import('@tensorflow/tfjs');
@@ -64,7 +78,23 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
         ]
     });
     console.log('Training completed');
-    await model.save('downloads://guitar-essentia-acoustic-ts');
+    await model.save(`downloads://${MODEL_NAME}`);
+
+    // Ready-to-paste manifest entry: the stats are recomputed from the same
+    // raw features the dataset was normalized with, so model + stats ship as
+    // one artifact and can never get unpaired.
+    const manifestEntry: ModelManifestEntry = {
+        model: `${MODEL_NAME}.json`,
+        backend: 'essentia',
+        numFeatures: NUM_FEATURES,
+        sequenceLength: SEQUENCE_LENGTH,
+        pipelineVersion: PIPELINE_VERSIONS.essentia,
+        trainedAt: new Date().toISOString(),
+        datasetSize: data.length,
+        stats: calculateStatistics(data)
+    };
+    downloadJSON(manifestEntry, `manifest-entry-${MODEL_NAME}.json`);
+    console.log('Manifest entry downloaded — paste it under modes.precision in public/model/manifest.json');
 
     return model;
 }

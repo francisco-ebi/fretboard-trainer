@@ -27,6 +27,18 @@ export const FEATURE_POSITIONS = {
     TOTAL_FEATURES: 23,
 };
 
+// Bumped whenever feature *semantics* change (not just the count): a model
+// trained under a different version sees differently-distributed inputs even
+// if the dimensions still match. Deployed models carry the version they were
+// trained with in the model manifest.
+export const PIPELINE_VERSIONS = {
+    // v2: real sample rate in extractors, drop-on-failure, fitted log10(B),
+    //     onset anchoring, adaptive gate + SNR
+    essentia: 2,
+    // v2: Meyda.sampleRate fix, drop-on-failure, adaptive gate frame selection
+    meyda: 2,
+};
+
 export interface AudioBackend {
     name: string;
     init(sampleRate: number, bufferSize: number, hopSize: number): Promise<void>;

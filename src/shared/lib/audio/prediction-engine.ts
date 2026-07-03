@@ -2,12 +2,13 @@
 import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
-import { normalizeDataset } from '@/shared/lib/audio/dataset-preparation';
+import { normalizeDataset, NUM_FEATURES, SEQUENCE_LENGTH } from '@/shared/lib/audio/dataset-preparation';
 import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?url';
 import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?url';
 import type { AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
 import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
-import { FEATURE_POSITIONS } from '@/shared/lib/audio/worklet-types';
+import { FEATURE_POSITIONS, PIPELINE_VERSIONS } from '@/shared/lib/audio/worklet-types';
+import { validateManifestEntry, validateModelShape, type ModelManifest, type PipelineExpectations } from '@/shared/lib/audio/model-manifest';
 
 
 // Max time between accepted frames before a sequence is considered broken
@@ -30,6 +31,23 @@ export interface PredictionResult {
 }
 
 export type PredictionMode = 'performance' | 'precision';
+
+// The meyda/performance feature vector built in makeSequencePrediction
+const MEYDA_NUM_FEATURES = 17;
+
+// What the *running code* produces per mode; manifest entries must agree.
+const PIPELINE_EXPECTATIONS: Record<PredictionMode, PipelineExpectations> = {
+    performance: {
+        numFeatures: MEYDA_NUM_FEATURES,
+        sequenceLength: SEQUENCE_LENGTH,
+        pipelineVersion: PIPELINE_VERSIONS.meyda
+    },
+    precision: {
+        numFeatures: NUM_FEATURES,
+        sequenceLength: SEQUENCE_LENGTH,
+        pipelineVersion: PIPELINE_VERSIONS.essentia
+    },
+};
 
 class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
@@ -122,18 +140,43 @@ class GuitarAudioPredictionEngine {
                 this.tf = await import('@tensorflow/tfjs');
             }
 
-            // Load Model & Stats
-            if (this.currentMode === 'performance') {
-                this.model = await this.tf.loadLayersModel('/fretboard-trainer/model/guitar-meyda-ts-brightness-model.json');
-                this.statsData = await import('@/shared/lib/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
-            } else {
-                try {
-                    this.model = await this.tf.loadLayersModel('/fretboard-trainer/model/guitar-essentia-ts.json');
-                    this.statsData = await import('@/shared/lib/audio/datasets/essentia-ts/guitar_dataset_stats.json');
-                } catch (e) {
-                    console.warn("Precision model not found. Predictions might be unavailable.");
-                    this.model = null;
+            // Model + normalization stats come as one validated artifact from
+            // the manifest: stats embedded next to the model pointer cannot
+            // get unpaired. Dimension mismatches disable the model (guaranteed
+            // garbage); pipeline-version drift only warns.
+            this.model = null;
+            this.statsData = null;
+            try {
+                const response = await fetch(`${import.meta.env.BASE_URL}model/manifest.json`);
+                if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+                const manifest: ModelManifest = await response.json();
+                const entry = manifest.modes?.[this.currentMode];
+
+                if (!entry) {
+                    console.warn(
+                        `[PredictionEngine] No manifest entry for mode '${this.currentMode}'. ` +
+                        `Predictions stay disabled until a model is trained and its generated ` +
+                        `entry is added to public/model/manifest.json.`
+                    );
+                } else {
+                    const { errors, warnings } = validateManifestEntry(entry, PIPELINE_EXPECTATIONS[this.currentMode]);
+                    warnings.forEach(w => console.warn(`[PredictionEngine] ${entry.model}: ${w}`));
+                    if (errors.length > 0) {
+                        errors.forEach(e => console.error(`[PredictionEngine] ${entry.model}: ${e}`));
+                    } else {
+                        const model = await this.tf.loadLayersModel(`${import.meta.env.BASE_URL}model/${entry.model}`);
+                        const shapeError = validateModelShape(model.inputs[0].shape, entry);
+                        if (shapeError) {
+                            console.error(`[PredictionEngine] ${entry.model}: ${shapeError}`);
+                            model.dispose();
+                        } else {
+                            this.model = model;
+                            this.statsData = entry.stats;
+                        }
+                    }
                 }
+            } catch (e) {
+                console.error('[PredictionEngine] Could not load model manifest:', e);
             }
 
             // Switch Worklet Backend
