@@ -2,10 +2,9 @@ import { calculateStatistics, normalizeDataset } from '@/shared/lib/audio/datase
 // ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
 // returns its URL. Plain ?url ships raw TypeScript in production builds,
 // which AudioWorklet.addModule cannot execute.
-import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?worker&url';
-import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?worker&url';
+import audioCaptureProcessorUrl from '@/shared/lib/audio/audio-capture-processor.ts?worker&url';
 import { type AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
-import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
+import { AudioReader, RingBuffer, createRingBufferSab, AUDIO_RING_CAPACITY } from '@/shared/lib/audio/sab-ring-buffer';
 import { FEATURE_POSITIONS } from '@/shared/lib/audio/worklet-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
@@ -53,6 +52,7 @@ class GuitarAudioRecordingEngine {
     private lastFrameTime: number = 0;
     private sharedBuffer: SharedArrayBuffer | null = null;
     private audioReader: AudioReader | null = null;
+    private featureWorker: Worker | null = null;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
 
     constructor() {
@@ -75,20 +75,28 @@ class GuitarAudioRecordingEngine {
             if (this.workletNode) {
                 this.workletNode.disconnect();
             }
+            this.featureWorker?.terminate();
 
-            // Re-initialize SAB for new processor
-            this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
-            const ringBuffer = new RingBuffer(this.sharedBuffer);
-            this.audioReader = new AudioReader(ringBuffer);
+            // Capture worklet → raw-audio SAB → feature worker → feature SAB → engine.
+            // The worklet only copies samples; all DSP runs in the worker so the
+            // realtime audio thread never blocks on feature extraction.
+            const audioSab = createRingBufferSab(AUDIO_RING_CAPACITY);
+            this.sharedBuffer = createRingBufferSab(1024);
+            this.audioReader = new AudioReader(new RingBuffer(this.sharedBuffer));
 
-            this.workletNode = new AudioWorkletNode(
-                this.audioContext,
-                `${type}-recorder-processor`,
-                { numberOfInputs: 1, processorOptions: { sampleRate: this.audioContext.sampleRate, bufferSize: 2048 } }
-            );
+            this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor', { numberOfInputs: 1 });
+            this.workletNode.port.postMessage({ command: 'sab', sab: audioSab });
 
-            // Send SAB to the newly created worklet
-            this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
+            this.featureWorker = type === 'essentia'
+                ? new Worker(new URL('./essentia-feature-worker.ts', import.meta.url), { type: 'module' })
+                : new Worker(new URL('./meyda-feature-worker.ts', import.meta.url), { type: 'module' });
+            this.featureWorker.postMessage({
+                command: 'init',
+                audioSab,
+                featureSab: this.sharedBuffer,
+                sampleRate: this.audioContext.sampleRate,
+                bufferSize: 2048
+            });
 
             this.sourceNode.connect(this.workletNode);
             if (this.gainNode) {
@@ -97,7 +105,6 @@ class GuitarAudioRecordingEngine {
             }
 
             if (this.isRecording) {
-                this.workletNode.port.postMessage({ command: 'setString', stringIndex: this.currentLabel });
                 this.startPolling();
             } else {
                 this.stopPolling();
@@ -150,8 +157,7 @@ class GuitarAudioRecordingEngine {
         }
 
         try {
-            await this.audioContext.audioWorklet.addModule(essentiaProcessorUrl);
-            await this.audioContext.audioWorklet.addModule(meydaProcessorUrl);
+            await this.audioContext.audioWorklet.addModule(audioCaptureProcessorUrl);
         } catch (e) {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
@@ -325,10 +331,6 @@ class GuitarAudioRecordingEngine {
         this.lastFrameTime = 0;
 
         console.log("Recording started for string", stringIndex);
-
-        if (this.workletNode) {
-            this.workletNode.port.postMessage({ command: 'setString', stringIndex });
-        }
 
         this.startPolling();
     }

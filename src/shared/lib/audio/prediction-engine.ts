@@ -6,10 +6,9 @@ import { normalizeDataset, NUM_FEATURES, SEQUENCE_LENGTH } from '@/shared/lib/au
 // ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
 // returns its URL. Plain ?url ships raw TypeScript in production builds,
 // which AudioWorklet.addModule cannot execute.
-import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?worker&url';
-import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?worker&url';
+import audioCaptureProcessorUrl from '@/shared/lib/audio/audio-capture-processor.ts?worker&url';
 import type { AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
-import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
+import { AudioReader, RingBuffer, createRingBufferSab, AUDIO_RING_CAPACITY } from '@/shared/lib/audio/sab-ring-buffer';
 import { FEATURE_POSITIONS, PIPELINE_VERSIONS } from '@/shared/lib/audio/worklet-types';
 import { validateManifestEntry, validateModelShape, type ModelManifest, type PipelineExpectations } from '@/shared/lib/audio/model-manifest';
 
@@ -70,6 +69,7 @@ class GuitarAudioPredictionEngine {
     private readonly SEQUENCE_LENGTH = 5;
     private sharedBuffer: SharedArrayBuffer | null = null;
     private audioReader: AudioReader | null = null;
+    private featureWorker: Worker | null = null;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
 
     // RxJS Logic
@@ -182,45 +182,54 @@ class GuitarAudioPredictionEngine {
                 console.error('[PredictionEngine] Could not load model manifest:', e);
             }
 
-            // Switch Worklet Backend
+            // Switch analysis backend
             if (this.audioContext && this.sourceNode) {
                 const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
-                if (this.workletNode) {
-                    this.workletNode.disconnect();
-                }
-
-                this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
-                const ringBuffer = new RingBuffer(this.sharedBuffer);
-                this.audioReader = new AudioReader(ringBuffer);
-
-                this.workletNode = new AudioWorkletNode(
-                    this.audioContext,
-                    `${backendType}-recorder-processor`,
-                    {
-                        numberOfInputs: 1,
-                        processorOptions: {
-                            sampleRate: this.audioContext.sampleRate,
-                            bufferSize: 2048
-                        }
-                    }
-                );
-
-                // Send SAB to the context
-                this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
-
-                this.sourceNode.connect(this.workletNode);
+                this.setupAudioPipeline(backendType);
 
                 if (this.isRecording) {
                     this.startPolling();
                 } else {
                     this.stopPolling();
                 }
-                console.log(`[PredictionEngine] Switched worklet backend to ${backendType}`);
+                console.log(`[PredictionEngine] Switched analysis backend to ${backendType}`);
             }
 
         } catch (e) {
             console.error("Error loading resources", e);
         }
+    }
+
+    // Capture worklet → raw-audio SAB → feature worker → feature SAB → engine.
+    // The worklet only copies samples; all DSP runs in the worker so the
+    // realtime audio thread never blocks on feature extraction.
+    private setupAudioPipeline(backendType: 'meyda' | 'essentia') {
+        if (!this.audioContext || !this.sourceNode) return;
+
+        if (this.workletNode) {
+            this.workletNode.disconnect();
+        }
+        this.featureWorker?.terminate();
+
+        const audioSab = createRingBufferSab(AUDIO_RING_CAPACITY);
+        this.sharedBuffer = createRingBufferSab(1024);
+        this.audioReader = new AudioReader(new RingBuffer(this.sharedBuffer));
+
+        this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor', { numberOfInputs: 1 });
+        this.workletNode.port.postMessage({ command: 'sab', sab: audioSab });
+
+        this.featureWorker = backendType === 'essentia'
+            ? new Worker(new URL('./essentia-feature-worker.ts', import.meta.url), { type: 'module' })
+            : new Worker(new URL('./meyda-feature-worker.ts', import.meta.url), { type: 'module' });
+        this.featureWorker.postMessage({
+            command: 'init',
+            audioSab,
+            featureSab: this.sharedBuffer,
+            sampleRate: this.audioContext.sampleRate,
+            bufferSize: 2048
+        });
+
+        this.sourceNode.connect(this.workletNode);
     }
 
     async init(deviceId?: string | null) {
@@ -234,8 +243,7 @@ class GuitarAudioPredictionEngine {
             return;
         }
         try {
-            await this.audioContext.audioWorklet.addModule(essentiaProcessorUrl);
-            await this.audioContext.audioWorklet.addModule(meydaProcessorUrl);
+            await this.audioContext.audioWorklet.addModule(audioCaptureProcessorUrl);
         } catch (e) {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
@@ -269,26 +277,7 @@ class GuitarAudioPredictionEngine {
 
             // Set initial backend
             const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
-
-            this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
-            const ringBuffer = new RingBuffer(this.sharedBuffer);
-            this.audioReader = new AudioReader(ringBuffer);
-
-            this.workletNode = new AudioWorkletNode(
-                this.audioContext,
-                `${backendType}-recorder-processor`,
-                {
-                    numberOfInputs: 1,
-                    processorOptions: {
-                        sampleRate: this.audioContext.sampleRate,
-                        bufferSize: 2048
-                    }
-                }
-            );
-
-            this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
-
-            this.sourceNode.connect(this.workletNode);
+            this.setupAudioPipeline(backendType);
             console.log("GuitarPredictionEngine initialized");
         } catch (err) {
             console.error("Error accessing microphone:", err);

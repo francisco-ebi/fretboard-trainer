@@ -28,17 +28,25 @@ The neural network's job is to read those differences from short feature sequenc
  microphone
      │  getUserMedia (mono, AGC/echo/noise-suppression OFF)
      ▼
- AudioWorklet thread (realtime)
+ AudioWorklet thread (realtime, ~2.7ms budget per quantum)
  ┌───────────────────────────────────────────────────────────┐
- │ {essentia|meyda}-recorder-processor.ts                    │
- │   128-sample quanta → ChromeLabs ring buffer              │
- │   → 2048-sample window, 1024 hop (50% overlap, ~23ms)     │
- │   → adaptive RMS gate (noise-floor tracking) + onsets     │
- │   → backend.process(window)  ── null → frame dropped      │
- │       EssentiaBackend / MeydaBackend (feature extraction) │
- │   → Float32Array[23] into SharedArrayBuffer ring buffer   │
+ │ audio-capture-processor.ts                                │
+ │   copies each 128-sample quantum into the raw-audio SAB   │
+ │   ring — nothing else runs on the audio thread            │
  └───────────────────────────────────────────────────────────┘
-     │  SAB (lock-free, cross-thread; needs cross-origin isolation)
+     │  raw-audio SAB (~1.4s capacity, lock-free)
+     ▼
+ Feature Worker (non-realtime; one per backend)
+ ┌───────────────────────────────────────────────────────────┐
+ │ {essentia|meyda}-feature-worker.ts → base-feature-worker  │
+ │   10ms drain loop → feature-extraction-loop.ts:           │
+ │     2048-sample window, 1024 hop (50% overlap, ~23ms)     │
+ │     → adaptive RMS gate (noise-floor tracking) + onsets   │
+ │     → backend.process(window)  ── null → frame dropped    │
+ │         EssentiaBackend / MeydaBackend (WASM lives here)  │
+ │   → Float32Array[23] into the feature SAB ring            │
+ └───────────────────────────────────────────────────────────┘
+     │  feature SAB (needs cross-origin isolation)
      ▼
  Main thread (16ms polling)
  ┌───────────────────────────────────────────────────────────┐
@@ -52,13 +60,58 @@ The neural network's job is to read those differences from short feature sequenc
  model.ts (training, TF.js)     Fretboard UI (PredictionOverlay)
 ```
 
+### 2.1 Why extraction lives in a Worker (architecture change, 2026-07)
+
+Feature extraction originally ran **inside the AudioWorklet's `process()` callback**. That callback has a hard realtime budget (128 samples ≈ 2.7ms at 48kHz); the essentia chain (two windowings, two FFTs, YIN, MFCC, spectral peaks, partial fit) could exceed it on slow devices, glitching the audio thread and dropping the very input being analyzed.
+
+**Before — DSP on the realtime thread:**
+
+```
+ Audio thread (hard 2.7ms deadline)          Main thread
+ ┌─────────────────────────────────┐         ┌──────────────────┐
+ │ recorder-processor              │ feature │ engines: poll,   │
+ │  accumulate → window → gate →   │──SAB───▶│ sequence, model  │
+ │  ⚠ FULL DSP (WASM FFTs, YIN,   │         └──────────────────┘
+ │    MFCC, peaks, B fit) ⚠       │
+ └─────────────────────────────────┘
+   miss the deadline → audio glitches → corrupted input windows
+```
+
+**After — realtime thread only copies samples:**
+
+```
+ Audio thread (2.7ms deadline)     Worker (no deadline)             Main thread
+ ┌───────────────────────┐  raw   ┌───────────────────────┐ feature ┌────────────────┐
+ │ audio-capture-        │ audio  │ feature worker:       │  frames │ engines:       │
+ │ processor: copy 128   │──SAB──▶│ window → gate → DSP   │──SAB───▶│ poll, sequence,│
+ │ samples, return       │ ~1.4s  │ (WASM FFTs, YIN, MFCC,│         │ model, UI      │
+ └───────────────────────┘ buffer │  peaks, B fit)        │         └────────────────┘
+   always meets deadline          └───────────────────────┘
+                                    slow device? work queues in the
+                                    1.4s ring instead of glitching
+```
+
+What moved where:
+
+| Concern | Before | After |
+|---|---|---|
+| Sample capture | worklet | worklet (`audio-capture-processor.ts`, ~4KB, allocation-free) |
+| Windowing, gate, onset | worklet | Worker (`feature-extraction-loop.ts`, pure & unit-tested) |
+| Feature extraction (WASM) | worklet | Worker (`base-feature-worker.ts` + per-backend entries) |
+| Backend init cost | audio thread | Worker |
+| Feature SAB → engines | unchanged | unchanged |
+
+Costs: one extra thread per active backend, ≤10ms added latency from the worker drain loop (irrelevant next to the ~116ms sequence window), and the raw-audio SAB (256KB). If the worker stalls entirely, the capture worklet drops quanta instead of blocking — degradation is silent-to-the-ear, never a glitch. This also unblocks a 4096-sample analysis window for better low-note partial resolution (roadmap).
+
 Key files:
 
 | File | Role |
 |---|---|
-| `src/shared/lib/audio/base-recorder-processor.ts` | The worklet processor logic (windowing, adaptive gate, onset, SAB write), parameterized by backend |
-| `src/shared/lib/audio/essentia-recorder-processor.ts` | Thin worklet entry: registers the base processor with `EssentiaBackend` |
-| `src/shared/lib/audio/meyda-recorder-processor.ts` | Thin worklet entry: registers the base processor with `MeydaBackend` |
+| `src/shared/lib/audio/audio-capture-processor.ts` | Realtime worklet: copies input quanta into the raw-audio SAB, nothing else |
+| `src/shared/lib/audio/feature-extraction-loop.ts` | Pure analysis pipeline (windowing, adaptive gate, onset, backend, sink) — unit-tested |
+| `src/shared/lib/audio/base-feature-worker.ts` | Worker driver: drains the raw-audio SAB into the extraction loop, parameterized by backend |
+| `src/shared/lib/audio/essentia-feature-worker.ts` | Thin worker entry with `EssentiaBackend` (own bundle, carries the WASM) |
+| `src/shared/lib/audio/meyda-feature-worker.ts` | Thin worker entry with `MeydaBackend` |
 | `src/shared/lib/audio/essentia-worklet-backend.ts` | Feature extraction with essentia.js (WASM) |
 | `src/shared/lib/audio/meyda-worklet-backend.ts` | Feature extraction with Meyda + pitchfinder |
 | `src/shared/lib/audio/inharmonicity.ts` | Pure math: partial tracking + stiffness-coefficient fit (unit-tested) |
@@ -91,9 +144,9 @@ The mode is chosen in the prediction engine (`setMode`), which swaps both the wo
 ## 3. From microphone to feature frame
 
 1. **Capture constraints** (`recording-engine.init` / `prediction-engine.init`): mono, `echoCancellation/autoGainControl/noiseSuppression` all disabled — browser DSP would distort the very timbre features we need.
-2. **Windowing**: Web Audio delivers 128-sample quanta. The processor accumulates them in a FIFO and analyzes **2048-sample windows with a 1024 hop** (50% overlap). At 44.1 kHz that's a ~46 ms window every ~23 ms.
+2. **Windowing**: Web Audio delivers 128-sample quanta, which the capture worklet copies into the raw-audio SAB. The feature worker drains it (~10 ms loop) and analyzes **2048-sample windows with a 1024 hop** (50% overlap). At 44.1 kHz that's a ~46 ms window every ~23 ms.
 3. **Adaptive RMS gate** (`adaptive-gate.ts`): instead of a fixed threshold, the gate tracks the ambient noise floor with an EMA **while closed** (frozen while a note rings, so long notes can't inflate it and eat their own decay tail) and opens at `floor × 4`, closing at `floor × 2.5` (hysteresis — no flutter as a note decays through the boundary). An absolute minimum (`0.003`) prevents a dead-silent input from opening on anything. The initial floor is chosen so the very first frames behave like the legacy fixed `0.02` gate until the estimator converges (~120 ms of silence). Because both thresholds scale with the floor, frame selection is approximately **gain-invariant**: different interfaces/gains capture the same population of frames.
-4. **Onset detection** (in the gate, backend-agnostic): a window is an *onset* if the gate just opened, or RMS jumped >2× over the previous window (re-pluck of a ringing string). The flag is carried "pending" in the processor so that if the backend drops the attack frame, the *next* delivered frame still announces the pluck. The gate also emits **SNR** = `log10(rms / floor)`, a gain-invariant loudness measure used as a model feature.
+4. **Onset detection** (in the gate, backend-agnostic): a window is an *onset* if the gate just opened, or RMS jumped >2× over the previous window (re-pluck of a ringing string). The flag is carried "pending" in the extraction loop so that if the backend drops the attack frame, the *next* delivered frame still announces the pluck. The gate also emits **SNR** = `log10(rms / floor)`, a gain-invariant loudness measure used as a model feature.
 5. **Feature extraction** (backend): described in §4. The backend returns `null` for any frame it cannot analyze reliably — unvoiced input, low pitch confidence, failed extraction, too few partials. **Dropped frames are never zero-filled**; fabricated zeros would be indistinguishable from legitimate feature values and poison the dataset.
 6. **Transport**: the 22-slot `Float32Array` is enqueued into a SharedArrayBuffer ring buffer. The main thread polls it every 16 ms. Whole frames are written atomically, so the reader always dequeues a multiple of 22 floats.
 
@@ -107,11 +160,11 @@ The mode is chosen in the prediction engine (`setMode`), which swaps both the wo
 | 15 | ROLLOFF | backend | Hz |
 | 16 | FLUX | backend | essentia only (0 in meyda) |
 | 17 | INHARMONICITY | backend | essentia's generic scalar (0 in meyda) |
-| 18 | RMS | processor | window energy |
+| 18 | RMS | extraction loop | window energy |
 | 19 | PITCH_CONFIDENCE | backend | YIN confidence / Macleod probability |
 | 20 | INHARMONICITY_B | backend | **log10(fitted B)** (0 in meyda) |
-| 21 | ONSET | processor | 1 on the first frame of a pluck |
-| 22 | SNR | processor | log10(rms / noise floor), gain-invariant |
+| 21 | ONSET | extraction loop | 1 on the first frame of a pluck |
+| 22 | SNR | extraction loop | log10(rms / noise floor), gain-invariant |
 
 ---
 
@@ -251,6 +304,8 @@ These were made in one review-and-fix pass; the "before" states are documented b
 | **Model manifest with embedded stats + load-time validation** | Model and normalization stats were paired by hand across two files; a stale path silently skewed every prediction. Now one generated artifact, validated against the running pipeline and the loaded model's real input shape |
 | **Parameterized base recorder processor** | The two worklet processors were near-verbatim duplicates; shared logic (gate, onset, SAB transport) had to be edited twice and could drift. Now one `base-recorder-processor.ts` + two thin per-backend entry modules (kept separate so each worklet bundle only carries its own backend) |
 | **Worklet imports switched to `?worker&url`** | Plain `?url` never compiles TS in production builds — `addModule()` received a data-URI of raw TypeScript, so **worklets could not load in any production build** (dev worked because Vite transforms on the fly). `?worker&url` emits real compiled per-backend bundles; they are excluded from the PWA precache (opt-in feature, essentia bundle ~2.4MB) |
+| **DSP moved off the realtime audio thread** (§2.1) | Feature extraction ran inside the worklet's ~2.7ms `process()` budget; slow devices glitched and dropped the input being analyzed. Now: tiny capture worklet → raw-audio SAB → per-backend feature Worker (extraction loop is pure and unit-tested) → feature SAB (unchanged) |
+| **Ring-buffer modulo wraparound** | The FIFO reset indices to 0 on wrap — only correct when every push divides capacity exactly (true for 128-quanta, broken for the worker's variable-size drains). Indices now wrap with real modulo arithmetic |
 
 **Consequences for artifacts**: the bundled dataset (18-feature frames) and both deployed *essentia* models predate these changes. The essentia/"precision" path will not predict until a new dataset is recorded and a model retrained; `prepareStratifiedSplit` fails fast with an explanatory error. The meyda/"performance" path (17 features, unchanged layout) still works.
 
@@ -260,8 +315,6 @@ These were made in one review-and-fix pass; the "before" states are documented b
 
 **Pipeline / engineering**
 
-- **Heavy DSP on the realtime audio thread.** The essentia chain (2 windowings, 2 FFTs, YIN, MFCC, peaks, partial fit) runs inside `process()` with a ~2.7 ms budget per quantum. Slow devices may glitch, dropping the very input being analyzed. The correct architecture is: worklet ships raw audio over the SAB, a Worker extracts features.
-- **Ring-buffer wraparound assumption.** The in-worklet FIFO resets indices to 0 on wrap, which is only correct because every push (128 quanta, 1024 overlap re-push) divides the 2048 capacity exactly. A non-128 render quantum would corrupt audio silently.
 - **SharedArrayBuffer requires cross-origin isolation** (`vite-plugin-cross-origin-isolation` in dev; COOP/COEP headers in production). Browsers without it get no audio features at all.
 
 **Data / model**
@@ -280,7 +333,7 @@ These were made in one review-and-fix pass; the "before" states are documented b
 Ordered roughly by expected value per effort.
 
 1. **Harmonic-structure features** (small, high value): normalized magnitudes of the first ~8 partials (dB re: partial 1) — captures pluck-point comb filtering directly; essentia's `Tristimulus` and `OddToEvenHarmonicEnergyRatio` come nearly free since peaks are already computed. Requires growing `NUM_FEATURES` + retraining.
-2. **Worker migration** of feature extraction (fixes the realtime-budget limitation), which then enables a **4096-sample window for the partial fit** — halves B-estimation error for low notes.
+2. **4096-sample analysis window for the partial fit** — halves B-estimation error for low notes. Unblocked now that extraction runs in a Worker with no realtime budget (raise `bufferSize` in the engines' worker init + retrain).
 3. **Recording protocol**: multiple dynamics, pick vs finger, several pluck positions, fresh vs worn strings; concentrate on note ranges shared between strings. B survives these variations; raw envelopes don't — which is what makes it worth collecting them. The full procedure is specified in **[recording-protocol.md](recording-protocol.md)**.
 4. **Per-pluck aggregation at inference**: aggregate all sequences of one pluck (median of per-sequence softmax, weighted by confidence/RMS) instead of the generic sliding majority vote.
 5. **Physics-prior hybrid**: per-guitar calibration pass that measures B per (string, fret) once, then classifies by nearest-B with the network as a tie-breaker. Would personalize accuracy cheaply and degrade gracefully.
