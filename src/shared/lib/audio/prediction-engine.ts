@@ -3,8 +3,11 @@ import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import { normalizeDataset, NUM_FEATURES, SEQUENCE_LENGTH } from '@/shared/lib/audio/dataset-preparation';
-import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?url';
-import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?url';
+// ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
+// returns its URL. Plain ?url ships raw TypeScript in production builds,
+// which AudioWorklet.addModule cannot execute.
+import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?worker&url';
+import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?worker&url';
 import type { AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
 import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
 import { FEATURE_POSITIONS, PIPELINE_VERSIONS } from '@/shared/lib/audio/worklet-types';

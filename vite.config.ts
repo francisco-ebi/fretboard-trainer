@@ -47,8 +47,12 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Audio worklet bundles (the essentia one embeds ~2.4MB of WASM) are
+        // fetched on demand when the opt-in audio features initialize — keep
+        // them out of the install-time precache.
+        globIgnores: ['**/*recorder-processor-*.js'],
         // Workbox default (2MB) acts as a tripwire: if a chunk ever grows past
-        // it again (e.g. a dataset gets bundled), the build warns instead of
+        // it again (e.g. a dataset gets bundled), the build fails instead of
         // silently precaching tens of MB on first visit.
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],

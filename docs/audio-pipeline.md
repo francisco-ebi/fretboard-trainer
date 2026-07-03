@@ -56,8 +56,9 @@ Key files:
 
 | File | Role |
 |---|---|
-| `src/shared/lib/audio/essentia-recorder-processor.ts` | Worklet processor (windowing, RMS gate, onset, SAB write) — essentia flavor |
-| `src/shared/lib/audio/meyda-recorder-processor.ts` | Same, meyda flavor |
+| `src/shared/lib/audio/base-recorder-processor.ts` | The worklet processor logic (windowing, adaptive gate, onset, SAB write), parameterized by backend |
+| `src/shared/lib/audio/essentia-recorder-processor.ts` | Thin worklet entry: registers the base processor with `EssentiaBackend` |
+| `src/shared/lib/audio/meyda-recorder-processor.ts` | Thin worklet entry: registers the base processor with `MeydaBackend` |
 | `src/shared/lib/audio/essentia-worklet-backend.ts` | Feature extraction with essentia.js (WASM) |
 | `src/shared/lib/audio/meyda-worklet-backend.ts` | Feature extraction with Meyda + pitchfinder |
 | `src/shared/lib/audio/inharmonicity.ts` | Pure math: partial tracking + stiffness-coefficient fit (unit-tested) |
@@ -248,6 +249,8 @@ These were made in one review-and-fix pass; the "before" states are documented b
 | **Datasets to `public/datasets/` + 2MB precache tripwire** | 46 MB PWA precache on first visit; datasets were bundled as JS |
 | **Adaptive RMS gate + SNR feature** | Fixed 0.02 gate was interface-gain dependent (quiet setups captured nothing, hot ones passed noise tails, datasets coupled to hardware); raw RMS feature carried the same gain dependence — SNR = log10(rms/floor) is the gain-invariant replacement signal |
 | **Model manifest with embedded stats + load-time validation** | Model and normalization stats were paired by hand across two files; a stale path silently skewed every prediction. Now one generated artifact, validated against the running pipeline and the loaded model's real input shape |
+| **Parameterized base recorder processor** | The two worklet processors were near-verbatim duplicates; shared logic (gate, onset, SAB transport) had to be edited twice and could drift. Now one `base-recorder-processor.ts` + two thin per-backend entry modules (kept separate so each worklet bundle only carries its own backend) |
+| **Worklet imports switched to `?worker&url`** | Plain `?url` never compiles TS in production builds — `addModule()` received a data-URI of raw TypeScript, so **worklets could not load in any production build** (dev worked because Vite transforms on the fly). `?worker&url` emits real compiled per-backend bundles; they are excluded from the PWA precache (opt-in feature, essentia bundle ~2.4MB) |
 
 **Consequences for artifacts**: the bundled dataset (18-feature frames) and both deployed *essentia* models predate these changes. The essentia/"precision" path will not predict until a new dataset is recorded and a model retrained; `prepareStratifiedSplit` fails fast with an explanatory error. The meyda/"performance" path (17 features, unchanged layout) still works.
 
@@ -260,7 +263,6 @@ These were made in one review-and-fix pass; the "before" states are documented b
 - **Heavy DSP on the realtime audio thread.** The essentia chain (2 windowings, 2 FFTs, YIN, MFCC, peaks, partial fit) runs inside `process()` with a ~2.7 ms budget per quantum. Slow devices may glitch, dropping the very input being analyzed. The correct architecture is: worklet ships raw audio over the SAB, a Worker extracts features.
 - **Ring-buffer wraparound assumption.** The in-worklet FIFO resets indices to 0 on wrap, which is only correct because every push (128 quanta, 1024 overlap re-push) divides the 2048 capacity exactly. A non-128 render quantum would corrupt audio silently.
 - **SharedArrayBuffer requires cross-origin isolation** (`vite-plugin-cross-origin-isolation` in dev; COOP/COEP headers in production). Browsers without it get no audio features at all.
-- **Duplicated processor code** (`essentia-` vs `meyda-recorder-processor.ts`) — one parameterized processor would prevent drift (the onset logic now exists twice).
 
 **Data / model**
 
