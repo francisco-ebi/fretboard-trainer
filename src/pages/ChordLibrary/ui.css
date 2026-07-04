@@ -82,79 +82,7 @@
     padding: 20px;
 }
 
-.quality-groups {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.quality-group {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    background: var(--surface-light);
-    padding: 15px 20px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-}
-
-.quality-group h4 {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    min-width: 140px;
-    text-align: right;
-}
-
-.quality-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    flex: 1;
-}
-
-.quality-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #fff;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 1rem;
-    font-weight: bold;
-    min-width: 80px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.quality-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-}
-
-.quality-btn.active {
-    background: rgba(100, 108, 255, 0.2);
-    border-color: #646cff;
-    box-shadow: 0 0 10px rgba(100, 108, 255, 0.3);
-}
-
-.btn-symbol {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #fff;
-}
-
-.btn-name {
-    font-size: 0.8rem;
-    color: #aaa;
-    font-weight: 500;
-}
+/* Quality selection moved to features/ChordQualityMatrix */
 
 .library-settings {
     flex: 1;
@@ -185,6 +113,15 @@
 }
 
 /* Floating Chord Queue UI */
+/* Between 1025px (below: queue is static) and ~1620px (above: the centered
+   1280px content leaves enough viewport margin), reserve a gutter so the
+   fixed queue never covers the quality matrix or fretboard controls. */
+@media (min-width: 1025px) and (max-width: 1620px) {
+    .chord-library:not(.fullscreen) {
+        padding-right: 230px;
+    }
+}
+
 .chord-queue-floating {
     position: fixed;
     right: 20px;

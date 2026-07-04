@@ -1,0 +1,147 @@
+.chord-quality-matrix {
+    background: rgba(20, 20, 25, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.matrix-grid {
+    display: grid;
+    grid-template-columns: 96px repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+}
+
+.matrix-col-header {
+    font-size: 0.75rem;
+    color: #888;
+    text-align: center;
+    align-self: end;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.matrix-row-label {
+    font-size: 0.8rem;
+    color: #a0a0a0;
+    align-self: center;
+    text-align: right;
+    padding-right: 4px;
+}
+
+.matrix-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+}
+
+.matrix-cell-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-radius: 8px;
+    padding: 10px 4px;
+    min-height: 42px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+}
+
+.matrix-cell-btn.compact {
+    padding: 5px 4px;
+    min-height: 0;
+    font-size: 0.85rem;
+}
+
+@media (hover: hover) {
+    .matrix-cell-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+}
+
+.matrix-cell-btn:active {
+    transform: scale(0.97);
+}
+
+.matrix-cell-btn.active {
+    background: rgba(100, 108, 255, 0.2);
+    border-color: #646cff;
+    box-shadow: 0 0 10px rgba(100, 108, 255, 0.3);
+}
+
+/* Structural gaps: qualities that don't exist at this family/degree */
+.matrix-cell-empty {
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    user-select: none;
+}
+
+.matrix-modifiers {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.matrix-modifiers .matrix-row-label {
+    min-width: 96px;
+}
+
+.matrix-modifier-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.matrix-modifier-chips .matrix-cell-btn {
+    width: auto;
+    border-radius: 999px;
+    padding: 8px 16px;
+}
+
+@media (max-width: 600px) {
+    .chord-quality-matrix {
+        padding: 10px;
+    }
+
+    .matrix-grid {
+        grid-template-columns: 58px repeat(5, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    .matrix-row-label {
+        font-size: 0.65rem;
+    }
+
+    .matrix-cell-btn {
+        font-size: 0.7rem;
+        padding: 8px 1px;
+        min-height: 40px;
+    }
+
+    .matrix-cell-btn.compact {
+        font-size: 0.65rem;
+        padding: 4px 1px;
+    }
+
+    .matrix-modifiers .matrix-row-label {
+        min-width: 58px;
+    }
+
+    .matrix-modifier-chips .matrix-cell-btn {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+    }
+}

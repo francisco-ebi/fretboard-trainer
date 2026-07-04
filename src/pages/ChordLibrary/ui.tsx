@@ -20,6 +20,7 @@ import {
 import { getChordVoicings } from '@/shared/lib/music/chordVoicings';
 import { useChordQueue } from '@/shared/hooks/useChordQueue';
 import { useInstrument } from '@/app/providers';
+import ChordQualityMatrix from '@/features/ChordQualityMatrix';
 import './ui.css';
 
 interface ChordLibraryProps {
@@ -36,13 +37,6 @@ const DEFAULT_INTERVALS: Record<number, string> = {
     0: '1', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7',
     14: '9', 17: '11', 21: '13'
 };
-
-const CHORD_GROUPS = [
-    { id: 'triads', qualities: ['MAJOR', 'MINOR', 'DIMINISHED', 'AUGMENTED'] as ChordQuality[] },
-    { id: 'sevenths', qualities: ['DOM7', 'MAJ7', 'MIN7', 'MIN7B5', 'DIM7', 'MINMAJ7'] as ChordQuality[] },
-    { id: 'extended', qualities: ['DOM9', 'MAJ9', 'MIN9', 'DOM11', 'MAJ11', 'MIN11', 'DOM13', 'MAJ13', 'MIN13'] as ChordQuality[] },
-    { id: 'suspended', qualities: ['SUS2', 'SUS4', 'ADD2', 'ADD4', 'ADD6', 'ADD9'] as ChordQuality[] }
-];
 
 // Re-defining intervals local mapping to calculate the exact strings for textual display
 const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
@@ -275,28 +269,14 @@ const ChordLibrary: React.FC<ChordLibraryProps> = ({ isFullScreen = false }) => 
                         </div>
                     </div>
 
-                    <div className="quality-groups">
-                        {CHORD_GROUPS.map(group => (
-                            <div key={group.id} className="quality-group">
-                                <h4>{t(`groups.${group.id}`)}</h4>
-                                <div className="quality-buttons">
-                                    {group.qualities.map(quality => (
-                                        <button
-                                            key={quality}
-                                            className={`quality-btn ${selectedQuality === quality ? 'active' : ''}`}
-                                            onClick={() => {
-                                                setSelectedQuality(quality);
-                                                setActiveQueueIndex(-1);
-                                            }}
-                                        >
-                                            <div className="btn-symbol">{selectedRoot}{CHORD_SYMBOLS[quality]}</div>
-                                            <div className="btn-name">{getDisplayName(t, quality)}</div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <ChordQualityMatrix
+                        selectedRoot={selectedRoot}
+                        selectedQuality={selectedQuality}
+                        onQualityChange={(quality) => {
+                            setSelectedQuality(quality);
+                            setActiveQueueIndex(-1);
+                        }}
+                    />
                 </>
             )}
 

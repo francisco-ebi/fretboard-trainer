@@ -102,6 +102,15 @@ const resources = {
                 extended: "Extended",
                 suspended: "Suspended & Added"
             },
+            chordFamilies: {
+                major: "Major",
+                dominant: "Dominant",
+                minor: "Minor",
+                diminished: "Diminished",
+                augmented: "Augmented",
+                modifiers: "Sus / add",
+                triad: "Triad"
+            },
             chords: {
                 MAJOR: "Major",
                 MINOR: "Minor",
@@ -307,6 +316,15 @@ const resources = {
                 sevenths: "Séptimas",
                 extended: "Extendidos",
                 suspended: "Suspendidas y Añadidas"
+            },
+            chordFamilies: {
+                major: "Mayor",
+                dominant: "Dominante",
+                minor: "Menor",
+                diminished: "Disminuido",
+                augmented: "Aumentado",
+                modifiers: "Sus / add",
+                triad: "Tríada"
             },
             chords: {
                 MAJOR: "Mayor",
