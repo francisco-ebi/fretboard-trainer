@@ -1,4 +1,13 @@
 import { calculateStatistics, normalizeDataset } from '@/shared/lib/audio/dataset-preparation';
+import { parseDatasetFile } from '@/shared/lib/audio/dataset-import';
+import {
+    appendAutosaved,
+    maxAutosavedKey,
+    countAutosavedUpTo,
+    readAutosavedUpTo,
+    clearAutosavedUpTo,
+    clearAutosavedAbove
+} from '@/shared/lib/audio/dataset-autosave';
 // ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
 // returns its URL. Plain ?url ships raw TypeScript in production builds,
 // which AudioWorklet.addModule cannot execute.
@@ -54,6 +63,14 @@ class GuitarAudioRecordingEngine {
     private audioReader: AudioReader | null = null;
     private featureWorker: Worker | null = null;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
+    // Highest autosave key that existed before this session started: rows at
+    // or below it belong to a previous, crashed/unfinished session; rows
+    // above it mirror sequences this session already holds in memory.
+    private autosaveBoundary: Promise<number>;
+    // True once the previous session's rows were restored or discarded —
+    // only then may a download wipe the store completely.
+    private autosaveConsumed = false;
+    private autosaveWarned = false;
 
     constructor() {
         this.audioContext = null;
@@ -67,6 +84,18 @@ class GuitarAudioRecordingEngine {
         this.currentLabel = 0; // Current String Index
         this.onDataCaptured = null;
         this.frameBuffer = [];
+        // Resolves in ms, long before the user can init the mic and record
+        this.autosaveBoundary = maxAutosavedKey().catch(() => 0);
+    }
+
+    // Best-effort mirror of new sequences into IndexedDB; autosave failures
+    // must never interrupt a recording session.
+    private mirrorToAutosave(entries: DatasetEntry[]) {
+        appendAutosaved(entries).catch((error) => {
+            if (this.autosaveWarned) return;
+            this.autosaveWarned = true;
+            console.warn('Dataset autosave unavailable — a reload before Download will lose this session:', error);
+        });
     }
 
     async setBackendType(type: 'meyda' | 'essentia') {
@@ -299,6 +328,7 @@ class GuitarAudioRecordingEngine {
             };
 
             this.dataset.push(sequenceEntry);
+            this.mirrorToAutosave([sequenceEntry]);
             if (this.onDataCaptured) {
                 this.onDataCaptured(note, this.dataset.length);
                 console.log(`Captured sequence for ${this.getNoteNameFromMidi(note)}. Total sequences: ${this.dataset.length}`);
@@ -341,11 +371,69 @@ class GuitarAudioRecordingEngine {
         console.log("Recording stopped");
     }
 
-    downloadDataset() {
+    async downloadDataset() {
         const stats = calculateStatistics(this.dataset);
         const normalizedDataset = normalizeDataset(this.dataset, stats);
         this.saveJSONToFile(stats, `guitar_dataset_stats_${Date.now()}.json`);
         this.saveJSONToFile(normalizedDataset, `guitar_dataset_${Date.now()}.json`);
+
+        // Everything in memory is on disk now, so its autosave mirror can go.
+        // Un-restored rows of a previous session are NOT in this download —
+        // keep them so the restore offer survives.
+        try {
+            const boundary = this.autosaveConsumed ? 0 : await this.autosaveBoundary;
+            await clearAutosavedAbove(boundary);
+            if (boundary > 0) {
+                console.warn('Autosaved sequences from a previous session were kept — they are not part of this download. Restore or discard them in the Recording Studio.');
+            }
+        } catch (error) {
+            console.warn('Could not clear the dataset autosave after download:', error);
+        }
+    }
+
+    // Resumes a multi-day recording (protocol §3.4): appends the entries of a
+    // previously downloaded dataset so new sequences accumulate on top of it
+    // and the final download produces one dataset+stats pair whose stats are
+    // computed over the whole pool. Entries must come from parseDatasetFile().
+    importDataset(entries: DatasetEntry[]): number {
+        this.dataset = this.dataset.concat(entries);
+        this.mirrorToAutosave(entries);
+        return this.dataset.length;
+    }
+
+    // Sequences a previous session left in the autosave (crash/reload before
+    // Download). 0 once they were restored or discarded.
+    async getPendingAutosaveCount(): Promise<number> {
+        if (this.autosaveConsumed) return 0;
+        try {
+            return await countAutosavedUpTo(await this.autosaveBoundary);
+        } catch {
+            return 0;
+        }
+    }
+
+    // Appends the previous session's autosaved rows to the in-memory dataset.
+    // Rows above the boundary are this session's own captures — already in
+    // memory — and must not be read back, or they would duplicate.
+    async restoreAutosave(): Promise<number> {
+        if (this.autosaveConsumed) return this.dataset.length;
+        const boundary = await this.autosaveBoundary;
+        if (boundary > 0) {
+            const rows = await readAutosavedUpTo(boundary);
+            if (rows.length > 0) {
+                // Same contract as a file import: validate shape, strip stale
+                // normalization. Throws (and stays pending) on corrupt rows.
+                this.dataset = this.dataset.concat(parseDatasetFile(rows));
+            }
+        }
+        this.autosaveConsumed = true;
+        return this.dataset.length;
+    }
+
+    async discardAutosave(): Promise<void> {
+        const boundary = await this.autosaveBoundary;
+        await clearAutosavedUpTo(boundary);
+        this.autosaveConsumed = true;
     }
 
     saveJSONToFile(data: any, filename: string) {

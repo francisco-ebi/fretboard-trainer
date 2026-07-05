@@ -91,20 +91,25 @@ Do **two half-passes instead of one big take per string**, in different sittings
 
 This puts every string in every session, so session artifacts (mic drift, humidity, your hand warming up) decorrelate from the class label. If you record with more than one guitar, keep the datasets in separate files with metadata — don't silently mix.
 
+**Multi-day passes need no manual merging.** At the start of the later session, press `Import dataset` in the Recording Studio and select the previous pass's `guitar_dataset_<timestamp>.json`. New sequences append to it in memory, and the final `Download` produces one coherent dataset+stats pair with the stats computed over the whole pool. Do **not** concatenate two downloaded files by hand instead: each file's `normalizedFeatures` were z-scored with its own session's stats, so a naive concat embeds a per-session feature offset — precisely the session fingerprint this protocol exists to remove. (The import strips those stale values and re-normalizes everything at download time.)
+
+**Crash safety.** Every captured or imported sequence is also autosaved to the browser's IndexedDB, and a successful `Download` clears that mirror. If the tab dies or reloads before you downloaded, the next Recording Studio open shows an *"Autosaved session found"* banner — `Restore` puts the sequences back in memory (they are validated like an import), `Discard` deletes them. The autosave only ever holds sequences that exist nowhere else, so restoring never duplicates a file you already downloaded.
+
 ---
 
 ## 4. Step-by-step session script
 
 1. `npm run dev` → open the app → type `record` → Recording Studio opens.
 2. Select your input device, press `Init`, grant mic access.
-3. Tune. Verify with a few test plucks that the console shows the right note names.
-4. For each string in the pass plan:
+3. **Pass B (continuing an earlier day)?** Press `Import dataset` and select the previous pass's `guitar_dataset_*.json` — the sequence counter should jump to the previous total. Recording appends from there. If an *"Autosaved session found"* banner appears instead, the previous session was never downloaded: `Restore` it (no import needed) or `Discard` it before recording.
+4. Tune. Verify with a few test plucks that the console shows the right note names.
+5. For each string in the pass plan:
    1. Press `Start <string index>` (**triple-check the index**: 0 = high E … 5 = low E — a wrong index here is a mislabeled batch that no filter will fully catch).
    2. 2 s of silence.
    3. Walk the planned frets low→high, executing the variation grid; mute + pause between plucks.
    4. Press `Stop`. Stretch, re-check tuning.
-5. After the last string: **Download dataset + stats** (one button produces both files — they are a pair; the stats file is the normalization contract for the model you'll train).
-6. Name them consistently, e.g. `guitar_dataset_<guitar>_<YYYYMMDD>.json` + matching stats, drop the dataset under `public/datasets/<name>/`, and write the metadata file next to them.
+6. After the last string: **Download dataset + stats** (one button produces both files — they are a pair; the stats file is the normalization contract for the model you'll train).
+7. Name them consistently, e.g. `guitar_dataset_<guitar>_<YYYYMMDD>.json` + matching stats, drop the dataset under `public/datasets/<name>/`, and write the metadata file next to them.
 
 ---
 
