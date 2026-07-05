@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, getDetailedInterval, type Note, type NamingSystem, type Instrument } from '@/shared/lib/music/musicTheory';
 import { type Voicing } from '@/shared/lib/music/chordVoicings';
 import { useOrientation } from '@/app/providers';
@@ -310,12 +311,79 @@ const Fretboard: React.FC<FretboardProps> = ({
         );
     };
 
+    const renderDesktopVoicingCarousel = () => {
+        if (!voicings || voicings.length === 0) return null;
+
+        return (
+            <div className="desktop-voicing-carousel">
+                {voicings.map((voicing, index) => {
+                    const isActive = selectedVoicingIndex === index;
+                    return (
+                        <motion.button
+                            key={`carousel-btn-${index}`}
+                            className={`carousel-btn ${isActive ? 'active' : ''}`}
+                            onClick={() => setSelectedVoicingIndex(isActive ? null : index)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            title={`Select Voicing ${index + 1}`}
+                        >
+                            <span className="carousel-btn-number">{index + 1}</span>
+                            <div className="carousel-btn-details">
+                                <span className="carousel-btn-label">
+                                    {isActive ? t('fretboard.selected') : t('fretboard.voicing')}
+                                </span>
+                                <span className="carousel-btn-desc">
+                                    {voicing.startFret === 0 ? t('fretboard.openPosition') : t('fretboard.fretX', { fret: voicing.startFret })}
+                                </span>
+                            </div>
+                        </motion.button>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    const renderMobileVoicingStepper = () => {
+        if (!voicings || voicings.length === 0) return null;
+
+        const maxIndex = voicings.length - 1;
+
+        const handlePrevious = () => {
+            if (selectedVoicingIndex === null) setSelectedVoicingIndex(maxIndex);
+            else if (selectedVoicingIndex === 0) setSelectedVoicingIndex(null);
+            else setSelectedVoicingIndex(selectedVoicingIndex - 1);
+        };
+
+        const handleNext = () => {
+            if (selectedVoicingIndex === null) setSelectedVoicingIndex(0);
+            else if (selectedVoicingIndex === maxIndex) setSelectedVoicingIndex(null);
+            else setSelectedVoicingIndex(selectedVoicingIndex + 1);
+        };
+
+        let displayText = t('fretboard.allNotes');
+        if (selectedVoicingIndex !== null) {
+            displayText = t('fretboard.voicingXofY', { current: selectedVoicingIndex + 1, total: voicings.length });
+        }
+
+        return (
+            <div className="mobile-voicing-stepper">
+                <button className="stepper-btn" onClick={handlePrevious}>❮</button>
+                <div className="stepper-text">{displayText}</div>
+                <button className="stepper-btn" onClick={handleNext}>❯</button>
+            </div>
+        );
+    };
+
     return (
         <>
+            {/* The vertical container is a flex row (board | numbers), so the
+                carousel must sit outside it; horizontally it stacks inside. */}
+            {orientation === 'VERTICAL' && renderDesktopVoicingCarousel()}
             <div
                 className={`fretboard-container ${instrument.toLowerCase()}-mode ${orientation.toLowerCase()} theme-${colorScheme.toLowerCase()}`}
                 style={{ '--string-count': STRINGS } as React.CSSProperties}
             >
+                {orientation === 'HORIZONTAL' && renderDesktopVoicingCarousel()}
                 <div
                     ref={fretboardRef}
                     className={`fretboard ${orientation.toLowerCase()}`}
@@ -328,6 +396,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                 </div>
                 {renderFretNumbers()}
             </div>
+            {renderMobileVoicingStepper()}
         </>
     );
 };

@@ -465,7 +465,7 @@ export interface ChordInfo {
 }
 
 // Intervals for chord construction
-const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
+export const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
     MAJOR: [0, 4, 7],
     MINOR: [0, 3, 7],
     DIMINISHED: [0, 3, 6],

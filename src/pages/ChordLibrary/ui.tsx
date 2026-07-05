@@ -15,7 +15,8 @@ import {
     type Instrument,
     type Tuning,
     type QueuedChord,
-    CHORD_SYMBOLS
+    CHORD_SYMBOLS,
+    CHORD_INTERVALS
 } from '@/shared/lib/music/musicTheory';
 import { getChordVoicings } from '@/shared/lib/music/chordVoicings';
 import { useChordQueue } from '@/shared/hooks/useChordQueue';
@@ -36,35 +37,6 @@ const INTERVAL_ALIASES: Record<string, Record<number, string>> = {
 const DEFAULT_INTERVALS: Record<number, string> = {
     0: '1', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7',
     14: '9', 17: '11', 21: '13'
-};
-
-// Re-defining intervals local mapping to calculate the exact strings for textual display
-const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
-    MAJOR: [0, 4, 7],
-    MINOR: [0, 3, 7],
-    DIMINISHED: [0, 3, 6],
-    AUGMENTED: [0, 4, 8],
-    SUS2: [0, 2, 7],
-    SUS4: [0, 5, 7],
-    ADD2: [0, 2, 4, 7],
-    ADD4: [0, 4, 5, 7],
-    ADD6: [0, 4, 7, 9],
-    ADD9: [0, 4, 7, 14],
-    DOM7: [0, 4, 7, 10],
-    MAJ7: [0, 4, 7, 11],
-    MIN7: [0, 3, 7, 10],
-    MIN7B5: [0, 3, 6, 10],
-    DIM7: [0, 3, 6, 9],
-    MINMAJ7: [0, 3, 7, 11],
-    DOM9: [0, 4, 7, 10, 14],
-    MAJ9: [0, 4, 7, 11, 14],
-    MIN9: [0, 3, 7, 10, 14],
-    DOM11: [0, 4, 7, 10, 14, 17],
-    MAJ11: [0, 4, 7, 11, 14, 17],
-    MIN11: [0, 3, 7, 10, 14, 17],
-    DOM13: [0, 4, 7, 10, 14, 17, 21],
-    MAJ13: [0, 4, 7, 11, 14, 17, 21],
-    MIN13: [0, 3, 7, 10, 14, 17, 21]
 };
 
 const getDisplayName = (t: any, quality: ChordQuality) => {
