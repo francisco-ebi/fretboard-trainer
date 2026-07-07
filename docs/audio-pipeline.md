@@ -1,5 +1,7 @@
 # Audio Pipeline & String-Classification Model
 
+> *Versión en español: [audio-pipeline.es.md](audio-pipeline.es.md). If you edit this document, update the translation (or at least its sync date).*
+
 This document explains how Fretboard Trainer listens to a guitar and predicts **which string a note was played on**. It covers the full signal path, every feature fed to the neural network, the training and inference flows, known limitations, and the improvement roadmap.
 
 Audience: a developer new to the project. No DSP background is assumed for the overview sections; the feature sections include the underlying physics where it matters.

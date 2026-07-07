@@ -1,5 +1,7 @@
 # Dataset Recording Protocol
 
+> *Versión en español: [recording-protocol.es.md](recording-protocol.es.md). If you edit this document, update the translation (or at least its sync date).*
+
 A step-by-step protocol for recording a training dataset for the string-classification model. Follow it exactly and you get a dataset that is balanced, label-clean, and concentrated where the model actually earns its keep. Cut corners and you get a model that memorizes your recording session instead of your strings.
 
 Companion doc: [audio-pipeline.md](audio-pipeline.md) — what happens to the audio you record.
