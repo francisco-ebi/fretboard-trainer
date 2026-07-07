@@ -2,6 +2,7 @@ import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
 import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
 import { FEATURE_POSITIONS, type AudioBackend } from './worklet-types';
 import { findPartials, fitInharmonicityB, encodeInharmonicityB } from './inharmonicity';
+import { computeHarmonicFeatures } from './harmonic-features';
 
 // SpectralPeaks tuning for Inharmonicity: the algorithm treats the first
 // (lowest) peak as the fundamental, so peaks below the detected pitch must be
@@ -97,6 +98,11 @@ export class EssentiaBackend implements AudioBackend {
             const fittedB = fitInharmonicityB(partials);
             if (fittedB === null) return null; // too few partials to characterize the string
 
+            // Harmonic structure from the same tracked partials: per-partial
+            // dB ratios, tristimulus, odd/even overtone balance.
+            const harmonics = computeHarmonicFeatures(partials);
+            if (harmonics === null) return null; // fundamental not tracked: no dB reference
+
             const featureArray = new Float32Array(FEATURE_POSITIONS.TOTAL_FEATURES);
             featureArray[FEATURE_POSITIONS.PITCH] = pitch;
             for (let i = 0; i < 13; i++) {
@@ -111,6 +117,13 @@ export class EssentiaBackend implements AudioBackend {
             featureArray[FEATURE_POSITIONS.INHARMONICITY_B] = encodeInharmonicityB(fittedB);
             featureArray[FEATURE_POSITIONS.ONSET] = 0; // Handled by caller
             featureArray[FEATURE_POSITIONS.SNR] = 0; // Handled by caller
+            for (let i = 0; i < harmonics.partialsDb.length; i++) {
+                featureArray[FEATURE_POSITIONS.HARMONIC_DB_START + i] = harmonics.partialsDb[i];
+            }
+            for (let i = 0; i < harmonics.tristimulus.length; i++) {
+                featureArray[FEATURE_POSITIONS.TRISTIMULUS_START + i] = harmonics.tristimulus[i];
+            }
+            featureArray[FEATURE_POSITIONS.ODD_EVEN] = harmonics.oddEvenRatio;
             return featureArray;
         } catch (e) {
             console.error("Essentia feature extraction failed", e);

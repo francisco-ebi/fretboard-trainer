@@ -48,7 +48,7 @@ El trabajo de la red neuronal es leer esas diferencias en secuencias cortas de f
  │       + onsets                                            │
  │     → backend.process(ventana) ── null → frame descartado │
  │         EssentiaBackend / MeydaBackend (el WASM vive aquí)│
- │   → Float32Array[23] al ring SAB de features              │
+ │   → Float32Array[34] al ring SAB de features              │
  └───────────────────────────────────────────────────────────┘
      │  SAB de features (requiere aislamiento cross-origin)
      ▼
@@ -138,9 +138,9 @@ Archivos clave:
 | | `essentia` (modo "precisión") | `meyda` (modo "rendimiento") |
 |---|---|---|
 | Pitch | essentia `PitchYinFFT` (+ confianza) | pitchfinder Macleod (filtrado por probabilidad) o YIN |
-| Features | Conjunto completo incl. inarmonicidad + B ajustado | Solo MFCC + centroide + rolloff + brillo |
+| Features | Conjunto completo incl. inarmonicidad, B ajustado y estructura armónica | Solo MFCC + centroide + rolloff + brillo |
 | Coste | Más pesado (FFTs WASM ×2, picos, ajuste de parciales) | Más ligero (JS puro) |
-| Entrada del modelo | 21 features/frame | 17 features/frame |
+| Entrada del modelo | 33 features/frame | 17 features/frame |
 | Modelo desplegado | `public/model/guitar-essentia-ts.json` (**obsoleto — requiere reentrenar**, ver §8) | `public/model/guitar-meyda-ts-brightness-model.json` |
 
 El modo se elige en el motor de predicción (`setMode`), que intercambia tanto el procesador del worklet como el par modelo+stats.
@@ -154,9 +154,9 @@ El modo se elige en el motor de predicción (`setMode`), que intercambia tanto e
 3. **Puerta RMS adaptativa** (`adaptive-gate.ts`): en lugar de un umbral fijo, la puerta sigue el suelo de ruido ambiente con una EMA **mientras está cerrada** (congelada mientras suena una nota, para que las notas largas no lo inflen y se coman su propia cola de decaimiento) y abre en `suelo × 4`, cerrando en `suelo × 2.5` (histéresis — sin parpadeo cuando una nota decae a través del límite). Un mínimo absoluto (`0.003`) evita que una entrada en silencio total abra con cualquier cosa. El suelo inicial se elige para que los primeros frames se comporten como la antigua puerta fija de `0.02` hasta que el estimador converge (~120 ms de silencio). Como ambos umbrales escalan con el suelo, la selección de frames es aproximadamente **invariante a la ganancia**: distintas interfaces/ganancias capturan la misma población de frames.
 4. **Detección de onsets** (en la puerta, agnóstica al backend): una ventana es un *onset* si la puerta acaba de abrirse, o si el RMS saltó >2× respecto a la ventana anterior (re-pulsación de una cuerda que aún suena). El flag se lleva "pendiente" en el bucle de extracción, de modo que si el backend descarta el frame del ataque, el *siguiente* frame entregado sigue anunciando la pulsación. La puerta también emite **SNR** = `log10(rms / suelo)`, una medida de sonoridad invariante a la ganancia usada como feature del modelo.
 5. **Extracción de features** (backend): descrita en §4. El backend devuelve `null` para cualquier frame que no pueda analizar con fiabilidad — entrada sin voz, baja confianza de pitch, extracción fallida, muy pocos parciales. **Los frames descartados nunca se rellenan con ceros**; unos ceros fabricados serían indistinguibles de valores legítimos y envenenarían el dataset.
-6. **Transporte**: el `Float32Array` de 22 huecos se encola en un ring buffer sobre SharedArrayBuffer. El hilo principal lo sondea cada 16 ms. Los frames se escriben completos de forma atómica, así que el lector siempre desencola un múltiplo de 22 floats.
+6. **Transporte**: el `Float32Array` de 34 huecos se encola en un ring buffer sobre SharedArrayBuffer. El hilo principal lo sondea cada 16 ms. Los frames se escriben completos de forma atómica, así que el lector siempre desencola un múltiplo de 34 floats.
 
-### Layout de frames del SAB (`FEATURE_POSITIONS`, 23 huecos)
+### Layout de frames del SAB (`FEATURE_POSITIONS`, 34 huecos)
 
 | Hueco | Nombre | Productor | Notas |
 |---|---|---|---|
@@ -171,17 +171,21 @@ El modo se elige en el motor de predicción (`setMode`), que intercambia tanto e
 | 20 | INHARMONICITY_B | backend | **log10(B ajustado)** (0 en meyda) |
 | 21 | ONSET | bucle de extracción | 1 en el primer frame de una pulsación |
 | 22 | SNR | bucle de extracción | log10(rms / suelo de ruido), invariante a la ganancia |
+| 23–29 | HARMONIC_DB (7) | backend | parciales 2–8 en dB respecto al parcial 1 (0 en meyda), ver §4.5 |
+| 30–32 | TRISTIMULUS (3) | backend | cuotas de energía del parcial 1 / 2–4 / 5–8 (0 en meyda) |
+| 33 | ODD_EVEN | backend | log10 del cociente de energía impar/par de los sobretonos (0 en meyda) |
 
 ---
 
 ## 4. Las features, y por qué ayuda cada una
 
-### 4.1 Vector de entrada del modelo — ruta essentia (22 por frame)
+### 4.1 Vector de entrada del modelo — ruta essentia (33 por frame)
 
 El orden importa y debe coincidir entre `recording-engine.saveData` y `prediction-engine.makeSequencePrediction`:
 
 ```
-[ mfcc×13, midiNote, centroid, flux, rolloff, inharmonicity, rms, log10(B), onset, snr ]
+[ mfcc×13, midiNote, centroid, flux, rolloff, inharmonicity, rms, log10(B), onset, snr,
+  h2…h8 (7), tristimulus×3, oddEven ]
 ```
 
 | Feature | Qué mide | Por qué discrimina cuerdas |
@@ -196,6 +200,9 @@ El orden importa y debe coincidir entre `recording-engine.saveData` y `predictio
 | **log10(B)** — *la feature estrella* | Coeficiente de rigidez ajustado del modelo de cuerda inarmónica | Mide directamente la construcción de la cuerda; ver más abajo |
 | **Flag de onset** | 1 en el primer frame de la pulsación | Le dice a la red si un frame es ataque o decaimiento, así ambos son utilizables |
 | **SNR** | log10(rms / suelo de ruido) desde la puerta adaptativa | Sonoridad/decaimiento invariante a la ganancia: a diferencia del RMS crudo, comparable entre interfaces y salas |
+| **H2…H8** (7) | Parciales 2–8 en dB respecto al parcial 1 | Filtro de peine del punto de pulsación + balance y decaimiento de parciales altos dependientes de la cuerda (§4.5) |
+| **Tristimulus** (3) | Cuotas de energía del parcial 1 / parciales 2–4 / parciales 5–8 | Resumen compacto del balance armónico |
+| **Cociente impar/par** | log10 de la energía de sobretonos impares (3,5,7) vs pares (2,4,6) | La posición de pulsación y la construcción de la cuerda desplazan este balance de formas opuestas y aprendibles |
 
 ### 4.2 El coeficiente de inarmonicidad ajustado B
 
@@ -228,6 +235,16 @@ Un frame debe pasar **todo** esto: puerta adaptativa abierta → pitch YIN > 0 �
 
 `brightnessPerNote = midiNote / centroid` — un cociente artesanal de brillo vs pitch. La ruta meyda no puede calcular flux (necesita el frame anterior) ni inarmonicidad (no hay picos espectrales), que es exactamente por lo que es el modo "rendimiento" (rápido) y la ruta essentia es el modo "precisión".
 
+### 4.5 Features de estructura armónica (11 por frame, solo essentia)
+
+Se calculan en `harmonic-features.ts` a partir de **los mismos parciales guiados por el pitch que ya rastrea el ajuste de B** — sin análisis espectral adicional:
+
+- **H2…H8 (7)**: magnitud de los parciales 2–8 en dB respecto al parcial 1, acotada a [−60, +12]. Un parcial que el rastreador no encontró recibe el suelo de −60 ("inaudible"). Física: una pulsación en la fracción *d* de la longitud de la cuerda escala el parcial *n* como \|sin(n·π·d)\| (filtrado de peine), y cómo se sitúan los parciales altos — y cómo decaen a lo largo de la secuencia de 5 frames — depende de la construcción de la cuerda.
+- **Tristimulus (3)**: cuotas de energía del parcial 1, de los parciales 2–4 y de los 5–8. Se calcula desde los parciales rastreados y no con el `Tristimulus` de essentia, cuya pertenencia a bandas sigue al pico genérico que llegó primero en lugar del número real de parcial.
+- **Cociente impar/par (1)**: `log10` de la energía de los sobretonos impares (3, 5, 7) frente a los pares (2, 4, 6), acotado a ±3. Se desvía del `OddToEvenHarmonicEnergyRatio` de essentia al excluir la fundamental, que de otro modo dominaría el lado "impar" y enmascararía el contraste del filtro de peine.
+
+Un frame cuya fundamental no fue rastreada se descarta (sin referencia de dB — y una fundamental enterrada es sospechosa de todos modos). Nótese la interacción con el protocolo de grabación: estas features *ven* la posición de pulsación, que es precisamente por lo que la rejilla de variación del protocolo la rota — en un dataset bien grabado, el invariante aprendible en ellas es la cuerda, no dónde pulsaste.
+
 ---
 
 ## 5. Secuencias y el dataset
@@ -244,7 +261,7 @@ Una secuencia debe representar *una nota de una pulsación continua*. Ambos engi
 
 ```ts
 { midiNote, stringNum /* 0=E agudo … 5=E grave */, noteName,
-  features: number[5][22], normalizedFeatures: number[5][22] }
+  features: number[5][33], normalizedFeatures: number[5][33] }
 ```
 
 Flujo de grabación (`RecordingControls`, se abre con el código secreto "record"): elige un índice de cuerda y toca notas a lo largo de ella; los frames se filtran al rango MIDI plausible de esa cuerda; cada 5 frames en el búfer se convierten en una entrada etiquetada. `downloadDataset()` normaliza en z-score con la media/desviación por feature de todo el dataset y descarga **ambos** archivos, el dataset y el de estadísticas — las estadísticas son parte del contrato del modelo (ver §7).
@@ -255,7 +272,7 @@ Los datasets viven en `public/datasets/` y se **descargan en tiempo de ejecució
 
 - Una muestra de entrenamiento por secuencia grabada — sin ventanas deslizantes entre entradas (las ventanas que cruzaban dos grabaciones fueron un bug histórico importante, ver §8).
 - Las entradas se agrupan por clase, se barajan con un **PRNG con semilla** (mulberry32, semilla 42 por defecto — reproducible), y el 20% de *cada clase* va a validación. Esto importa porque el flujo de captura graba cuerda a cuerda: una división ingenua por cola (el `validationSplit` de TF.js) habría validado sobre una sola clase.
-- Comprobación de forma: las entradas cuyas `normalizedFeatures` no son `[5][22]` se omiten, y se lanza un error explícito si no sobrevive ninguna (la señal inequívoca de un dataset grabado con un pipeline de features antiguo).
+- Comprobación de forma: las entradas cuyas `normalizedFeatures` no son `[5][33]` se omiten, y se lanza un error explícito si no sobrevive ninguna (la señal inequívoca de un dataset grabado con un pipeline de features antiguo).
 
 ---
 
@@ -264,7 +281,7 @@ Los datasets viven en `public/datasets/` y se **descargan en tiempo de ejecució
 Definido en `model.ts` (TensorFlow.js, importado de forma diferida):
 
 ```
-Entrada [5 frames × 22 features]
+Entrada [5 frames × 33 features]
   → Conv1D(filters=32, kernel=3, relu)     # patrones temporales locales (ataque→decaimiento)
   → GlobalAveragePooling1D                 # invariancia a la posición temporal
   → Dense(32, relu)
@@ -312,6 +329,7 @@ Se hicieron en una sola pasada de revisión y corrección; los estados "antes" e
 | **Imports del worklet cambiados a `?worker&url`** | Un `?url` a secas nunca compila TS en builds de producción — `addModule()` recibía un data-URI de TypeScript crudo, así que **los worklets no cargaban en ningún build de producción** (en dev funcionaba porque Vite transforma al vuelo). `?worker&url` emite bundles reales compilados por backend; quedan excluidos de la precaché de la PWA (funcionalidad opcional, el bundle de essentia pesa ~2.4MB) |
 | **El DSP fuera del hilo de audio de tiempo real** (§2.1) | La extracción de features corría dentro del presupuesto de ~2.7ms del `process()` del worklet; los dispositivos lentos producían glitches y perdían la entrada que se analizaba. Ahora: worklet de captura mínimo → SAB de audio crudo → Worker de features por backend (el bucle de extracción es puro y con tests) → SAB de features (sin cambios) |
 | **Envoltura con módulo real en el ring buffer** | El FIFO reiniciaba los índices a 0 al dar la vuelta — solo correcto cuando cada push divide exactamente la capacidad (cierto para quanta de 128, roto para los drenados de tamaño variable del worker). Los índices ahora envuelven con aritmética modular real |
+| **Features de estructura armónica** (7 ratios de parciales en dB + tristimulus + impar/par; 22 → 33 features, pipeline essentia v3) | La envolvente MFCC lleva el filtrado de peine del punto de pulsación entrelazado con la identidad de la cuerda; los ratios explícitos de los parciales ya rastreados le entregan al modelo la estructura armónica directamente (era el punto 1 de la hoja de ruta, §4.5) |
 
 **Consecuencias para los artefactos**: el dataset empaquetado (frames de 18 features) y los dos modelos *essentia* desplegados son anteriores a estos cambios. La ruta essentia/"precisión" no predecirá hasta que se grabe un dataset nuevo y se reentrene un modelo; `prepareStratifiedSplit` falla pronto con un error explicativo. La ruta meyda/"rendimiento" (17 features, layout sin cambios) sigue funcionando.
 
@@ -327,7 +345,7 @@ Se hicieron en una sola pasada de revisión y corrección; los estados "antes" e
 
 - **Dataset de una sola guitarra y un solo estilo**, grabado cuerda a cuerda en una sesión. Es probable que el modelo aprenda artefactos de sesión; la generalización a otras guitarras/pastillas no está demostrada.
 - **Secuencias de ~116 ms** pueden perder diferencias de decaimiento más lentas; el inicio de secuencia ya se alinea al onset, pero solo la primera secuencia de una pulsación contiene el ataque.
-- **La resolución de los MFCC en bajas frecuencias** es pobre exactamente donde viven los parciales 1–4 de las notas graves; el B ajustado y las futuras features armónicas lo compensan.
+- **La resolución de los MFCC en bajas frecuencias** es pobre exactamente donde viven los parciales 1–4 de las notas graves; el B ajustado y las features de estructura armónica lo compensan.
 - **Errores de octava**: los saltos de octava de YIN dentro del filtro de rango por cuerda siguen etiquetando mal `midiNote`; la puerta de confianza los reduce pero no los elimina.
 - **B no está definido en la ruta meyda**, así que el modo rendimiento sigue dependiendo solo de features de envolvente.
 - **Desbalance de clases y cobertura de notas**: solo los rangos de pitch compartidos por ≥2 cuerdas necesitan de verdad el modelo; el dataset no está concentrado ahí.
@@ -338,17 +356,18 @@ Se hicieron en una sola pasada de revisión y corrección; los estados "antes" e
 
 Ordenadas aproximadamente por valor esperado por esfuerzo.
 
-1. **Features de estructura armónica** (pequeño, alto valor): magnitudes normalizadas de los primeros ~8 parciales (dB respecto al parcial 1) — captura directamente el filtrado de peine del punto de pulsación; el `Tristimulus` y el `OddToEvenHarmonicEnergyRatio` de essentia salen casi gratis porque los picos ya están calculados. Requiere ampliar `NUM_FEATURES` + reentrenar.
-2. **Ventana de análisis de 4096 muestras para el ajuste de parciales** — reduce a la mitad el error de estimación de B en notas graves. Desbloqueado ahora que la extracción corre en un Worker sin presupuesto de tiempo real (subir `bufferSize` en la inicialización del worker de los engines + reentrenar).
-3. **Protocolo de grabación**: varias dinámicas, púa vs dedo, varias posiciones de pulsación, cuerdas nuevas vs gastadas; concentrarse en los rangos de notas compartidos entre cuerdas. B sobrevive a esas variaciones; las envolventes crudas no — que es justo lo que hace que valga la pena recolectarlas. El procedimiento completo está especificado en **[recording-protocol.es.md](recording-protocol.es.md)**.
-4. **Agregación por pulsación en inferencia**: agregar todas las secuencias de una pulsación (mediana del softmax por secuencia, ponderada por confianza/RMS) en lugar del voto por mayoría deslizante genérico.
-5. **Híbrido con prior físico**: una pasada de calibración por guitarra que mida B por (cuerda, traste) una vez, y clasificar por B más cercano con la red como desempate. Personalizaría la precisión de forma barata y degradaría con gracia.
+1. **Ventana de análisis de 4096 muestras para el ajuste de parciales** — reduce a la mitad el error de estimación de B en notas graves. Desbloqueado ahora que la extracción corre en un Worker sin presupuesto de tiempo real (subir `bufferSize` en la inicialización del worker de los engines + reentrenar).
+2. **Protocolo de grabación**: varias dinámicas, púa vs dedo, varias posiciones de pulsación, cuerdas nuevas vs gastadas; concentrarse en los rangos de notas compartidos entre cuerdas. B sobrevive a esas variaciones; las envolventes crudas no — que es justo lo que hace que valga la pena recolectarlas. El procedimiento completo está especificado en **[recording-protocol.es.md](recording-protocol.es.md)**.
+3. **Agregación por pulsación en inferencia**: agregar todas las secuencias de una pulsación (mediana del softmax por secuencia, ponderada por confianza/RMS) en lugar del voto por mayoría deslizante genérico.
+4. **Híbrido con prior físico**: una pasada de calibración por guitarra que mida B por (cuerda, traste) una vez, y clasificar por B más cercano con la red como desempate. Personalizaría la precisión de forma barata y degradaría con gracia.
+
+*(El antiguo punto 1 — features de estructura armónica — se implementó en 2026-07; ver §4.5 y el registro de cambios de §8.)*
 
 **Arquitecturas de modelo alternativas**, si las features diseñadas se estancan:
 
 | Arquitectura | Entrada | Compromiso |
 |---|---|---|
-| Actual: Conv1D + GAP (≈3k parámetros) | 5×21 features diseñadas | Diminuta, rápida, interpretable; techo limitado por las features |
+| Actual: Conv1D + GAP (≈3k parámetros) | 5×33 features diseñadas | Diminuta, rápida, interpretable; techo limitado por las features |
 | GRU/LSTM pequeña o TCN | Secuencias de features más largas (10–20 frames) | Modela explícitamente las trayectorias de decaimiento; sigue siendo barata |
 | CNN sobre parches de CQT / espectrograma log-mel | ~200 ms de espectrograma alrededor del onset | Estado del arte en la literatura de tablatura (Kehling et al., Wiggins & Kim); necesita muchos más datos + aumento de datos, más pesada en navegador |
 | CRNN (frente CNN + cabeza recurrente) | Espectrograma | Mejores resultados publicados para cuerda/traste; probablemente excesivo hasta que madure el protocolo de datos |

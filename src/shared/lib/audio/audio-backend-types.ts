@@ -13,4 +13,7 @@ export interface AnalysisResult {
     inharmonicityB?: number; // log10 of the fitted string-stiffness coefficient B
     isOnset?: boolean;
     snr?: number; // log10(rms / noise floor) from the adaptive gate — gain-invariant loudness
+    harmonicsDb?: number[]; // partials 2..8 in dB re partial 1 (essentia path only)
+    tristimulus?: number[]; // [t1, t2, t3] over the first 8 tracked partials
+    oddEvenRatio?: number; // log10(odd/even overtone energy), clamped
 }

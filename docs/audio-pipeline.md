@@ -46,7 +46,7 @@ The neural network's job is to read those differences from short feature sequenc
  │     → adaptive RMS gate (noise-floor tracking) + onsets   │
  │     → backend.process(window)  ── null → frame dropped    │
  │         EssentiaBackend / MeydaBackend (WASM lives here)  │
- │   → Float32Array[23] into the feature SAB ring            │
+ │   → Float32Array[34] into the feature SAB ring            │
  └───────────────────────────────────────────────────────────┘
      │  feature SAB (needs cross-origin isolation)
      ▼
@@ -134,9 +134,9 @@ Key files:
 | | `essentia` ("precision" mode) | `meyda` ("performance" mode) |
 |---|---|---|
 | Pitch | essentia `PitchYinFFT` (+ confidence) | pitchfinder Macleod (probability-gated) or YIN |
-| Features | Full set incl. inharmonicity + fitted B | MFCC + centroid + rolloff + brightness only |
+| Features | Full set incl. inharmonicity, fitted B, harmonic structure | MFCC + centroid + rolloff + brightness only |
 | Cost | Heavier (WASM FFTs ×2, peaks, partial fit) | Lighter (pure JS) |
-| Model input | 21 features/frame | 17 features/frame |
+| Model input | 33 features/frame | 17 features/frame |
 | Deployed model | `public/model/guitar-essentia-ts.json` (**stale — retrain needed**, see §8) | `public/model/guitar-meyda-ts-brightness-model.json` |
 
 The mode is chosen in the prediction engine (`setMode`), which swaps both the worklet processor and the model+stats pair.
@@ -150,9 +150,9 @@ The mode is chosen in the prediction engine (`setMode`), which swaps both the wo
 3. **Adaptive RMS gate** (`adaptive-gate.ts`): instead of a fixed threshold, the gate tracks the ambient noise floor with an EMA **while closed** (frozen while a note rings, so long notes can't inflate it and eat their own decay tail) and opens at `floor × 4`, closing at `floor × 2.5` (hysteresis — no flutter as a note decays through the boundary). An absolute minimum (`0.003`) prevents a dead-silent input from opening on anything. The initial floor is chosen so the very first frames behave like the legacy fixed `0.02` gate until the estimator converges (~120 ms of silence). Because both thresholds scale with the floor, frame selection is approximately **gain-invariant**: different interfaces/gains capture the same population of frames.
 4. **Onset detection** (in the gate, backend-agnostic): a window is an *onset* if the gate just opened, or RMS jumped >2× over the previous window (re-pluck of a ringing string). The flag is carried "pending" in the extraction loop so that if the backend drops the attack frame, the *next* delivered frame still announces the pluck. The gate also emits **SNR** = `log10(rms / floor)`, a gain-invariant loudness measure used as a model feature.
 5. **Feature extraction** (backend): described in §4. The backend returns `null` for any frame it cannot analyze reliably — unvoiced input, low pitch confidence, failed extraction, too few partials. **Dropped frames are never zero-filled**; fabricated zeros would be indistinguishable from legitimate feature values and poison the dataset.
-6. **Transport**: the 22-slot `Float32Array` is enqueued into a SharedArrayBuffer ring buffer. The main thread polls it every 16 ms. Whole frames are written atomically, so the reader always dequeues a multiple of 22 floats.
+6. **Transport**: the 34-slot `Float32Array` is enqueued into a SharedArrayBuffer ring buffer. The main thread polls it every 16 ms. Whole frames are written atomically, so the reader always dequeues a multiple of 34 floats.
 
-### SAB frame layout (`FEATURE_POSITIONS`, 23 slots)
+### SAB frame layout (`FEATURE_POSITIONS`, 34 slots)
 
 | Slot | Name | Producer | Notes |
 |---|---|---|---|
@@ -167,17 +167,21 @@ The mode is chosen in the prediction engine (`setMode`), which swaps both the wo
 | 20 | INHARMONICITY_B | backend | **log10(fitted B)** (0 in meyda) |
 | 21 | ONSET | extraction loop | 1 on the first frame of a pluck |
 | 22 | SNR | extraction loop | log10(rms / noise floor), gain-invariant |
+| 23–29 | HARMONIC_DB (7) | backend | partials 2–8 in dB re partial 1 (0 in meyda), see §4.5 |
+| 30–32 | TRISTIMULUS (3) | backend | energy shares of partial 1 / 2–4 / 5–8 (0 in meyda) |
+| 33 | ODD_EVEN | backend | log10 odd/even overtone energy ratio (0 in meyda) |
 
 ---
 
 ## 4. The features, and why each one helps
 
-### 4.1 Model input vector — essentia path (22 per frame)
+### 4.1 Model input vector — essentia path (33 per frame)
 
 Order matters and must match between `recording-engine.saveData` and `prediction-engine.makeSequencePrediction`:
 
 ```
-[ mfcc×13, midiNote, centroid, flux, rolloff, inharmonicity, rms, log10(B), onset, snr ]
+[ mfcc×13, midiNote, centroid, flux, rolloff, inharmonicity, rms, log10(B), onset, snr,
+  h2…h8 (7), tristimulus×3, oddEven ]
 ```
 
 | Feature | What it measures | Why it discriminates strings |
@@ -192,6 +196,9 @@ Order matters and must match between `recording-engine.saveData` and `prediction
 | **log10(B)** — *the star feature* | Fitted stiffness coefficient of the inharmonic string model | Directly measures string construction; see below |
 | **Onset flag** | 1 on the pluck's first frame | Tells the net whether a frame is attack or decay, so both are usable |
 | **SNR** | log10(rms / noise floor) from the adaptive gate | Gain-invariant loudness/decay: unlike raw RMS, comparable across interfaces and rooms |
+| **H2…H8** (7) | Partials 2–8 in dB re partial 1 | Pluck-point comb filter + string-dependent upper-partial balance and decay (§4.5) |
+| **Tristimulus** (3) | Energy shares of partial 1 / partials 2–4 / partials 5–8 | Compact summary of the harmonic balance |
+| **Odd/even ratio** | log10 of odd (3,5,7) vs even (2,4,6) overtone energy | Pluck position and string construction shift this balance in opposite, learnable ways |
 
 ### 4.2 The fitted inharmonicity coefficient B
 
@@ -224,6 +231,16 @@ A frame must pass **all** of: adaptive gate open → YIN pitch > 0 → YIN confi
 
 `brightnessPerNote = midiNote / centroid` — a hand-crafted brightness-vs-pitch ratio. The meyda path cannot compute flux (needs the previous frame) or inharmonicity (no spectral peaks), which is exactly why it is the "performance" (fast) mode and the essentia path is the "precision" mode.
 
+### 4.5 Harmonic-structure features (11 per frame, essentia only)
+
+Computed in `harmonic-features.ts` from the **same pitch-guided partials the B fit already tracks** — no additional spectral analysis:
+
+- **H2…H8 (7)**: magnitude of partials 2–8 in dB relative to partial 1, clamped to [−60, +12]. A partial the tracker could not find gets the −60 "inaudible" floor. Physics: a pluck at fraction *d* of the string length scales partial *n* like \|sin(n·π·d)\| (comb filtering), and how the upper partials sit — and decay across the 5-frame sequence — depends on string construction.
+- **Tristimulus (3)**: energy shares of partial 1, partials 2–4, and partials 5–8. Computed from the tracked partials rather than essentia's `Tristimulus`, whose band membership follows whatever generic peak came first instead of true partial numbers.
+- **Odd/even ratio (1)**: `log10` of odd (3, 5, 7) vs even (2, 4, 6) overtone energy, clamped to ±3. Deviates from essentia's `OddToEvenHarmonicEnergyRatio` by excluding the fundamental, which would otherwise dominate "odd" and mask the comb-filter contrast.
+
+A frame whose fundamental was not tracked is dropped (no dB reference — and a buried fundamental is suspect anyway). Note the interplay with the recording protocol: these features *see* pluck position, which is precisely why the protocol's variation grid rotates it — across a well-recorded dataset the learnable invariant in them is the string, not where you plucked.
+
 ---
 
 ## 5. Sequences and the dataset
@@ -240,7 +257,7 @@ A sequence must represent *one note from one continuous pluck*. Both engines flu
 
 ```ts
 { midiNote, stringNum /* 0=high E … 5=low E */, noteName,
-  features: number[5][22], normalizedFeatures: number[5][22] }
+  features: number[5][33], normalizedFeatures: number[5][33] }
 ```
 
 Recording flow (`RecordingControls`, opened with the "record" cheat code): pick a string index, play notes along it; frames are filtered to that string's plausible MIDI range; every 5 buffered frames become one labeled entry. `downloadDataset()` z-score-normalizes with dataset-wide per-feature mean/std and downloads **both** the dataset and the stats file — the stats are part of the model contract (see §7).
@@ -251,7 +268,7 @@ Datasets live in `public/datasets/` and are **fetched at runtime** (`dataset-loa
 
 - One training sample per recorded sequence — no sliding windows across entries (windows that straddled two recordings were a major historical bug, see §8).
 - Entries are grouped per class, shuffled with a **seeded PRNG** (mulberry32, default seed 42 — reproducible), and 20% of *each class* goes to validation. This matters because the capture flow records string-by-string: a naive tail split (TF.js `validationSplit`) would have validated on a single class.
-- Shape check: entries whose `normalizedFeatures` aren't `[5][22]` are skipped, and an explicit error is thrown if nothing survives (the tell-tale sign of a dataset recorded with an older feature pipeline).
+- Shape check: entries whose `normalizedFeatures` aren't `[5][33]` are skipped, and an explicit error is thrown if nothing survives (the tell-tale sign of a dataset recorded with an older feature pipeline).
 
 ---
 
@@ -260,7 +277,7 @@ Datasets live in `public/datasets/` and are **fetched at runtime** (`dataset-loa
 Defined in `model.ts` (TensorFlow.js, lazily imported):
 
 ```
-Input  [5 frames × 22 features]
+Input  [5 frames × 33 features]
   → Conv1D(filters=32, kernel=3, relu)     # local temporal patterns (attack→decay)
   → GlobalAveragePooling1D                 # time-position invariance
   → Dense(32, relu)
@@ -308,6 +325,7 @@ These were made in one review-and-fix pass; the "before" states are documented b
 | **Worklet imports switched to `?worker&url`** | Plain `?url` never compiles TS in production builds — `addModule()` received a data-URI of raw TypeScript, so **worklets could not load in any production build** (dev worked because Vite transforms on the fly). `?worker&url` emits real compiled per-backend bundles; they are excluded from the PWA precache (opt-in feature, essentia bundle ~2.4MB) |
 | **DSP moved off the realtime audio thread** (§2.1) | Feature extraction ran inside the worklet's ~2.7ms `process()` budget; slow devices glitched and dropped the input being analyzed. Now: tiny capture worklet → raw-audio SAB → per-backend feature Worker (extraction loop is pure and unit-tested) → feature SAB (unchanged) |
 | **Ring-buffer modulo wraparound** | The FIFO reset indices to 0 on wrap — only correct when every push divides capacity exactly (true for 128-quanta, broken for the worker's variable-size drains). Indices now wrap with real modulo arithmetic |
+| **Harmonic-structure features** (7 partial dB ratios + tristimulus + odd/even; 22 → 33 features, essentia pipeline v3) | The MFCC envelope carries pluck-point comb filtering entangled with string identity; explicit ratios of the already-tracked partials hand the model the harmonic structure directly (was roadmap item 1, §4.5) |
 
 **Consequences for artifacts**: the bundled dataset (18-feature frames) and both deployed *essentia* models predate these changes. The essentia/"precision" path will not predict until a new dataset is recorded and a model retrained; `prepareStratifiedSplit` fails fast with an explanatory error. The meyda/"performance" path (17 features, unchanged layout) still works.
 
@@ -323,7 +341,7 @@ These were made in one review-and-fix pass; the "before" states are documented b
 
 - **Single-guitar, single-style dataset**, recorded string-by-string in one session. The model likely learns session artifacts; generalization to other guitars/pickups is unproven.
 - **~116 ms sequences** may miss slower decay differences; sequence start is now onset-aligned, but only the first sequence of a pluck contains the attack.
-- **MFCC resolution at low frequencies** is poor exactly where partials 1–4 of low notes live; the fitted B and future harmonic features compensate.
+- **MFCC resolution at low frequencies** is poor exactly where partials 1–4 of low notes live; the fitted B and the harmonic-structure features compensate.
 - **Octave errors**: YIN octave slips within the per-string range filter still mislabel `midiNote`; confidence gating reduces but does not eliminate them.
 - **B is undefined for the meyda path**, so performance mode still relies on envelope features only.
 - **Class imbalance & note coverage**: only pitch ranges shared by ≥2 strings actually need the model; the dataset isn't concentrated there.
@@ -334,17 +352,18 @@ These were made in one review-and-fix pass; the "before" states are documented b
 
 Ordered roughly by expected value per effort.
 
-1. **Harmonic-structure features** (small, high value): normalized magnitudes of the first ~8 partials (dB re: partial 1) — captures pluck-point comb filtering directly; essentia's `Tristimulus` and `OddToEvenHarmonicEnergyRatio` come nearly free since peaks are already computed. Requires growing `NUM_FEATURES` + retraining.
-2. **4096-sample analysis window for the partial fit** — halves B-estimation error for low notes. Unblocked now that extraction runs in a Worker with no realtime budget (raise `bufferSize` in the engines' worker init + retrain).
-3. **Recording protocol**: multiple dynamics, pick vs finger, several pluck positions, fresh vs worn strings; concentrate on note ranges shared between strings. B survives these variations; raw envelopes don't — which is what makes it worth collecting them. The full procedure is specified in **[recording-protocol.md](recording-protocol.md)**.
-4. **Per-pluck aggregation at inference**: aggregate all sequences of one pluck (median of per-sequence softmax, weighted by confidence/RMS) instead of the generic sliding majority vote.
-5. **Physics-prior hybrid**: per-guitar calibration pass that measures B per (string, fret) once, then classifies by nearest-B with the network as a tie-breaker. Would personalize accuracy cheaply and degrade gracefully.
+1. **4096-sample analysis window for the partial fit** — halves B-estimation error for low notes. Unblocked now that extraction runs in a Worker with no realtime budget (raise `bufferSize` in the engines' worker init + retrain).
+2. **Recording protocol**: multiple dynamics, pick vs finger, several pluck positions, fresh vs worn strings; concentrate on note ranges shared between strings. B survives these variations; raw envelopes don't — which is what makes it worth collecting them. The full procedure is specified in **[recording-protocol.md](recording-protocol.md)**.
+3. **Per-pluck aggregation at inference**: aggregate all sequences of one pluck (median of per-sequence softmax, weighted by confidence/RMS) instead of the generic sliding majority vote.
+4. **Physics-prior hybrid**: per-guitar calibration pass that measures B per (string, fret) once, then classifies by nearest-B with the network as a tie-breaker. Would personalize accuracy cheaply and degrade gracefully.
+
+*(The former item 1 — harmonic-structure features — landed in 2026-07; see §4.5 and the §8 change log.)*
 
 **Alternative model architectures**, if engineered features plateau:
 
 | Architecture | Input | Trade-off |
 |---|---|---|
-| Current: Conv1D + GAP (≈3k params) | 5×21 engineered features | Tiny, fast, interpretable; ceiling limited by features |
+| Current: Conv1D + GAP (≈3k params) | 5×33 engineered features | Tiny, fast, interpretable; ceiling limited by features |
 | Small GRU/LSTM or TCN | Longer feature sequences (10–20 frames) | Models decay trajectories explicitly; still cheap |
 | CNN on CQT / log-mel spectrogram patches | ~200 ms spectrogram around the onset | State of the art in the tablature literature (Kehling et al., Wiggins & Kim); needs far more data + augmentation, heavier in-browser |
 | CRNN (CNN front-end + recurrent head) | Spectrogram | Best published results for string/fret; likely overkill until the data protocol matures |

@@ -3,6 +3,7 @@ import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import { normalizeDataset, NUM_FEATURES, SEQUENCE_LENGTH } from '@/shared/lib/audio/dataset-preparation';
+import { HARMONIC_PARTIAL_COUNT } from '@/shared/lib/audio/harmonic-features';
 // ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
 // returns its URL. Plain ?url ships raw TypeScript in production builds,
 // which AudioWorklet.addModule cannot execute.
@@ -336,7 +337,16 @@ class GuitarAudioPredictionEngine {
                 pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
                 inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
                 isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5,
-                snr: features[FEATURE_POSITIONS.SNR]
+                snr: features[FEATURE_POSITIONS.SNR],
+                harmonicsDb: Array.from(features.subarray(
+                    FEATURE_POSITIONS.HARMONIC_DB_START,
+                    FEATURE_POSITIONS.HARMONIC_DB_START + HARMONIC_PARTIAL_COUNT
+                )),
+                tristimulus: Array.from(features.subarray(
+                    FEATURE_POSITIONS.TRISTIMULUS_START,
+                    FEATURE_POSITIONS.TRISTIMULUS_START + 3
+                )),
+                oddEvenRatio: features[FEATURE_POSITIONS.ODD_EVEN]
             };
 
             if (mfcc) {
@@ -399,6 +409,15 @@ class GuitarAudioPredictionEngine {
                 featuresList.push(frame.inharmonicityB || 0);
                 featuresList.push(frame.isOnset ? 1 : 0);
                 featuresList.push(frame.snr || 0);
+                const harmonicsDb = frame.harmonicsDb ?? [];
+                const tristimulus = frame.tristimulus ?? [];
+                for (let i = 0; i < HARMONIC_PARTIAL_COUNT; i++) {
+                    featuresList.push(harmonicsDb[i] ?? 0);
+                }
+                featuresList.push(tristimulus[0] ?? 0);
+                featuresList.push(tristimulus[1] ?? 0);
+                featuresList.push(tristimulus[2] ?? 0);
+                featuresList.push(frame.oddEvenRatio || 0);
             }
             return featuresList;
         });
@@ -417,7 +436,7 @@ class GuitarAudioPredictionEngine {
         const normalizedDataset = normalizeDataset([datasetEntry], this.statsData);
 
 
-        // Tensor Input: [1, 5, 16] or [1, 5, 18]
+        // Tensor Input: [1, 5, 17] (performance) or [1, 5, 33] (precision)
         const inputSequence = normalizedDataset[0].normalizedFeatures; // number[][]
 
         const probabilities = this.tf.tidy(() => {

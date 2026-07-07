@@ -1,4 +1,5 @@
 import { calculateStatistics, normalizeDataset } from '@/shared/lib/audio/dataset-preparation';
+import { HARMONIC_PARTIAL_COUNT } from '@/shared/lib/audio/harmonic-features';
 import { parseDatasetFile } from '@/shared/lib/audio/dataset-import';
 import {
     appendAutosaved,
@@ -30,11 +31,12 @@ const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
 const MAX_FRAME_GAP_MS = 150;
 
 // Standard feature set definition (essentia model input):
-// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset + snr
+// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B)
+// + onset + snr + 7 partial dB ratios + 3 tristimulus + odd/even ratio
 export const FEATURE_CONFIG = {
     MFCC_COUNT: 13,
-    EXTRA_FEATURES: 9,
-    TOTAL_FEATURES: 22
+    EXTRA_FEATURES: 20,
+    TOTAL_FEATURES: 33
 };
 
 export interface DatasetEntry {
@@ -252,7 +254,16 @@ class GuitarAudioRecordingEngine {
                 pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
                 inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
                 isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5,
-                snr: features[FEATURE_POSITIONS.SNR]
+                snr: features[FEATURE_POSITIONS.SNR],
+                harmonicsDb: Array.from(features.subarray(
+                    FEATURE_POSITIONS.HARMONIC_DB_START,
+                    FEATURE_POSITIONS.HARMONIC_DB_START + HARMONIC_PARTIAL_COUNT
+                )),
+                tristimulus: Array.from(features.subarray(
+                    FEATURE_POSITIONS.TRISTIMULUS_START,
+                    FEATURE_POSITIONS.TRISTIMULUS_START + 3
+                )),
+                oddEvenRatio: features[FEATURE_POSITIONS.ODD_EVEN]
             };
 
             if (mfcc) {
@@ -281,8 +292,11 @@ class GuitarAudioRecordingEngine {
         // The active backend determines the feature layout. The meyda worklet
         // serializes flux/inharmonicity slots as 0, so those values cannot be
         // used to tell the backends apart.
-        // Essentia: strict 18 features (MFCC + Note + Centroid + Flux + Rolloff + Inharm)
+        // Essentia: full feature set. Order is the model-input contract and
+        // must match prediction-engine's makeSequencePrediction exactly.
         if (this.activeBackendType === 'essentia') {
+            const harmonicsDb = extraFeatures.harmonicsDb ?? [];
+            const tristimulus = extraFeatures.tristimulus ?? [];
             const extendedFeatures = [
                 ...mfcc,
                 note,
@@ -293,7 +307,12 @@ class GuitarAudioRecordingEngine {
                 extraFeatures.rms || 0,
                 extraFeatures.inharmonicityB || 0,
                 extraFeatures.isOnset ? 1 : 0,
-                extraFeatures.snr || 0
+                extraFeatures.snr || 0,
+                ...Array.from({ length: HARMONIC_PARTIAL_COUNT }, (_, i) => harmonicsDb[i] ?? 0),
+                tristimulus[0] ?? 0,
+                tristimulus[1] ?? 0,
+                tristimulus[2] ?? 0,
+                extraFeatures.oddEvenRatio || 0
             ];
 
             if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check

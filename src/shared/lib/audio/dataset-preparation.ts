@@ -73,8 +73,9 @@ export function groupDataByString(data: DatasetEntry[]) {
 }
 
 export const SEQUENCE_LENGTH = 5;
-// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B) + onset + snr
-export const NUM_FEATURES = 22;
+// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B)
+// + onset + snr + 7 partial dB ratios + 3 tristimulus + odd/even ratio
+export const NUM_FEATURES = 33;
 
 function mulberry32(seed: number) {
     return function () {
