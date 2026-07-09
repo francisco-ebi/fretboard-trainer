@@ -1,3 +1,13 @@
+// Allocates a SharedArrayBuffer sized for `capacity` float32 elements plus
+// the two int32 read/write indices RingBuffer stores at the front.
+export function createRingBufferSab(capacity: number): SharedArrayBuffer {
+    return new SharedArrayBuffer(capacity * Float32Array.BYTES_PER_ELEMENT + 8);
+}
+
+// ~1.4s of mono audio at 48kHz: absorbs worker scheduling hiccups between the
+// capture worklet (producer) and the feature worker (consumer).
+export const AUDIO_RING_CAPACITY = 65536;
+
 export class RingBuffer {
     private _elements: Float32Array;
     private _readIndex: Int32Array;

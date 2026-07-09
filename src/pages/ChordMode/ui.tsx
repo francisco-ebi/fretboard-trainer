@@ -48,6 +48,24 @@ interface DegreeColumn {
     chords: GroupedChordItem[];
 }
 
+// Rows of the harmonization table, ordered from "inside the key" outward.
+const CATEGORY_ROWS = [
+    { key: 'diatonic', index: 0, labelKey: 'inKey' },
+    { key: 'secondary', index: 1, labelKey: 'secondary' },
+    { key: 'borrowed', index: 2, labelKey: 'borrowed' },
+    { key: 'mediant', index: 3, labelKey: 'mediant' }
+] as const;
+
+const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
+    'SUS2': 'sus2',
+    'SUS4': 'sus4',
+    'ADD9': 'add9',
+    'DOM7': '7',
+    'MAJ7': 'maj7'
+};
+
+const MODIFIERS: ChordQuality[] = ['SUS2', 'SUS4', 'ADD9', 'DOM7', 'MAJ7'];
+
 import { useInstrument } from '@/app/providers';
 import { useNaming } from '@/app/providers';
 
@@ -84,11 +102,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
             console.error('Failed to copy text: ', err);
         }
     };
-    const [hoveredChordId, setHoveredChordId] = useState<string | null>(null);
-    const [modifiersVisible, setModifiersVisible] = useState(false);
-    const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+    const [isExtendedOpen, setIsExtendedOpen] = useState(false);
 
     // Custom Interactive Voicing State
     const [interactiveRootNotePos, setInteractiveRootNotePos] = useState<{ stringIndex: number, fret: number } | null>(null);
@@ -116,20 +130,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
     // Handlers
-    const handleMouseEnter = (id: string) => {
-        setHoveredChordId(id);
-        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = setTimeout(() => {
-            setModifiersVisible(true);
-        }, 500);
-    };
-
-    const handleMouseLeave = () => {
-        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-        setModifiersVisible(false);
-        setHoveredChordId(null);
-    };
-
     const handleChordClick = (id: string) => {
         if (selectedChordId !== id) {
             setSelectedChordId(id);
@@ -336,18 +336,16 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
         return columns;
     }, [diatonicChords, secondaryDominants, borrowedChords, chromaticMediants]);
 
-    const getActiveChordInfo = (): ChordInfo | null => {
+    const activeChord = React.useMemo((): ChordInfo | null => {
         if (!selectedChordId) return null;
         const [type, indexStr] = selectedChordId.split('-');
         const index = parseInt(indexStr, 10);
-        if (type === 'diatonic') return diatonicChords[index];
-        if (type === 'secondary') return secondaryDominants[index];
-        if (type === 'borrowed') return borrowedChords[index];
-        if (type === 'mediant') return chromaticMediants[index];
+        if (type === 'diatonic') return diatonicChords[index] ?? null;
+        if (type === 'secondary') return secondaryDominants[index] ?? null;
+        if (type === 'borrowed') return borrowedChords[index] ?? null;
+        if (type === 'mediant') return chromaticMediants[index] ?? null;
         return null;
-    };
-
-    const activeChord = getActiveChordInfo();
+    }, [selectedChordId, diatonicChords, secondaryDominants, borrowedChords, chromaticMediants]);
 
     // Notes to display
     const useFlats = React.useMemo(() =>
@@ -452,90 +450,37 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
         }
     };
 
-    const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
-        'SUS2': 'sus2',
-        'SUS4': 'sus4',
-        'ADD9': 'add9',
-        'DOM7': '7',
-        'MAJ7': 'maj7'
-    };
-
-    const modifiers = ['SUS2', 'SUS4', 'ADD9', 'DOM7', 'MAJ7'];
-
-    const renderChordCard = (chord: ChordInfo, id: string) => {
+    const renderChordButton = (chord: ChordInfo, id: string) => {
         const isSelected = selectedChordId === id;
-        const activeModifier = chordModifiers[id];
         const category = id.split('-')[0];
 
         return (
-            <div
+            <button
                 key={id}
-                className={`chord-card-wrapper ${category}`}
-                onMouseEnter={() => handleMouseEnter(id)}
-                onMouseLeave={handleMouseLeave}
+                className={`ht-chord-btn ${isSelected ? 'selected' : ''}`}
+                onClick={() => handleChordClick(id)}
+                title={`${chord.romanNumeral} · ${chord.displayName}`}
             >
-                <button
-                    className={`chord-card ${isSelected && !activeModifier ? 'selected' : ''}`}
-                    onClick={() => handleChordClick(id)}
-                >
-                    <div className="roman">{chord.romanNumeral}</div>
-                    <div className="name">
-                        {isSelected && customVoicingKeys.length > 0 && interactiveRootNotePos && !activeModifier ? (
-                            <span style={{ color: '#D3AF37', textShadow: '0 0 5px rgba(211, 175, 55, 0.4)' }}>
-                                {inferChordName(
-                                    chord.root,
-                                    customVoicingKeys.map(k => {
-                                        const [s, f] = k.split('-').map(Number);
-                                        return getNoteAtPosition(instrument, s, f, tuningOffsets, stringCount, useFlats);
-                                    })
-                                )}
-                            </span>
-                        ) : (
-                            getFullChordName(chord, id)
-                        )}
-                    </div>
-                    {category !== 'diatonic' && (
-                        <div className="category-tag">{t(`harmony.${category}`)}</div>
-                    )}
-                </button>
-
-                {/* Modifiers */}
-                <AnimatePresence>
-                    {hoveredChordId === id && modifiersVisible && (
-                        <motion.div
-                            className="modifiers-container"
-                            initial={{ opacity: 0, y: -10, x: "-50%" }}
-                            animate={{ opacity: 1, y: 0, x: "-50%" }}
-                            exit={{ opacity: 0, y: -10, x: "-50%" }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            {modifiers.map(mod => (
-                                <button
-                                    key={mod}
-                                    className={`modifier-btn ${activeModifier === mod ? 'selected' : ''}`}
-                                    onClick={(e) => handleModifierClick(mod, id, e)}
-                                    title={mod}
-                                >
-                                    <span className="mod-label">{MODIFIER_DISPLAY_NAMES[mod]}</span>
-                                </button>
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
+                {category !== 'diatonic' && (
+                    <span className="ht-chord-roman">{chord.romanNumeral}</span>
+                )}
+                <span className="ht-chord-name">{getFullChordName(chord, id)}</span>
+            </button>
         );
     };
-    const handleScrollColumn = (degreeIndex: number, direction: 'up' | 'down') => {
-        const container = document.getElementById(`degree-carousel-${degreeIndex}`);
-        if (container) {
-            // Scroll by one card height + gap (approx 80px)
-            const cardHeight = 80;
-            container.scrollBy({
-                top: direction === 'up' ? -cardHeight : cardHeight,
-                behavior: 'smooth'
-            });
-        }
-    };
+
+    const visibleCategories = isExtendedOpen ? CATEGORY_ROWS : CATEGORY_ROWS.slice(0, 1);
+
+    // Selected chord summary shown in the detail strip between table and fretboard.
+    const isCustomVoicingActive = selectedChordId !== null && activeChord !== null
+        && customVoicingKeys.length > 0 && interactiveRootNotePos !== null
+        && !chordModifiers[selectedChordId];
+
+    const stripChord = selectedChordId !== null && activeChord
+        ? { name: getFullChordName(activeChord, selectedChordId), roman: activeChord.romanNumeral }
+        : queuedActiveChord
+            ? { name: `${queuedActiveChord.root}${CHORD_SYMBOLS[queuedActiveChord.quality]}`, roman: null }
+            : null;
 
     return (
         <div className={`chord-mode ${isFullScreen ? 'fullscreen' : ''}`}>
@@ -630,61 +575,94 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                 </div>
             )}
 
-            {!isFullScreen && (
+            {!isFullScreen && groupedDegrees.length > 0 && (
                 <div className="chord-lists-container">
-                    <div className="chord-list">
-                        {diatonicChords.map((chord, index) => renderChordCard(chord, `diatonic-${index}`))}
+                    <div className={`harmonization-table ${isExtendedOpen ? 'expanded' : 'collapsed'}`}>
+                        <div className="ht-corner" aria-hidden="true"></div>
+                        {visibleCategories.map((cat) => (
+                            <div
+                                key={cat.key}
+                                className={`ht-row-label ${cat.key}`}
+                                style={{ '--cat': cat.index } as React.CSSProperties}
+                            >
+                                <span className="ht-dot" aria-hidden="true"></span>
+                                <span className="ht-label-text">{t(`harmony.${cat.labelKey}`)}</span>
+                            </div>
+                        ))}
+                        {groupedDegrees.map((col) => (
+                            <React.Fragment key={col.degreeIndex}>
+                                <div
+                                    className="ht-degree-header"
+                                    style={{ '--deg': col.degreeIndex } as React.CSSProperties}
+                                >
+                                    <span className="ht-degree-roman">{col.degreeName}</span>
+                                    <span className="ht-degree-root">{col.rootNote}</span>
+                                </div>
+                                {visibleCategories.map((cat) => {
+                                    const items = col.chords.filter(item => item.category === cat.key);
+                                    return (
+                                        <div
+                                            key={cat.key}
+                                            className={`ht-cell ${cat.key}`}
+                                            style={{ '--deg': col.degreeIndex, '--cat': cat.index } as React.CSSProperties}
+                                        >
+                                            {items.length === 0 ? (
+                                                <span className="ht-empty" aria-hidden="true">·</span>
+                                            ) : (
+                                                items.map(item => renderChordButton(item.chord, item.id))
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </React.Fragment>
+                        ))}
                     </div>
 
-                    <button className="harmonic-palette-toggle" onClick={() => setIsPaletteOpen(!isPaletteOpen)}>
-                        {isPaletteOpen ? t('harmony.hide') : t('harmony.explore')}
+                    <button
+                        className="harmonic-palette-toggle"
+                        onClick={() => setIsExtendedOpen(!isExtendedOpen)}
+                        aria-expanded={isExtendedOpen}
+                    >
+                        {isExtendedOpen ? t('harmony.hide') : t('harmony.explore')}
                     </button>
 
                     <AnimatePresence>
-                        {isPaletteOpen && (
+                        {stripChord && (
                             <motion.div
-                                className="harmonic-palette-drawer"
-                                initial={{ height: 0, opacity: 0, y: -20 }}
-                                animate={{ height: "auto", opacity: 1, y: 0 }}
-                                exit={{ height: 0, opacity: 0, y: -20 }}
-                                transition={{ duration: 0.4, ease: "easeInOut" }}
+                                className="chord-detail-strip"
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2 }}
                             >
-                                <div className="harmony-columns-container">
-                                    {groupedDegrees.map((col) => (
-                                        <div key={col.degreeIndex} className="harmony-degree-column">
-                                            <div className="degree-column-header">
-                                                <span className="degree-roman">{col.degreeName}</span>
-                                                <span className="degree-root">{col.rootNote}</span>
-                                            </div>
-                                            <div className="degree-column-carousel-wrapper">
-                                                <button
-                                                    className="carousel-nav-btn up"
-                                                    onClick={() => handleScrollColumn(col.degreeIndex, 'up')}
-                                                    aria-label="Scroll up"
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="18 15 12 9 6 15"></polyline>
-                                                    </svg>
-                                                </button>
-                                                <div
-                                                    id={`degree-carousel-${col.degreeIndex}`}
-                                                    className="degree-column-carousel"
-                                                >
-                                                    {col.chords.map((item) => renderChordCard(item.chord, item.id))}
-                                                </div>
-                                                <button
-                                                    className="carousel-nav-btn down"
-                                                    onClick={() => handleScrollColumn(col.degreeIndex, 'down')}
-                                                    aria-label="Scroll down"
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="6 9 12 15 18 9"></polyline>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="strip-main">
+                                    {stripChord.roman && <span className="strip-roman">{stripChord.roman}</span>}
+                                    <span className={`strip-name ${isCustomVoicingActive ? 'custom' : ''}`}>
+                                        {isCustomVoicingActive && activeChord
+                                            ? inferChordName(
+                                                activeChord.root,
+                                                customVoicingKeys.map(k => {
+                                                    const [s, f] = k.split('-').map(Number);
+                                                    return getNoteAtPosition(instrument, s, f, tuningOffsets, stringCount, useFlats);
+                                                })
+                                            )
+                                            : stripChord.name}
+                                    </span>
+                                    <span className="strip-notes">{notesToDisplay.join(' · ')}</span>
                                 </div>
+                                {selectedChordId !== null && (
+                                    <div className="strip-modifiers">
+                                        {MODIFIERS.map(mod => (
+                                            <button
+                                                key={mod}
+                                                className={`strip-mod-btn ${chordModifiers[selectedChordId] === mod ? 'selected' : ''}`}
+                                                onClick={(e) => handleModifierClick(mod, selectedChordId, e)}
+                                            >
+                                                {MODIFIER_DISPLAY_NAMES[mod]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>

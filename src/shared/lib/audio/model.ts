@@ -2,7 +2,21 @@ import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
 import { fetchDataset } from './dataset-loader';
-import { prepareStratifiedSplit } from './dataset-preparation';
+import { calculateStatistics, prepareStratifiedSplit, prepareLeaveOneGuitarOutSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
+import { PIPELINE_VERSIONS } from './worklet-types';
+import type { ModelManifestEntry } from './model-manifest';
+
+const MODEL_NAME = 'guitar-essentia-acoustic-ts';
+
+function downloadJSON(data: unknown, filename: string) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 async function getTiF() {
     return await import('@tensorflow/tfjs');
@@ -11,7 +25,7 @@ async function getTiF() {
 export async function createModel(): Promise<LayersModel> {
     const tf = await getTiF();
     const model = tf.sequential();
-    model.add(tf.layers.conv1d({ inputShape: [5, 18], filters: 32, kernelSize: 3, activation: "relu" }));
+    model.add(tf.layers.conv1d({ inputShape: [SEQUENCE_LENGTH, NUM_FEATURES], filters: 32, kernelSize: 3, activation: "relu" }));
     model.add(tf.layers.globalAveragePooling1d());
     // model.add(tf.layers.flatten());
     // model.add(tf.layers.dropout({ rate: 0.3 }));
@@ -26,7 +40,14 @@ export async function createModel(): Promise<LayersModel> {
     return model;
 }
 
-export async function trainModel(data: DatasetEntry[] = []) { // Keep data optional for now
+export interface TrainOptions {
+    // Leave-one-guitar-out experiment (protocol §7): validate on the
+    // sequences carrying this provenance tag, train on everything else.
+    // Measures cross-guitar generalization; the result is not for deployment.
+    holdOutGuitarId?: string;
+}
+
+export async function trainModel(data: DatasetEntry[] = [], options: TrainOptions = {}) { // Keep data optional for now
     console.log('Training model...');
     const tf = await getTiF();
 
@@ -37,7 +58,13 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
     }
 
     const model = await createModel();
-    const { trainX, trainY, valX, valY } = prepareStratifiedSplit(data);
+    const holdOut = options.holdOutGuitarId?.trim();
+    if (holdOut) {
+        console.log(`Leave-one-guitar-out split: validating on "${holdOut}", training on the rest`);
+    }
+    const { trainX, trainY, valX, valY } = holdOut
+        ? prepareLeaveOneGuitarOutSplit(data, holdOut)
+        : prepareStratifiedSplit(data);
     const trainYHot = tf.oneHot(trainY, 6);
     const valYHot = tf.oneHot(valY, 6);
     console.log(`Train Shape: ${trainX.shape} | Validation Shape: ${valX.shape}`);
@@ -64,7 +91,24 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
         ]
     });
     console.log('Training completed');
-    await model.save('downloads://guitar-essentia-acoustic-ts');
+    await model.save(`downloads://${MODEL_NAME}`);
+
+    // Ready-to-paste manifest entry: the stats are recomputed from the same
+    // raw features the dataset was normalized with, so model + stats ship as
+    // one artifact and can never get unpaired.
+    const manifestEntry: ModelManifestEntry = {
+        model: `${MODEL_NAME}.json`,
+        backend: 'essentia',
+        numFeatures: NUM_FEATURES,
+        sequenceLength: SEQUENCE_LENGTH,
+        pipelineVersion: PIPELINE_VERSIONS.essentia,
+        trainedAt: new Date().toISOString(),
+        datasetSize: data.length,
+        ...(holdOut ? { notes: `LOGO experiment: validated on held-out guitar "${holdOut}" — for measurement, not deployment` } : {}),
+        stats: calculateStatistics(data)
+    };
+    downloadJSON(manifestEntry, `manifest-entry-${MODEL_NAME}.json`);
+    console.log('Manifest entry downloaded — paste it under modes.precision in public/model/manifest.json');
 
     return model;
 }

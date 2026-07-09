@@ -1,13 +1,11 @@
 /**
- * A JS FIFO implementation for the AudioWorklet. 3 assumptions for the
- * simpler operation:
- *  1. the push and the pull operation are done by 128 frames. (Web Audio
- *    API's render quantum size in the speficiation)
+ * A JS FIFO implementation for audio sample accumulation. Assumptions:
+ *  1. push and pull sizes may vary per call (indices wrap with modulo
+ *     arithmetic), but callers must not push more than the free capacity —
+ *     overflow silently overwrites the oldest samples.
  *  2. the channel count of input/output cannot be changed dynamically.
- *    The AudioWorkletNode should be configured with the `.channelCount = k`
- *    (where k is the channel count you want) and
- *    `.channelCountMode = explicit`.
- *  3. This is for the single-thread operation. (obviously)
+ *  3. This is for single-thread operation (use the SAB RingBuffer for
+ *     cross-thread transport).
  */
 export class ChromeLabsRingBuffer {
     private _readIndex: number;
@@ -61,10 +59,7 @@ export class ChromeLabsRingBuffer {
             }
         }
 
-        this._writeIndex += sourceLength;
-        if (this._writeIndex >= this._length) {
-            this._writeIndex = 0;
-        }
+        this._writeIndex = (this._writeIndex + sourceLength) % this._length;
 
         // For excessive frames, the buffer will be overwritten.
         this._framesAvailable += sourceLength;
@@ -97,10 +92,7 @@ export class ChromeLabsRingBuffer {
             }
         }
 
-        this._readIndex += destinationLength;
-        if (this._readIndex >= this._length) {
-            this._readIndex = 0;
-        }
+        this._readIndex = (this._readIndex + destinationLength) % this._length;
 
         this._framesAvailable -= destinationLength;
         if (this._framesAvailable < 0) {

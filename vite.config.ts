@@ -19,6 +19,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
+    // Agent worktrees under .claude/ carry duplicate copies of the suite
+    exclude: ['**/node_modules/**', '**/.claude/**', '**/dist/**', '**/dev-dist/**'],
   },
   build: {
     rollupOptions: {
@@ -47,8 +49,12 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Feature-worker bundles (the essentia one embeds ~2.4MB of WASM) are
+        // fetched on demand when the opt-in audio features initialize — keep
+        // them out of the install-time precache.
+        globIgnores: ['**/*feature-worker-*.js'],
         // Workbox default (2MB) acts as a tripwire: if a chunk ever grows past
-        // it again (e.g. a dataset gets bundled), the build warns instead of
+        // it again (e.g. a dataset gets bundled), the build fails instead of
         // silently precaching tens of MB on first visit.
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],

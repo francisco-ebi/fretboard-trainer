@@ -185,6 +185,7 @@ const resources = {
             harmony: {
                 explore: "Explore Extended Harmony",
                 hide: "Hide Extended Harmony",
+                inKey: "In Key",
                 secondary: "Secondary Dominants",
                 borrowed: "Modal Interchange",
                 mediant: "Chromatic Mediants"
@@ -400,6 +401,7 @@ const resources = {
             harmony: {
                 explore: "Explorar Armonía Extendida",
                 hide: "Ocultar Armonía Extendida",
+                inKey: "En Tonalidad",
                 secondary: "Dominantes Secundarios",
                 borrowed: "Intercambio Modal",
                 mediant: "Mediantes Cromáticas"

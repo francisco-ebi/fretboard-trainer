@@ -1,3 +1,12 @@
+# Fretboard Trainer
+
+Interactive fretboard trainer (scales, chords) with an experimental audio feature: a neural network that listens to your guitar and detects **which string** a note was played on.
+
+- **[Audio pipeline & model documentation](docs/audio-pipeline.md)** — how the audio analysis works, the features used, training/inference flows, current limitations, and the improvement roadmap. Start here if you're new to the audio side of the project.
+- **[Dataset recording protocol](docs/recording-protocol.md)** — the step-by-step procedure for recording a training dataset (coverage plan, variation grid, sanity checks).
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

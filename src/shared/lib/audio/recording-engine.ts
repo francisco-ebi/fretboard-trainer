@@ -1,8 +1,21 @@
 import { calculateStatistics, normalizeDataset } from '@/shared/lib/audio/dataset-preparation';
-import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?url';
-import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?url';
-import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
-import { FEATURE_POSITIONS, type AnalysisResult } from '@/shared/lib/audio/worklet-types';
+import { HARMONIC_PARTIAL_COUNT } from '@/shared/lib/audio/harmonic-features';
+import { parseDatasetFile } from '@/shared/lib/audio/dataset-import';
+import {
+    appendAutosaved,
+    maxAutosavedKey,
+    countAutosavedUpTo,
+    readAutosavedUpTo,
+    clearAutosavedUpTo,
+    clearAutosavedAbove
+} from '@/shared/lib/audio/dataset-autosave';
+// ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
+// returns its URL. Plain ?url ships raw TypeScript in production builds,
+// which AudioWorklet.addModule cannot execute.
+import audioCaptureProcessorUrl from '@/shared/lib/audio/audio-capture-processor.ts?worker&url';
+import { type AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
+import { AudioReader, RingBuffer, createRingBufferSab, AUDIO_RING_CAPACITY } from '@/shared/lib/audio/sab-ring-buffer';
+import { FEATURE_POSITIONS } from '@/shared/lib/audio/worklet-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
@@ -17,17 +30,22 @@ const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
 // (hop is ~23ms at 44.1kHz, so this tolerates ~6 gated/dropped frames)
 const MAX_FRAME_GAP_MS = 150;
 
-// Standard feature set definition
+// Standard feature set definition (essentia model input):
+// 13 MFCC + note + centroid + flux + rolloff + inharmonicity + rms + log10(B)
+// + onset + snr + 7 partial dB ratios + 3 tristimulus + odd/even ratio
 export const FEATURE_CONFIG = {
     MFCC_COUNT: 13,
-    EXTRA_FEATURES: 7,
-    TOTAL_FEATURES: 21
+    EXTRA_FEATURES: 20,
+    TOTAL_FEATURES: 33
 };
 
 export interface DatasetEntry {
     midiNote: number;
     stringNum: number;
     noteName: string;
+    // Provenance tag: one stable id per instrument + string set (protocol §7).
+    // Grouping key for leave-one-guitar-out splits and per-family models.
+    guitarId?: string;
     features: number[][];
     normalizedFeatures: number[][];
 }
@@ -42,13 +60,23 @@ class GuitarAudioRecordingEngine {
     dataset: DatasetEntry[];
     isRecording: boolean;
     currentLabel: number;
+    guitarId: string; // provenance tag stamped onto every captured sequence
     onDataCaptured: ((note: number, count: number) => void) | null;
     private frameBuffer: { features: number[] }[] = [];
     private lastFrameNote: number | null = null;
     private lastFrameTime: number = 0;
     private sharedBuffer: SharedArrayBuffer | null = null;
     private audioReader: AudioReader | null = null;
+    private featureWorker: Worker | null = null;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
+    // Highest autosave key that existed before this session started: rows at
+    // or below it belong to a previous, crashed/unfinished session; rows
+    // above it mirror sequences this session already holds in memory.
+    private autosaveBoundary: Promise<number>;
+    // True once the previous session's rows were restored or discarded —
+    // only then may a download wipe the store completely.
+    private autosaveConsumed = false;
+    private autosaveWarned = false;
 
     constructor() {
         this.audioContext = null;
@@ -60,8 +88,21 @@ class GuitarAudioRecordingEngine {
         this.dataset = [];
         this.isRecording = false;
         this.currentLabel = 0; // Current String Index
+        this.guitarId = '';
         this.onDataCaptured = null;
         this.frameBuffer = [];
+        // Resolves in ms, long before the user can init the mic and record
+        this.autosaveBoundary = maxAutosavedKey().catch(() => 0);
+    }
+
+    // Best-effort mirror of new sequences into IndexedDB; autosave failures
+    // must never interrupt a recording session.
+    private mirrorToAutosave(entries: DatasetEntry[]) {
+        appendAutosaved(entries).catch((error) => {
+            if (this.autosaveWarned) return;
+            this.autosaveWarned = true;
+            console.warn('Dataset autosave unavailable — a reload before Download will lose this session:', error);
+        });
     }
 
     async setBackendType(type: 'meyda' | 'essentia') {
@@ -70,20 +111,28 @@ class GuitarAudioRecordingEngine {
             if (this.workletNode) {
                 this.workletNode.disconnect();
             }
+            this.featureWorker?.terminate();
 
-            // Re-initialize SAB for new processor
-            this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
-            const ringBuffer = new RingBuffer(this.sharedBuffer);
-            this.audioReader = new AudioReader(ringBuffer);
+            // Capture worklet → raw-audio SAB → feature worker → feature SAB → engine.
+            // The worklet only copies samples; all DSP runs in the worker so the
+            // realtime audio thread never blocks on feature extraction.
+            const audioSab = createRingBufferSab(AUDIO_RING_CAPACITY);
+            this.sharedBuffer = createRingBufferSab(1024);
+            this.audioReader = new AudioReader(new RingBuffer(this.sharedBuffer));
 
-            this.workletNode = new AudioWorkletNode(
-                this.audioContext,
-                `${type}-recorder-processor`,
-                { numberOfInputs: 1, processorOptions: { sampleRate: this.audioContext.sampleRate, bufferSize: 2048 } }
-            );
+            this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor', { numberOfInputs: 1 });
+            this.workletNode.port.postMessage({ command: 'sab', sab: audioSab });
 
-            // Send SAB to the newly created worklet
-            this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
+            this.featureWorker = type === 'essentia'
+                ? new Worker(new URL('./essentia-feature-worker.ts', import.meta.url), { type: 'module' })
+                : new Worker(new URL('./meyda-feature-worker.ts', import.meta.url), { type: 'module' });
+            this.featureWorker.postMessage({
+                command: 'init',
+                audioSab,
+                featureSab: this.sharedBuffer,
+                sampleRate: this.audioContext.sampleRate,
+                bufferSize: 2048
+            });
 
             this.sourceNode.connect(this.workletNode);
             if (this.gainNode) {
@@ -92,7 +141,6 @@ class GuitarAudioRecordingEngine {
             }
 
             if (this.isRecording) {
-                this.workletNode.port.postMessage({ command: 'setString', stringIndex: this.currentLabel });
                 this.startPolling();
             } else {
                 this.stopPolling();
@@ -145,8 +193,7 @@ class GuitarAudioRecordingEngine {
         }
 
         try {
-            await this.audioContext.audioWorklet.addModule(essentiaProcessorUrl);
-            await this.audioContext.audioWorklet.addModule(meydaProcessorUrl);
+            await this.audioContext.audioWorklet.addModule(audioCaptureProcessorUrl);
         } catch (e) {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
@@ -208,7 +255,20 @@ class GuitarAudioRecordingEngine {
                 spectralRolloff: features[FEATURE_POSITIONS.ROLLOFF],
                 spectralFlux: features[FEATURE_POSITIONS.FLUX],
                 inharmonicity: features[FEATURE_POSITIONS.INHARMONICITY],
-                rms: features[FEATURE_POSITIONS.RMS]
+                rms: features[FEATURE_POSITIONS.RMS],
+                pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
+                inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
+                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5,
+                snr: features[FEATURE_POSITIONS.SNR],
+                harmonicsDb: Array.from(features.subarray(
+                    FEATURE_POSITIONS.HARMONIC_DB_START,
+                    FEATURE_POSITIONS.HARMONIC_DB_START + HARMONIC_PARTIAL_COUNT
+                )),
+                tristimulus: Array.from(features.subarray(
+                    FEATURE_POSITIONS.TRISTIMULUS_START,
+                    FEATURE_POSITIONS.TRISTIMULUS_START + 3
+                )),
+                oddEvenRatio: features[FEATURE_POSITIONS.ODD_EVEN]
             };
 
             if (mfcc) {
@@ -223,9 +283,10 @@ class GuitarAudioRecordingEngine {
         }
 
         // A sequence must be one note from one continuous pluck: discard
-        // buffered frames when the note changes or the signal was interrupted.
+        // buffered frames when the note changes, the signal was interrupted,
+        // or a new pluck onset arrives (sequences align to pluck boundaries).
         const now = performance.now();
-        if (this.lastFrameNote !== note || now - this.lastFrameTime > MAX_FRAME_GAP_MS) {
+        if (this.lastFrameNote !== note || now - this.lastFrameTime > MAX_FRAME_GAP_MS || extraFeatures.isOnset) {
             this.frameBuffer = [];
         }
         this.lastFrameNote = note;
@@ -236,15 +297,27 @@ class GuitarAudioRecordingEngine {
         // The active backend determines the feature layout. The meyda worklet
         // serializes flux/inharmonicity slots as 0, so those values cannot be
         // used to tell the backends apart.
-        // Essentia: strict 18 features (MFCC + Note + Centroid + Flux + Rolloff + Inharm)
+        // Essentia: full feature set. Order is the model-input contract and
+        // must match prediction-engine's makeSequencePrediction exactly.
         if (this.activeBackendType === 'essentia') {
+            const harmonicsDb = extraFeatures.harmonicsDb ?? [];
+            const tristimulus = extraFeatures.tristimulus ?? [];
             const extendedFeatures = [
                 ...mfcc,
                 note,
                 extraFeatures.spectralCentroid || 0,
                 extraFeatures.spectralFlux || 0,
                 extraFeatures.spectralRolloff || 0,
-                extraFeatures.inharmonicity || 0
+                extraFeatures.inharmonicity || 0,
+                extraFeatures.rms || 0,
+                extraFeatures.inharmonicityB || 0,
+                extraFeatures.isOnset ? 1 : 0,
+                extraFeatures.snr || 0,
+                ...Array.from({ length: HARMONIC_PARTIAL_COUNT }, (_, i) => harmonicsDb[i] ?? 0),
+                tristimulus[0] ?? 0,
+                tristimulus[1] ?? 0,
+                tristimulus[2] ?? 0,
+                extraFeatures.oddEvenRatio || 0
             ];
 
             if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check
@@ -274,11 +347,13 @@ class GuitarAudioRecordingEngine {
                 midiNote: note,
                 stringNum: this.currentLabel,
                 noteName: this.getNoteNameFromMidi(note),
+                guitarId: this.guitarId.trim() || undefined,
                 features: this.frameBuffer.map(f => f.features),
                 normalizedFeatures: []
             };
 
             this.dataset.push(sequenceEntry);
+            this.mirrorToAutosave([sequenceEntry]);
             if (this.onDataCaptured) {
                 this.onDataCaptured(note, this.dataset.length);
                 console.log(`Captured sequence for ${this.getNoteNameFromMidi(note)}. Total sequences: ${this.dataset.length}`);
@@ -312,10 +387,6 @@ class GuitarAudioRecordingEngine {
 
         console.log("Recording started for string", stringIndex);
 
-        if (this.workletNode) {
-            this.workletNode.port.postMessage({ command: 'setString', stringIndex });
-        }
-
         this.startPolling();
     }
 
@@ -325,11 +396,69 @@ class GuitarAudioRecordingEngine {
         console.log("Recording stopped");
     }
 
-    downloadDataset() {
+    async downloadDataset() {
         const stats = calculateStatistics(this.dataset);
         const normalizedDataset = normalizeDataset(this.dataset, stats);
         this.saveJSONToFile(stats, `guitar_dataset_stats_${Date.now()}.json`);
         this.saveJSONToFile(normalizedDataset, `guitar_dataset_${Date.now()}.json`);
+
+        // Everything in memory is on disk now, so its autosave mirror can go.
+        // Un-restored rows of a previous session are NOT in this download —
+        // keep them so the restore offer survives.
+        try {
+            const boundary = this.autosaveConsumed ? 0 : await this.autosaveBoundary;
+            await clearAutosavedAbove(boundary);
+            if (boundary > 0) {
+                console.warn('Autosaved sequences from a previous session were kept — they are not part of this download. Restore or discard them in the Recording Studio.');
+            }
+        } catch (error) {
+            console.warn('Could not clear the dataset autosave after download:', error);
+        }
+    }
+
+    // Resumes a multi-day recording (protocol §3.4): appends the entries of a
+    // previously downloaded dataset so new sequences accumulate on top of it
+    // and the final download produces one dataset+stats pair whose stats are
+    // computed over the whole pool. Entries must come from parseDatasetFile().
+    importDataset(entries: DatasetEntry[]): number {
+        this.dataset = this.dataset.concat(entries);
+        this.mirrorToAutosave(entries);
+        return this.dataset.length;
+    }
+
+    // Sequences a previous session left in the autosave (crash/reload before
+    // Download). 0 once they were restored or discarded.
+    async getPendingAutosaveCount(): Promise<number> {
+        if (this.autosaveConsumed) return 0;
+        try {
+            return await countAutosavedUpTo(await this.autosaveBoundary);
+        } catch {
+            return 0;
+        }
+    }
+
+    // Appends the previous session's autosaved rows to the in-memory dataset.
+    // Rows above the boundary are this session's own captures — already in
+    // memory — and must not be read back, or they would duplicate.
+    async restoreAutosave(): Promise<number> {
+        if (this.autosaveConsumed) return this.dataset.length;
+        const boundary = await this.autosaveBoundary;
+        if (boundary > 0) {
+            const rows = await readAutosavedUpTo(boundary);
+            if (rows.length > 0) {
+                // Same contract as a file import: validate shape, strip stale
+                // normalization. Throws (and stays pending) on corrupt rows.
+                this.dataset = this.dataset.concat(parseDatasetFile(rows));
+            }
+        }
+        this.autosaveConsumed = true;
+        return this.dataset.length;
+    }
+
+    async discardAutosave(): Promise<void> {
+        const boundary = await this.autosaveBoundary;
+        await clearAutosavedUpTo(boundary);
+        this.autosaveConsumed = true;
     }
 
     saveJSONToFile(data: any, filename: string) {

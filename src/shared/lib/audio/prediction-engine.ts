@@ -2,11 +2,16 @@
 import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
 import { Subject, Observable, merge, of, timer } from 'rxjs';
 import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
-import { normalizeDataset } from '@/shared/lib/audio/dataset-preparation';
-import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?url';
-import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?url';
-import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
-import { FEATURE_POSITIONS, type AnalysisResult } from '@/shared/lib/audio/worklet-types';
+import { normalizeDataset, NUM_FEATURES, SEQUENCE_LENGTH } from '@/shared/lib/audio/dataset-preparation';
+import { HARMONIC_PARTIAL_COUNT } from '@/shared/lib/audio/harmonic-features';
+// ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
+// returns its URL. Plain ?url ships raw TypeScript in production builds,
+// which AudioWorklet.addModule cannot execute.
+import audioCaptureProcessorUrl from '@/shared/lib/audio/audio-capture-processor.ts?worker&url';
+import type { AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
+import { AudioReader, RingBuffer, createRingBufferSab, AUDIO_RING_CAPACITY } from '@/shared/lib/audio/sab-ring-buffer';
+import { FEATURE_POSITIONS, PIPELINE_VERSIONS } from '@/shared/lib/audio/worklet-types';
+import { validateManifestEntry, validateModelShape, type ModelManifest, type PipelineExpectations } from '@/shared/lib/audio/model-manifest';
 
 
 // Max time between accepted frames before a sequence is considered broken
@@ -30,6 +35,23 @@ export interface PredictionResult {
 
 export type PredictionMode = 'performance' | 'precision';
 
+// The meyda/performance feature vector built in makeSequencePrediction
+const MEYDA_NUM_FEATURES = 17;
+
+// What the *running code* produces per mode; manifest entries must agree.
+const PIPELINE_EXPECTATIONS: Record<PredictionMode, PipelineExpectations> = {
+    performance: {
+        numFeatures: MEYDA_NUM_FEATURES,
+        sequenceLength: SEQUENCE_LENGTH,
+        pipelineVersion: PIPELINE_VERSIONS.meyda
+    },
+    precision: {
+        numFeatures: NUM_FEATURES,
+        sequenceLength: SEQUENCE_LENGTH,
+        pipelineVersion: PIPELINE_VERSIONS.essentia
+    },
+};
+
 class GuitarAudioPredictionEngine {
     audioContext: AudioContext | null;
     workletNode: AudioWorkletNode | null;
@@ -48,6 +70,7 @@ class GuitarAudioPredictionEngine {
     private readonly SEQUENCE_LENGTH = 5;
     private sharedBuffer: SharedArrayBuffer | null = null;
     private audioReader: AudioReader | null = null;
+    private featureWorker: Worker | null = null;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
 
     // RxJS Logic
@@ -121,59 +144,93 @@ class GuitarAudioPredictionEngine {
                 this.tf = await import('@tensorflow/tfjs');
             }
 
-            // Load Model & Stats
-            if (this.currentMode === 'performance') {
-                this.model = await this.tf.loadLayersModel('/fretboard-trainer/model/guitar-meyda-ts-brightness-model.json');
-                this.statsData = await import('@/shared/lib/audio/datasets/meyda-ts-with-brightness/guitar_dataset_stats.json');
-            } else {
-                try {
-                    this.model = await this.tf.loadLayersModel('/fretboard-trainer/model/guitar-essentia-ts.json');
-                    this.statsData = await import('@/shared/lib/audio/datasets/essentia-ts/guitar_dataset_stats.json');
-                } catch (e) {
-                    console.warn("Precision model not found. Predictions might be unavailable.");
-                    this.model = null;
-                }
-            }
+            // Model + normalization stats come as one validated artifact from
+            // the manifest: stats embedded next to the model pointer cannot
+            // get unpaired. Dimension mismatches disable the model (guaranteed
+            // garbage); pipeline-version drift only warns.
+            this.model = null;
+            this.statsData = null;
+            try {
+                const response = await fetch(`${import.meta.env.BASE_URL}model/manifest.json`);
+                if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+                const manifest: ModelManifest = await response.json();
+                const entry = manifest.modes?.[this.currentMode];
 
-            // Switch Worklet Backend
-            if (this.audioContext && this.sourceNode) {
-                const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
-                if (this.workletNode) {
-                    this.workletNode.disconnect();
-                }
-
-                this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
-                const ringBuffer = new RingBuffer(this.sharedBuffer);
-                this.audioReader = new AudioReader(ringBuffer);
-
-                this.workletNode = new AudioWorkletNode(
-                    this.audioContext,
-                    `${backendType}-recorder-processor`,
-                    {
-                        numberOfInputs: 1,
-                        processorOptions: {
-                            sampleRate: this.audioContext.sampleRate,
-                            bufferSize: 2048
+                if (!entry) {
+                    console.warn(
+                        `[PredictionEngine] No manifest entry for mode '${this.currentMode}'. ` +
+                        `Predictions stay disabled until a model is trained and its generated ` +
+                        `entry is added to public/model/manifest.json.`
+                    );
+                } else {
+                    const { errors, warnings } = validateManifestEntry(entry, PIPELINE_EXPECTATIONS[this.currentMode]);
+                    warnings.forEach(w => console.warn(`[PredictionEngine] ${entry.model}: ${w}`));
+                    if (errors.length > 0) {
+                        errors.forEach(e => console.error(`[PredictionEngine] ${entry.model}: ${e}`));
+                    } else {
+                        const model = await this.tf.loadLayersModel(`${import.meta.env.BASE_URL}model/${entry.model}`);
+                        const shapeError = validateModelShape(model.inputs[0].shape, entry);
+                        if (shapeError) {
+                            console.error(`[PredictionEngine] ${entry.model}: ${shapeError}`);
+                            model.dispose();
+                        } else {
+                            this.model = model;
+                            this.statsData = entry.stats;
                         }
                     }
-                );
+                }
+            } catch (e) {
+                console.error('[PredictionEngine] Could not load model manifest:', e);
+            }
 
-                // Send SAB to the context
-                this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
-
-                this.sourceNode.connect(this.workletNode);
+            // Switch analysis backend
+            if (this.audioContext && this.sourceNode) {
+                const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
+                this.setupAudioPipeline(backendType);
 
                 if (this.isRecording) {
                     this.startPolling();
                 } else {
                     this.stopPolling();
                 }
-                console.log(`[PredictionEngine] Switched worklet backend to ${backendType}`);
+                console.log(`[PredictionEngine] Switched analysis backend to ${backendType}`);
             }
 
         } catch (e) {
             console.error("Error loading resources", e);
         }
+    }
+
+    // Capture worklet → raw-audio SAB → feature worker → feature SAB → engine.
+    // The worklet only copies samples; all DSP runs in the worker so the
+    // realtime audio thread never blocks on feature extraction.
+    private setupAudioPipeline(backendType: 'meyda' | 'essentia') {
+        if (!this.audioContext || !this.sourceNode) return;
+
+        if (this.workletNode) {
+            this.workletNode.disconnect();
+        }
+        this.featureWorker?.terminate();
+
+        const audioSab = createRingBufferSab(AUDIO_RING_CAPACITY);
+        this.sharedBuffer = createRingBufferSab(1024);
+        this.audioReader = new AudioReader(new RingBuffer(this.sharedBuffer));
+
+        this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor', { numberOfInputs: 1 });
+        this.workletNode.port.postMessage({ command: 'sab', sab: audioSab });
+
+        this.featureWorker = backendType === 'essentia'
+            ? new Worker(new URL('./essentia-feature-worker.ts', import.meta.url), { type: 'module' })
+            : new Worker(new URL('./meyda-feature-worker.ts', import.meta.url), { type: 'module' });
+        this.featureWorker.postMessage({
+            command: 'init',
+            audioSab,
+            featureSab: this.sharedBuffer,
+            sampleRate: this.audioContext.sampleRate,
+            bufferSize: 2048
+        });
+
+        this.sourceNode.connect(this.workletNode);
     }
 
     async init(deviceId?: string | null) {
@@ -187,8 +244,7 @@ class GuitarAudioPredictionEngine {
             return;
         }
         try {
-            await this.audioContext.audioWorklet.addModule(essentiaProcessorUrl);
-            await this.audioContext.audioWorklet.addModule(meydaProcessorUrl);
+            await this.audioContext.audioWorklet.addModule(audioCaptureProcessorUrl);
         } catch (e) {
             console.error("Error loading Worklet. Verify browser support.", e);
             return;
@@ -222,26 +278,7 @@ class GuitarAudioPredictionEngine {
 
             // Set initial backend
             const backendType = this.currentMode === 'performance' ? 'meyda' : 'essentia';
-
-            this.sharedBuffer = new SharedArrayBuffer(1024 * Float32Array.BYTES_PER_ELEMENT);
-            const ringBuffer = new RingBuffer(this.sharedBuffer);
-            this.audioReader = new AudioReader(ringBuffer);
-
-            this.workletNode = new AudioWorkletNode(
-                this.audioContext,
-                `${backendType}-recorder-processor`,
-                {
-                    numberOfInputs: 1,
-                    processorOptions: {
-                        sampleRate: this.audioContext.sampleRate,
-                        bufferSize: 2048
-                    }
-                }
-            );
-
-            this.workletNode.port.postMessage({ command: 'sab', sab: this.sharedBuffer });
-
-            this.sourceNode.connect(this.workletNode);
+            this.setupAudioPipeline(backendType);
             console.log("GuitarPredictionEngine initialized");
         } catch (err) {
             console.error("Error accessing microphone:", err);
@@ -296,14 +333,28 @@ class GuitarAudioPredictionEngine {
                 spectralRolloff: features[FEATURE_POSITIONS.ROLLOFF],
                 spectralFlux: features[FEATURE_POSITIONS.FLUX],
                 inharmonicity: features[FEATURE_POSITIONS.INHARMONICITY],
-                rms: features[FEATURE_POSITIONS.RMS]
+                rms: features[FEATURE_POSITIONS.RMS],
+                pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE],
+                inharmonicityB: features[FEATURE_POSITIONS.INHARMONICITY_B],
+                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5,
+                snr: features[FEATURE_POSITIONS.SNR],
+                harmonicsDb: Array.from(features.subarray(
+                    FEATURE_POSITIONS.HARMONIC_DB_START,
+                    FEATURE_POSITIONS.HARMONIC_DB_START + HARMONIC_PARTIAL_COUNT
+                )),
+                tristimulus: Array.from(features.subarray(
+                    FEATURE_POSITIONS.TRISTIMULUS_START,
+                    FEATURE_POSITIONS.TRISTIMULUS_START + 3
+                )),
+                oddEvenRatio: features[FEATURE_POSITIONS.ODD_EVEN]
             };
 
             if (mfcc) {
                 // A sequence must be one note from one continuous pluck: discard
-                // buffered frames when the note changes or the signal was interrupted.
+                // buffered frames when the note changes, the signal was
+                // interrupted, or a new pluck onset arrives.
                 const now = performance.now();
-                if (this.lastFrameNote !== midiNote || now - this.lastFrameTime > MAX_FRAME_GAP_MS) {
+                if (this.lastFrameNote !== midiNote || now - this.lastFrameTime > MAX_FRAME_GAP_MS || resultObj.isOnset) {
                     this.frameBuffer = [];
                 }
                 this.lastFrameNote = midiNote;
@@ -349,11 +400,24 @@ class GuitarAudioPredictionEngine {
                 // Must match recording-engine's brightnessPerNote = note / centroid
                 featuresList.push((midiNote / (spectralCentroid || 1)) || 0);
             } else {
-                // Expecting 18
+                // Essentia layout: must match recording-engine's saveData order
                 featuresList.push(frame.spectralCentroid || 0);
                 featuresList.push(frame.spectralFlux || 0);
                 featuresList.push(frame.spectralRolloff || 0);
                 featuresList.push(frame.inharmonicity || 0);
+                featuresList.push(frame.rms || 0);
+                featuresList.push(frame.inharmonicityB || 0);
+                featuresList.push(frame.isOnset ? 1 : 0);
+                featuresList.push(frame.snr || 0);
+                const harmonicsDb = frame.harmonicsDb ?? [];
+                const tristimulus = frame.tristimulus ?? [];
+                for (let i = 0; i < HARMONIC_PARTIAL_COUNT; i++) {
+                    featuresList.push(harmonicsDb[i] ?? 0);
+                }
+                featuresList.push(tristimulus[0] ?? 0);
+                featuresList.push(tristimulus[1] ?? 0);
+                featuresList.push(tristimulus[2] ?? 0);
+                featuresList.push(frame.oddEvenRatio || 0);
             }
             return featuresList;
         });
@@ -372,15 +436,31 @@ class GuitarAudioPredictionEngine {
         const normalizedDataset = normalizeDataset([datasetEntry], this.statsData);
 
 
-        // Tensor Input: [1, 5, 16] or [1, 5, 18]
+        // Tensor Input: [1, 5, 17] (performance) or [1, 5, 33] (precision)
         const inputSequence = normalizedDataset[0].normalizedFeatures; // number[][]
 
-        const predictedClass = this.tf.tidy(() => {
+        const probabilities = this.tf.tidy(() => {
             // Create 3D tensor: [batch_size, time_steps, features] -> [1, 5, F]
             const inputTensor = this.tf.tensor([inputSequence]);
             const prediction = this.model!.predict(inputTensor) as Tensor;
-            return prediction.argMax(1).dataSync()[0];
+            return prediction.dataSync();
         });
+
+        // Feasibility masking: for the detected pitch only strings whose
+        // implied fret lies in [0, 24] are physically possible, so restrict
+        // the argmax to those instead of letting the model pick an
+        // impossible string that would be discarded downstream.
+        let predictedClass = -1;
+        let bestProbability = -Infinity;
+        for (let stringNum = 0; stringNum < 6; stringNum++) {
+            const fret = paramsMidiNote - baseNotes[stringNum];
+            if (fret < 0 || fret > 24) continue;
+            if (probabilities[stringNum] > bestProbability) {
+                bestProbability = probabilities[stringNum];
+                predictedClass = stringNum;
+            }
+        }
+        if (predictedClass < 0) return; // note outside the instrument's range
 
         const predicted = this.calculateLocation(paramsMidiNote, predictedClass);
 
