@@ -45,6 +45,13 @@ export function parseDatasetFile(raw: unknown): DatasetEntry[] {
         const noteName = entry.noteName;
         if (typeof noteName !== 'string' || noteName.length === 0) fail('noteName is missing');
 
+        // Provenance tag is optional (older files are untagged) but when
+        // present it must be usable as a grouping key
+        const guitarId = entry.guitarId;
+        if (guitarId !== undefined && (typeof guitarId !== 'string' || guitarId.trim().length === 0)) {
+            fail('guitarId must be a non-empty string when present');
+        }
+
         const features = entry.features;
         if (!Array.isArray(features) || features.length !== SEQUENCE_LENGTH) {
             fail(`features must be ${SEQUENCE_LENGTH} frames, got ${Array.isArray(features) ? features.length : typeof features}`);
@@ -66,6 +73,7 @@ export function parseDatasetFile(raw: unknown): DatasetEntry[] {
             midiNote,
             stringNum,
             noteName,
+            ...(guitarId !== undefined ? { guitarId } : {}),
             features: features as number[][],
             normalizedFeatures: [] // stale per-session normalization discarded
         };

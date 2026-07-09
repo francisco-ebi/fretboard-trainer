@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { prepareStratifiedSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
+import { prepareStratifiedSplit, prepareLeaveOneGuitarOutSplit, UNTAGGED_GUITAR, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
 import type { DatasetEntry } from './recording-engine';
 
 const NUM_CLASSES = 6;
 
 // Each frame encodes its entry id in feature 0 so tests can verify that a
 // sample never mixes frames from two different entries.
-function makeEntry(entryId: number, stringNum: number): DatasetEntry {
+function makeEntry(entryId: number, stringNum: number, guitarId?: string): DatasetEntry {
     const frames = Array.from({ length: SEQUENCE_LENGTH }, (_, frameIdx) => {
         const frame = new Array(NUM_FEATURES).fill(0);
         frame[0] = entryId;
@@ -17,6 +17,7 @@ function makeEntry(entryId: number, stringNum: number): DatasetEntry {
         midiNote: 48,
         stringNum,
         noteName: 'C3',
+        ...(guitarId !== undefined ? { guitarId } : {}),
         features: frames,
         normalizedFeatures: frames
     };
@@ -103,5 +104,74 @@ describe('prepareStratifiedSplit', () => {
 
         const { trainX, valX } = prepareStratifiedSplit(entries);
         expect(trainX.shape[0] + valX.shape[0]).toBe(entries.length - 2);
+    });
+});
+
+describe('prepareLeaveOneGuitarOutSplit', () => {
+    // Three guitars, all strings covered, unequal sizes
+    function makeMultiGuitarDataset(): { entries: DatasetEntry[]; idsByGuitar: Record<string, Set<number>> } {
+        const entries: DatasetEntry[] = [];
+        const idsByGuitar: Record<string, Set<number>> = {};
+        const plan: Array<[string | undefined, number]> = [['strat', 8], ['tele', 5], [undefined, 4]];
+        for (const [guitar, perString] of plan) {
+            const key = guitar ?? UNTAGGED_GUITAR;
+            idsByGuitar[key] = new Set();
+            for (let stringNum = 0; stringNum < NUM_CLASSES; stringNum++) {
+                for (let i = 0; i < perString; i++) {
+                    idsByGuitar[key].add(entries.length);
+                    entries.push(makeEntry(entries.length, stringNum, guitar));
+                }
+            }
+        }
+        return { entries, idsByGuitar };
+    }
+
+    const sampleIds = (x: ReturnType<typeof prepareLeaveOneGuitarOutSplit>['trainX']) =>
+        new Set((x.arraySync() as number[][][]).map(s => s[0][0]));
+
+    it('validates on exactly the held-out guitar and trains on the rest', () => {
+        const { entries, idsByGuitar } = makeMultiGuitarDataset();
+        const { trainX, valX, valY } = prepareLeaveOneGuitarOutSplit(entries, 'tele');
+
+        expect(sampleIds(valX)).toEqual(idsByGuitar['tele']);
+        const trainIds = sampleIds(trainX);
+        expect(trainIds.size).toBe(idsByGuitar['strat'].size + idsByGuitar[UNTAGGED_GUITAR].size);
+        for (const id of idsByGuitar['tele']) expect(trainIds.has(id)).toBe(false);
+
+        // The held-out guitar covers every class, so validation does too
+        const valLabels = new Set(valY.arraySync() as number[]);
+        expect(valLabels.size).toBe(NUM_CLASSES);
+    });
+
+    it('groups entries without a tag under the untagged key', () => {
+        const { entries, idsByGuitar } = makeMultiGuitarDataset();
+        const { valX } = prepareLeaveOneGuitarOutSplit(entries, UNTAGGED_GUITAR);
+        expect(sampleIds(valX)).toEqual(idsByGuitar[UNTAGGED_GUITAR]);
+    });
+
+    it('rejects an unknown tag and lists the available guitars', () => {
+        const { entries } = makeMultiGuitarDataset();
+        expect(() => prepareLeaveOneGuitarOutSplit(entries, 'lespaul'))
+            .toThrow(/no sequences tagged "lespaul".*"strat" \(48\).*"tele" \(30\)/s);
+    });
+
+    it('rejects a hold-out that leaves nothing to train on', () => {
+        const entries = Array.from({ length: 10 }, (_, i) => makeEntry(i, i % NUM_CLASSES, 'strat'));
+        expect(() => prepareLeaveOneGuitarOutSplit(entries, 'strat')).toThrow(/nothing left to train on/);
+    });
+
+    it('skips malformed entries like the stratified split does', () => {
+        const { entries } = makeMultiGuitarDataset();
+        entries[0] = { ...entries[0], normalizedFeatures: [] };
+        const { trainX, valX } = prepareLeaveOneGuitarOutSplit(entries, 'tele');
+        expect(trainX.shape[0] + valX.shape[0]).toBe(entries.length - 1);
+    });
+
+    it('is deterministic for the same seed', () => {
+        const { entries } = makeMultiGuitarDataset();
+        const a = prepareLeaveOneGuitarOutSplit(entries, 'strat', 7);
+        const b = prepareLeaveOneGuitarOutSplit(entries, 'strat', 7);
+        expect(a.trainX.arraySync()).toEqual(b.trainX.arraySync());
+        expect(a.trainY.arraySync()).toEqual(b.trainY.arraySync());
     });
 });

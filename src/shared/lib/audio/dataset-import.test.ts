@@ -29,6 +29,17 @@ describe('parseDatasetFile', () => {
         expect(parseDatasetFile([raw])).toHaveLength(1);
     });
 
+    it('preserves the guitarId provenance tag and leaves untagged entries untagged', () => {
+        const entries = parseDatasetFile([validEntry({ guitarId: 'strat-10s' }), validEntry()]);
+        expect(entries[0].guitarId).toBe('strat-10s');
+        expect('guitarId' in entries[1]).toBe(false);
+    });
+
+    it('rejects a blank guitarId (would silently merge groups)', () => {
+        expect(() => parseDatasetFile([validEntry({ guitarId: '  ' })])).toThrow(/guitarId/);
+        expect(() => parseDatasetFile([validEntry({ guitarId: 42 })])).toThrow(/guitarId/);
+    });
+
     it('recognizes a stats file and names the right file of the pair', () => {
         expect(() => parseDatasetFile({ mean: [0, 1], std: [1, 1] }))
             .toThrow(/stats file/);

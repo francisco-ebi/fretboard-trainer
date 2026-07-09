@@ -43,6 +43,9 @@ export interface DatasetEntry {
     midiNote: number;
     stringNum: number;
     noteName: string;
+    // Provenance tag: one stable id per instrument + string set (protocol §7).
+    // Grouping key for leave-one-guitar-out splits and per-family models.
+    guitarId?: string;
     features: number[][];
     normalizedFeatures: number[][];
 }
@@ -57,6 +60,7 @@ class GuitarAudioRecordingEngine {
     dataset: DatasetEntry[];
     isRecording: boolean;
     currentLabel: number;
+    guitarId: string; // provenance tag stamped onto every captured sequence
     onDataCaptured: ((note: number, count: number) => void) | null;
     private frameBuffer: { features: number[] }[] = [];
     private lastFrameNote: number | null = null;
@@ -84,6 +88,7 @@ class GuitarAudioRecordingEngine {
         this.dataset = [];
         this.isRecording = false;
         this.currentLabel = 0; // Current String Index
+        this.guitarId = '';
         this.onDataCaptured = null;
         this.frameBuffer = [];
         // Resolves in ms, long before the user can init the mic and record
@@ -342,6 +347,7 @@ class GuitarAudioRecordingEngine {
                 midiNote: note,
                 stringNum: this.currentLabel,
                 noteName: this.getNoteNameFromMidi(note),
+                guitarId: this.guitarId.trim() || undefined,
                 features: this.frameBuffer.map(f => f.features),
                 normalizedFeatures: []
             };

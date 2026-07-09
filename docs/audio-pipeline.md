@@ -257,10 +257,11 @@ A sequence must represent *one note from one continuous pluck*. Both engines flu
 
 ```ts
 { midiNote, stringNum /* 0=high E … 5=low E */, noteName,
+  guitarId? /* provenance tag: instrument + string set */,
   features: number[5][33], normalizedFeatures: number[5][33] }
 ```
 
-Recording flow (`RecordingControls`, opened with the "record" cheat code): pick a string index, play notes along it; frames are filtered to that string's plausible MIDI range; every 5 buffered frames become one labeled entry. `downloadDataset()` z-score-normalizes with dataset-wide per-feature mean/std and downloads **both** the dataset and the stats file — the stats are part of the model contract (see §7).
+Recording flow (`RecordingControls`, opened with the "record" cheat code): set the `Guitar tag` (stamped onto every sequence as `guitarId` — the grouping key for cross-guitar experiments and per-family models, protocol §7), pick a string index, play notes along it; frames are filtered to that string's plausible MIDI range; every 5 buffered frames become one labeled entry. `downloadDataset()` z-score-normalizes with dataset-wide per-feature mean/std and downloads **both** the dataset and the stats file — the stats are part of the model contract (see §7).
 
 Datasets live in `public/datasets/` and are **fetched at runtime** (`dataset-loader.ts`), not imported — bundling them previously added ~16 MB gz to the build and made the PWA precache 46 MB.
 
@@ -269,6 +270,7 @@ Datasets live in `public/datasets/` and are **fetched at runtime** (`dataset-loa
 - One training sample per recorded sequence — no sliding windows across entries (windows that straddled two recordings were a major historical bug, see §8).
 - Entries are grouped per class, shuffled with a **seeded PRNG** (mulberry32, default seed 42 — reproducible), and 20% of *each class* goes to validation. This matters because the capture flow records string-by-string: a naive tail split (TF.js `validationSplit`) would have validated on a single class.
 - Shape check: entries whose `normalizedFeatures` aren't `[5][33]` are skipped, and an explicit error is thrown if nothing survives (the tell-tale sign of a dataset recorded with an older feature pipeline).
+- **Leave-one-guitar-out alternative** (`prepareLeaveOneGuitarOutSplit`): validates on all sequences carrying one `guitarId` and trains on the rest — the only split that measures generalization to an *unseen* instrument (the stratified split validates on guitars the model has seen). Reached via `trainModel(data, { holdOutGuitarId })` or the `Train` button's prompt; details and caveats in protocol §7.
 
 ---
 
@@ -339,7 +341,7 @@ These were made in one review-and-fix pass; the "before" states are documented b
 
 **Data / model**
 
-- **Single-guitar, single-style dataset**, recorded string-by-string in one session. The model likely learns session artifacts; generalization to other guitars/pickups is unproven.
+- **Single-guitar, single-style dataset**, recorded string-by-string in one session. The model likely learns session artifacts; generalization to other guitars/pickups is unproven. The tooling to measure it now exists — `guitarId` provenance tags plus the leave-one-guitar-out split (protocol §7) — but the experiment hasn't been run.
 - **~116 ms sequences** may miss slower decay differences; sequence start is now onset-aligned, but only the first sequence of a pluck contains the attack.
 - **MFCC resolution at low frequencies** is poor exactly where partials 1–4 of low notes live; the fitted B and the harmonic-structure features compensate.
 - **Octave errors**: YIN octave slips within the per-string range filter still mislabel `midiNote`; confidence gating reduces but does not eliminate them.

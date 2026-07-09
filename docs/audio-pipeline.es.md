@@ -1,6 +1,6 @@
 # Pipeline de audio y modelo de clasificación de cuerdas
 
-> *Traducción de [audio-pipeline.md](audio-pipeline.md), sincronizada a 2026-07-07. Ante cualquier discrepancia, el original en inglés es la referencia.*
+> *Traducción de [audio-pipeline.md](audio-pipeline.md), sincronizada a 2026-07-08. Ante cualquier discrepancia, el original en inglés es la referencia.*
 
 Este documento explica cómo Fretboard Trainer escucha una guitarra y predice **en qué cuerda se tocó una nota**. Cubre la ruta completa de la señal, cada feature que alimenta a la red neuronal, los flujos de entrenamiento e inferencia, las limitaciones conocidas y la hoja de ruta de mejoras.
 
@@ -261,10 +261,11 @@ Una secuencia debe representar *una nota de una pulsación continua*. Ambos engi
 
 ```ts
 { midiNote, stringNum /* 0=E agudo … 5=E grave */, noteName,
+  guitarId? /* tag de procedencia: instrumento + juego de cuerdas */,
   features: number[5][33], normalizedFeatures: number[5][33] }
 ```
 
-Flujo de grabación (`RecordingControls`, se abre con el código secreto "record"): elige un índice de cuerda y toca notas a lo largo de ella; los frames se filtran al rango MIDI plausible de esa cuerda; cada 5 frames en el búfer se convierten en una entrada etiquetada. `downloadDataset()` normaliza en z-score con la media/desviación por feature de todo el dataset y descarga **ambos** archivos, el dataset y el de estadísticas — las estadísticas son parte del contrato del modelo (ver §7).
+Flujo de grabación (`RecordingControls`, se abre con el código secreto "record"): configura el `Guitar tag` (se estampa en cada secuencia como `guitarId` — la clave de agrupación para experimentos entre guitarras y modelos por familia, §7 del protocolo), elige un índice de cuerda y toca notas a lo largo de ella; los frames se filtran al rango MIDI plausible de esa cuerda; cada 5 frames en el búfer se convierten en una entrada etiquetada. `downloadDataset()` normaliza en z-score con la media/desviación por feature de todo el dataset y descarga **ambos** archivos, el dataset y el de estadísticas — las estadísticas son parte del contrato del modelo (ver §7).
 
 Los datasets viven en `public/datasets/` y se **descargan en tiempo de ejecución** (`dataset-loader.ts`), no se importan — empaquetarlos añadía antes ~16 MB gz al build y hacía que la precaché de la PWA fuese de 46 MB.
 
@@ -273,6 +274,7 @@ Los datasets viven en `public/datasets/` y se **descargan en tiempo de ejecució
 - Una muestra de entrenamiento por secuencia grabada — sin ventanas deslizantes entre entradas (las ventanas que cruzaban dos grabaciones fueron un bug histórico importante, ver §8).
 - Las entradas se agrupan por clase, se barajan con un **PRNG con semilla** (mulberry32, semilla 42 por defecto — reproducible), y el 20% de *cada clase* va a validación. Esto importa porque el flujo de captura graba cuerda a cuerda: una división ingenua por cola (el `validationSplit` de TF.js) habría validado sobre una sola clase.
 - Comprobación de forma: las entradas cuyas `normalizedFeatures` no son `[5][33]` se omiten, y se lanza un error explícito si no sobrevive ninguna (la señal inequívoca de un dataset grabado con un pipeline de features antiguo).
+- **Alternativa leave-one-guitar-out** (`prepareLeaveOneGuitarOutSplit`): valida sobre todas las secuencias que llevan un `guitarId` y entrena con el resto — la única división que mide la generalización a un instrumento *no visto* (la estratificada valida sobre guitarras que el modelo ya vio). Se invoca con `trainModel(data, { holdOutGuitarId })` o desde el prompt del botón `Train`; detalles y salvedades en §7 del protocolo.
 
 ---
 
@@ -343,7 +345,7 @@ Se hicieron en una sola pasada de revisión y corrección; los estados "antes" e
 
 **Datos / modelo**
 
-- **Dataset de una sola guitarra y un solo estilo**, grabado cuerda a cuerda en una sesión. Es probable que el modelo aprenda artefactos de sesión; la generalización a otras guitarras/pastillas no está demostrada.
+- **Dataset de una sola guitarra y un solo estilo**, grabado cuerda a cuerda en una sesión. Es probable que el modelo aprenda artefactos de sesión; la generalización a otras guitarras/pastillas no está demostrada. La herramienta para medirla ya existe — los tags de procedencia `guitarId` más la división leave-one-guitar-out (§7 del protocolo) — pero el experimento no se ha ejecutado.
 - **Secuencias de ~116 ms** pueden perder diferencias de decaimiento más lentas; el inicio de secuencia ya se alinea al onset, pero solo la primera secuencia de una pulsación contiene el ataque.
 - **La resolución de los MFCC en bajas frecuencias** es pobre exactamente donde viven los parciales 1–4 de las notas graves; el B ajustado y las features de estructura armónica lo compensan.
 - **Errores de octava**: los saltos de octava de YIN dentro del filtro de rango por cuerda siguen etiquetando mal `midiNote`; la puerta de confianza los reduce pero no los elimina.

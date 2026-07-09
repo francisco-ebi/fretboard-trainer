@@ -1,6 +1,6 @@
 # Protocolo de grabación del dataset
 
-> *Traducción de [recording-protocol.md](recording-protocol.md), sincronizada a 2026-07-07. Ante cualquier discrepancia, el original en inglés es la referencia.*
+> *Traducción de [recording-protocol.md](recording-protocol.md), sincronizada a 2026-07-08. Ante cualquier discrepancia, el original en inglés es la referencia.*
 
 Un protocolo paso a paso para grabar un dataset de entrenamiento para el modelo de clasificación de cuerdas. Síguelo al pie de la letra y obtendrás un dataset equilibrado, con etiquetas limpias y concentrado donde el modelo de verdad se gana el sueldo. Sáltate pasos y obtendrás un modelo que memoriza tu sesión de grabación en lugar de tus cuerdas.
 
@@ -27,6 +27,7 @@ Hazlo una vez por sesión, antes de grabar nada:
 - [ ] **Desactiva cualquier AGC/"mejora" del dispositivo** (algunas interfaces USB y la mayoría de micrófonos de auriculares lo tienen). La app ya pide audio crudo al navegador, pero el AGC de hardware está por debajo de eso.
 - [ ] **Sala silenciosa.** La puerta sigue el suelo de ruido, así que un zumbido constante se tolera — pero una TV, conversaciones o golpecitos abrirán la puerta y, si llevan pitch, pueden colar frames. Teléfono en silencio.
 - [ ] **Anota los metadatos de la sesión en algún sitio** (un archivo de texto junto al dataset): fecha, guitarra, marca/calibre/antigüedad de las cuerdas, tipo de púa, interfaz, sample rate si lo conoces. Tu yo del futuro lo necesitará.
+- [ ] **Configura el campo `Guitar tag`** del Recording Studio con el id estable de este instrumento (p. ej. `strat-daddario-10s`) — cada secuencia capturada lo incrusta como `guitarId` (§7). Cuerdas nuevas = tag nuevo.
 
 ---
 
@@ -91,7 +92,7 @@ Haz **dos medias pasadas en lugar de una gran toma por cuerda**, en sentadas dis
 - Pasada A: cuerdas 5 → 0, trastes 0–9, rejilla de variación completa.
 - Pasada B (más tarde, idealmente al día siguiente): cuerdas 0 → 5, trastes 10–18, rejilla de variación completa.
 
-Esto pone cada cuerda en cada sesión, de modo que los artefactos de sesión (deriva del micrófono, humedad, tu mano calentándose) se decorrelacionan de la etiqueta de clase. Si grabas con más de una guitarra, mantén los datasets en archivos separados con metadatos — no los mezcles en silencio.
+Esto pone cada cuerda en cada sesión, de modo que los artefactos de sesión (deriva del micrófono, humedad, tu mano calentándose) se decorrelacionan de la etiqueta de clase. Si grabas con más de una guitarra, dale a cada una su propio `Guitar tag` y mantén archivos por guitarra con metadatos — mezclar se convierte entonces en un acto deliberado y etiquetado (§7), nunca en un accidente.
 
 **Las pasadas en varios días no requieren fusión manual.** Al comienzo de la sesión posterior, pulsa `Import dataset` en el Recording Studio y selecciona el `guitar_dataset_<timestamp>.json` de la pasada anterior. Las secuencias nuevas se añaden a él en memoria, y el `Download` final produce un único par dataset+stats coherente con las estadísticas calculadas sobre el conjunto completo. **No** concatenes a mano dos archivos descargados en su lugar: las `normalizedFeatures` de cada archivo se normalizaron en z-score con las estadísticas de su propia sesión, así que una concatenación ingenua incrusta un desplazamiento de features por sesión — precisamente la huella de sesión que este protocolo existe para eliminar. (La importación descarta esos valores obsoletos y lo renormaliza todo al descargar.)
 
@@ -103,15 +104,16 @@ Esto pone cada cuerda en cada sesión, de modo que los artefactos de sesión (de
 
 1. `npm run dev` → abre la app → teclea `record` → se abre el Recording Studio.
 2. Selecciona tu dispositivo de entrada, pulsa `Init`, concede acceso al micrófono.
-3. **¿Pasada B (continuando un día anterior)?** Pulsa `Import dataset` y selecciona el `guitar_dataset_*.json` de la pasada anterior — el contador de secuencias debería saltar al total anterior. La grabación continúa desde ahí. Si en su lugar aparece un aviso *"Autosaved session found"*, la sesión anterior nunca se descargó: haz `Restore` (sin importar nada) o `Discard` antes de grabar.
-4. Afina. Verifica con unas pulsaciones de prueba que la consola muestra los nombres de nota correctos.
-5. Para cada cuerda del plan de la pasada:
+3. Configura el **`Guitar tag`** con el id de este instrumento (se recuerda entre sesiones — verifica que coincide con la guitarra que tienes en las manos, sobre todo si rotas instrumentos).
+4. **¿Pasada B (continuando un día anterior)?** Pulsa `Import dataset` y selecciona el `guitar_dataset_*.json` de la pasada anterior — el contador de secuencias debería saltar al total anterior. La grabación continúa desde ahí. Si en su lugar aparece un aviso *"Autosaved session found"*, la sesión anterior nunca se descargó: haz `Restore` (sin importar nada) o `Discard` antes de grabar.
+5. Afina. Verifica con unas pulsaciones de prueba que la consola muestra los nombres de nota correctos.
+6. Para cada cuerda del plan de la pasada:
    1. Pulsa `Start <índice de cuerda>` (**comprueba tres veces el índice**: 0 = E agudo … 5 = E grave — un índice equivocado aquí es un lote mal etiquetado que ningún filtro atrapará del todo).
    2. 2 s de silencio.
    3. Recorre los trastes planificados de grave a agudo ejecutando la rejilla de variación; apaga la cuerda + pausa entre pulsaciones.
    4. Pulsa `Stop`. Estira, revisa la afinación.
-6. Tras la última cuerda: **Descarga dataset + stats** (un solo botón produce ambos archivos — son una pareja; el archivo de estadísticas es el contrato de normalización del modelo que entrenarás).
-7. Nómbralos de forma consistente, p. ej. `guitar_dataset_<guitarra>_<AAAAMMDD>.json` + sus stats, deja el dataset en `public/datasets/<nombre>/` y escribe el archivo de metadatos junto a ellos.
+7. Tras la última cuerda: **Descarga dataset + stats** (un solo botón produce ambos archivos — son una pareja; el archivo de estadísticas es el contrato de normalización del modelo que entrenarás).
+8. Nómbralos de forma consistente, p. ej. `guitar_dataset_<guitarra>_<AAAAMMDD>.json` + sus stats, deja el dataset en `public/datasets/<nombre>/` y escribe el archivo de metadatos junto a ellos.
 
 ---
 
@@ -154,3 +156,17 @@ Después entrena (`Train Model` en el Recording Studio) y observa implícitament
 - No grabes cerca de un ventilador/aire acondicionado que se enciende y apaga — un suelo de ruido cambiante marea la puerta y la feature de SNR.
 - No reutilices un dataset después de cambiar el calibre o la marca de las cuerdas. B *es* la cuerda; cuerdas nuevas = dataset nuevo (eso es la feature funcionando, no un bug).
 - No rellenes celdas finas con copias ni ruido sintético — las secuencias duplicadas se fugan a través de la división train/val e inflan la precisión de validación, que es exactamente como este proyecto se dejó engañar una vez.
+
+---
+
+## 7. Datasets multi-guitarra (generalización entre guitarras)
+
+Grabar varias guitarras habilita dos cosas: una medición honesta de cómo generaliza el modelo a instrumentos que nunca vio, y **modelos por familia** (p. ej. uno para acústicas y otro para eléctricas) entrenados filtrando por el tag. La limitación de una sola guitarra está documentada en [audio-pipeline.es.md](audio-pipeline.es.md) §9 — esta sección es la herramienta para atacarla.
+
+- **Etiqueta cada sesión.** Configura el campo `Guitar tag` antes de grabar; cada secuencia capturada lo incrusta como `guitarId`. Usa un id estable por instrumento **y juego de cuerdas** (`strat-daddario-10s`) — un cambio de cuerdas implica un tag nuevo, porque B *es* la cuerda (§6). Los tags sobreviven a las fusiones con `Import dataset`, a las restauraciones del autoguardado y a las descargas.
+- **Protocolo completo por guitarra.** Cada instrumento recibe ambas pasadas y la rejilla de variación completa (§3). El balance también importa entre guitarras: mantén los conteos máx/mín de secuencias por cuerda ≤ 1.5× *entre* guitarras, o el modelo agrupado se especializará en silencio en la mejor representada.
+- **Empieza con instrumentos comparables.** Acústicas de cuerdas de acero por la misma cadena de señal son un primer experimento ganable. Una eléctrica de pastillas magnéticas añade un filtro de peine fijo más una respuesta de transductor distinta — trata las eléctricas como su propia familia en lugar de esperar transferencia acústica↔eléctrica. Las cuerdas de nylon dejan B cerca del suelo de la feature y probablemente rompen la feature estrella por completo.
+- **Evalúa con la división leave-one-guitar-out, nunca con la estratificada.** La división estratificada valida sobre guitarras que el modelo ya vio, así que la `val_acc` agrupada no dice nada sobre un instrumento nuevo. Pulsa `Train` e introduce el tag a excluir (déjalo vacío para la división estratificada normal), o llama a `trainModel(data, { holdOutGuitarId })`. Rota la guitarra excluida entre ejecuciones. Los modelos entrenados en modo LOGO llevan un marcador en `notes` en su entrada del manifiesto: son para medir, no para desplegar.
+- **Salvedad conocida**: las `normalizedFeatures` se normalizan en z-score al descargar con las estadísticas de todo el conjunto, así que una pizca de la guitarra excluida se filtra en la normalización. Es de segundo orden frente al efecto que se mide (la multimodalidad de B por guitarra); un modo con estadísticas solo de entrenamiento es trabajo futuro si los números se acercan.
+- **Especialistas por familia**: fusiona los archivos de una familia con `Import dataset`, entrena normalmente (división estratificada) y despliega el resultado como su propia entrada del manifiesto con sus propias estadísticas. Nota: el motor de predicción carga actualmente las claves de modo fijas `performance`/`precision` — exponer la selección de modelos por familia en la UI es un paso posterior.
+- **Ajuste de expectativas**: un modelo multi-guitarra agrupado normalmente puntuará algo *más bajo* en cada guitarra individual que un especialista de una sola guitarra (las distribuciones de clase se vuelven multimodales) — ese es el precio de la robustez, no una regresión. El número que importa es el de la guitarra excluida.

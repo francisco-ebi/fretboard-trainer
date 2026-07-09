@@ -2,6 +2,9 @@ import { audioRecordingEngine, type DatasetEntry } from '@/shared/lib/audio/reco
 import { useEffect, useRef, useState } from 'react';
 import DeviceSelector from '@/features/DeviceSelector';
 
+// Remembered across sessions so multi-day passes keep a consistent provenance tag
+const GUITAR_TAG_STORAGE_KEY = 'recording-guitar-tag';
+
 const RecordingControls = () => {
     const [activeRecording, setActiveRecording] = useState<number | null>(null);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -10,7 +13,14 @@ const RecordingControls = () => {
     const [importStatus, setImportStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
     // Sequences a previous session autosaved but never downloaded
     const [pendingAutosave, setPendingAutosave] = useState(0);
+    // Provenance tag stamped onto every captured sequence (protocol §7)
+    const [guitarTag, setGuitarTag] = useState(() => localStorage.getItem(GUITAR_TAG_STORAGE_KEY) ?? '');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        audioRecordingEngine.guitarId = guitarTag;
+        localStorage.setItem(GUITAR_TAG_STORAGE_KEY, guitarTag);
+    }, [guitarTag]);
 
     useEffect(() => {
         audioRecordingEngine.onDataCaptured = (nota, total) => {
@@ -60,7 +70,11 @@ const RecordingControls = () => {
     };
     const handleTrainModel = async () => {
         const { trainModel } = await import('@/shared/lib/audio/model');
-        trainModel();
+        // Empty → normal stratified split; a tag → leave-one-guitar-out
+        // generalization experiment on that guitar (protocol §7)
+        const holdOut = window.prompt('Hold out a guitar tag for a LOGO experiment?\n(leave empty for the normal stratified split)', '');
+        if (holdOut === null) return; // cancelled
+        trainModel([], holdOut.trim() ? { holdOutGuitarId: holdOut.trim() } : {});
     };
     const handleStats = async () => {
         const { calculateStatistics } = await import('@/shared/lib/audio/dataset-preparation');
@@ -119,6 +133,19 @@ const RecordingControls = () => {
                 </div>
             )}
             <DeviceSelector onDeviceSelected={setSelectedDeviceId} />
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label htmlFor="guitar-tag-input" style={{ fontSize: '0.85rem' }}>Guitar tag:</label>
+                <input
+                    id="guitar-tag-input"
+                    type="text"
+                    value={guitarTag}
+                    onChange={(e) => setGuitarTag(e.target.value)}
+                    disabled={activeRecording !== null}
+                    placeholder="e.g. strat-daddario-10s"
+                    title="Provenance tag stamped onto every captured sequence — one stable id per instrument + string set. Enables leave-one-guitar-out evaluation and per-family models."
+                    style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: 'inherit' }}
+                />
+            </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button className="mode-btn" onClick={() => audioRecordingEngine.init(selectedDeviceId)}>Init</button>
             </div>

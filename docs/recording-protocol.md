@@ -27,6 +27,7 @@ Do this once per session, before recording anything:
 - [ ] **Disable any device-side AGC/"enhancement"** (some USB interfaces and most headset mics have it). The app already requests raw audio from the browser, but hardware AGC sits below that.
 - [ ] **Quiet room.** The gate tracks the noise floor, so steady hum is tolerated — but TV, talking, or taps will open the gate and, if they carry pitch, can sneak frames in. Phone on silent.
 - [ ] **Note the session metadata somewhere** (text file next to the dataset): date, guitar, string brand/gauge/age, pick type, interface, sample rate if you know it. Future you will need this.
+- [ ] **Set the `Guitar tag` field** in the Recording Studio to this instrument's stable id (e.g. `strat-daddario-10s`) — every captured sequence embeds it as `guitarId` (§7). New strings = new tag.
 
 ---
 
@@ -91,7 +92,7 @@ Do **two half-passes instead of one big take per string**, in different sittings
 - Pass A: strings 5 → 0, frets 0–9, full variation grid.
 - Pass B (later, ideally next day): strings 0 → 5, frets 10–18, full variation grid.
 
-This puts every string in every session, so session artifacts (mic drift, humidity, your hand warming up) decorrelate from the class label. If you record with more than one guitar, keep the datasets in separate files with metadata — don't silently mix.
+This puts every string in every session, so session artifacts (mic drift, humidity, your hand warming up) decorrelate from the class label. If you record with more than one guitar, give each its own `Guitar tag` and keep per-guitar files with metadata — mixing then becomes a deliberate, tagged act (§7), never an accident.
 
 **Multi-day passes need no manual merging.** At the start of the later session, press `Import dataset` in the Recording Studio and select the previous pass's `guitar_dataset_<timestamp>.json`. New sequences append to it in memory, and the final `Download` produces one coherent dataset+stats pair with the stats computed over the whole pool. Do **not** concatenate two downloaded files by hand instead: each file's `normalizedFeatures` were z-scored with its own session's stats, so a naive concat embeds a per-session feature offset — precisely the session fingerprint this protocol exists to remove. (The import strips those stale values and re-normalizes everything at download time.)
 
@@ -103,15 +104,16 @@ This puts every string in every session, so session artifacts (mic drift, humidi
 
 1. `npm run dev` → open the app → type `record` → Recording Studio opens.
 2. Select your input device, press `Init`, grant mic access.
-3. **Pass B (continuing an earlier day)?** Press `Import dataset` and select the previous pass's `guitar_dataset_*.json` — the sequence counter should jump to the previous total. Recording appends from there. If an *"Autosaved session found"* banner appears instead, the previous session was never downloaded: `Restore` it (no import needed) or `Discard` it before recording.
-4. Tune. Verify with a few test plucks that the console shows the right note names.
-5. For each string in the pass plan:
+3. Set the **`Guitar tag`** to this instrument's id (it is remembered between sessions — verify it matches the guitar in your hands, especially if you rotate instruments).
+4. **Pass B (continuing an earlier day)?** Press `Import dataset` and select the previous pass's `guitar_dataset_*.json` — the sequence counter should jump to the previous total. Recording appends from there. If an *"Autosaved session found"* banner appears instead, the previous session was never downloaded: `Restore` it (no import needed) or `Discard` it before recording.
+5. Tune. Verify with a few test plucks that the console shows the right note names.
+6. For each string in the pass plan:
    1. Press `Start <string index>` (**triple-check the index**: 0 = high E … 5 = low E — a wrong index here is a mislabeled batch that no filter will fully catch).
    2. 2 s of silence.
    3. Walk the planned frets low→high, executing the variation grid; mute + pause between plucks.
    4. Press `Stop`. Stretch, re-check tuning.
-6. After the last string: **Download dataset + stats** (one button produces both files — they are a pair; the stats file is the normalization contract for the model you'll train).
-7. Name them consistently, e.g. `guitar_dataset_<guitar>_<YYYYMMDD>.json` + matching stats, drop the dataset under `public/datasets/<name>/`, and write the metadata file next to them.
+7. After the last string: **Download dataset + stats** (one button produces both files — they are a pair; the stats file is the normalization contract for the model you'll train).
+8. Name them consistently, e.g. `guitar_dataset_<guitar>_<YYYYMMDD>.json` + matching stats, drop the dataset under `public/datasets/<name>/`, and write the metadata file next to them.
 
 ---
 
@@ -154,3 +156,17 @@ Then train (`Train Model` in the Recording Studio) and look at the **confusion b
 - Don't record near a fan/AC that cycles on and off — a moving noise floor churns the gate and the SNR feature.
 - Don't reuse a dataset after changing string gauge or brand. B *is* the string; new strings = new dataset (that's the feature working, not a bug).
 - Don't pad thin cells with copies or synthetic noise — duplicated sequences leak across the train/val split and inflate validation accuracy, which is how this project got fooled once already.
+
+---
+
+## 7. Multi-guitar datasets (cross-guitar generalization)
+
+Recording several guitars enables two things: an honest measurement of how well the model generalizes to instruments it never saw, and **family-specific models** (e.g. one for acoustics, one for electrics) trained by filtering on the tag. The single-guitar limitation is documented in [audio-pipeline.md](audio-pipeline.md) §9 — this section is the tooling to attack it.
+
+- **Tag every session.** Set the `Guitar tag` field before recording; every captured sequence embeds it as `guitarId`. Use one stable id per instrument **and string set** (`strat-daddario-10s`) — a string change means a new tag, because B *is* the string (§6). Tags survive `Import dataset` merges, autosave restores, and downloads.
+- **Full protocol per guitar.** Each instrument gets both passes and the full variation grid (§3). Balance matters across guitars too: keep max/min sequence counts per string ≤ 1.5× *between* guitars, or the pooled model quietly specializes in the best-represented one.
+- **Start with comparable instruments.** Steel-string acoustics through the same signal chain are a winnable first experiment. A magnetic-pickup electric adds a fixed comb filter plus a different transducer response — treat electrics as their own family rather than expecting acoustic↔electric transfer. Nylon strings put B near the feature's clamp floor and will likely break the star feature entirely.
+- **Evaluate with the leave-one-guitar-out split, never the stratified one.** The stratified split validates on guitars the model has already seen, so pooled `val_acc` says nothing about a new instrument. Press `Train` and enter the tag to hold out (leave empty for the normal stratified split), or call `trainModel(data, { holdOutGuitarId })`. Rotate the held-out guitar across runs. LOGO-trained models carry a `notes` marker in their manifest entry: they are for measurement, not deployment.
+- **Known caveat**: `normalizedFeatures` are z-scored at download time with pool-wide stats, so a sliver of the held-out guitar leaks into normalization. This is second-order next to the effect being measured (per-guitar B multimodality); a train-only-stats mode is future work if the numbers get close.
+- **Per-family specialists**: merge the files of one family via `Import dataset`, train normally (stratified split), and deploy the result as its own manifest entry with its own stats. Note the prediction engine currently loads the fixed `performance`/`precision` mode keys — exposing per-family model selection in the UI is a follow-up step.
+- **Expectation setting**: a pooled multi-guitar model will usually score slightly *lower* on each individual guitar than a single-guitar specialist (class distributions become multimodal) — that is the price of robustness, not a regression. The held-out number is the one that matters.

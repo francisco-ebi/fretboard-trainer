@@ -2,7 +2,7 @@ import type { DatasetEntry } from '@/shared/lib/audio/recording-engine';
 // import * as tf from '@tensorflow/tfjs';
 import type { LayersModel } from '@tensorflow/tfjs';
 import { fetchDataset } from './dataset-loader';
-import { calculateStatistics, prepareStratifiedSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
+import { calculateStatistics, prepareStratifiedSplit, prepareLeaveOneGuitarOutSplit, SEQUENCE_LENGTH, NUM_FEATURES } from './dataset-preparation';
 import { PIPELINE_VERSIONS } from './worklet-types';
 import type { ModelManifestEntry } from './model-manifest';
 
@@ -40,7 +40,14 @@ export async function createModel(): Promise<LayersModel> {
     return model;
 }
 
-export async function trainModel(data: DatasetEntry[] = []) { // Keep data optional for now
+export interface TrainOptions {
+    // Leave-one-guitar-out experiment (protocol §7): validate on the
+    // sequences carrying this provenance tag, train on everything else.
+    // Measures cross-guitar generalization; the result is not for deployment.
+    holdOutGuitarId?: string;
+}
+
+export async function trainModel(data: DatasetEntry[] = [], options: TrainOptions = {}) { // Keep data optional for now
     console.log('Training model...');
     const tf = await getTiF();
 
@@ -51,7 +58,13 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
     }
 
     const model = await createModel();
-    const { trainX, trainY, valX, valY } = prepareStratifiedSplit(data);
+    const holdOut = options.holdOutGuitarId?.trim();
+    if (holdOut) {
+        console.log(`Leave-one-guitar-out split: validating on "${holdOut}", training on the rest`);
+    }
+    const { trainX, trainY, valX, valY } = holdOut
+        ? prepareLeaveOneGuitarOutSplit(data, holdOut)
+        : prepareStratifiedSplit(data);
     const trainYHot = tf.oneHot(trainY, 6);
     const valYHot = tf.oneHot(valY, 6);
     console.log(`Train Shape: ${trainX.shape} | Validation Shape: ${valX.shape}`);
@@ -91,6 +104,7 @@ export async function trainModel(data: DatasetEntry[] = []) { // Keep data optio
         pipelineVersion: PIPELINE_VERSIONS.essentia,
         trainedAt: new Date().toISOString(),
         datasetSize: data.length,
+        ...(holdOut ? { notes: `LOGO experiment: validated on held-out guitar "${holdOut}" — for measurement, not deployment` } : {}),
         stats: calculateStatistics(data)
     };
     downloadJSON(manifestEntry, `manifest-entry-${MODEL_NAME}.json`);

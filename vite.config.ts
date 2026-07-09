@@ -19,6 +19,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
+    // Agent worktrees under .claude/ carry duplicate copies of the suite
+    exclude: ['**/node_modules/**', '**/.claude/**', '**/dist/**', '**/dev-dist/**'],
   },
   build: {
     rollupOptions: {
