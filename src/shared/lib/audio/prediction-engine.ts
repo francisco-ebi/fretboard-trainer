@@ -5,9 +5,8 @@ import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
 import { normalizeDataset } from '@/shared/lib/audio/dataset-preparation';
 import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?url';
 import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?url';
-import type { AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
 import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
-import { FEATURE_POSITIONS } from '@/shared/lib/audio/worklet-types';
+import { FEATURE_POSITIONS, type AnalysisResult } from '@/shared/lib/audio/worklet-types';
 
 
 // Max time between accepted frames before a sequence is considered broken

@@ -1,9 +1,8 @@
 import { calculateStatistics, normalizeDataset } from '@/shared/lib/audio/dataset-preparation';
 import essentiaProcessorUrl from '@/shared/lib/audio/essentia-recorder-processor.ts?url';
 import meydaProcessorUrl from '@/shared/lib/audio/meyda-recorder-processor.ts?url';
-import { type AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
 import { AudioReader, RingBuffer } from '@/shared/lib/audio/sab-ring-buffer';
-import { FEATURE_POSITIONS } from '@/shared/lib/audio/worklet-types';
+import { FEATURE_POSITIONS, type AnalysisResult } from '@/shared/lib/audio/worklet-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
