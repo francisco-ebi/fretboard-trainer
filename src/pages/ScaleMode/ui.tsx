@@ -4,10 +4,11 @@ import Fretboard from '@/widgets/Fretboard';
 import Controls from '@/widgets/Controls';
 import HelpSection from '@/widgets/HelpSection';
 import BottomSheet from '@/widgets/BottomSheet';
+import ScaleMatrixSelector from '@/features/ScaleMatrixSelector';
 import { useInstrument } from '@/app/providers';
 import { useIsMobile } from '@/shared/lib/hooks/useMediaQuery';
 
-import { getScale, getNoteName, CHARACTERISTIC_INTERVALS, type Note, type ScaleType, type Instrument } from '@/shared/lib/music/musicTheory';
+import { getScale, getNoteName, CHARACTERISTIC_INTERVALS, type Note, type ScaleType } from '@/shared/lib/music/musicTheory';
 import { useNaming } from '@/app/providers';
 import './ui.css';
 
@@ -38,36 +39,20 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ isFullScreen = false }) => {
     };
 
     // Use Context
-    const {
-        instrument,
-        setInstrument,
-        stringCount,
-        setStringCount,
-        tuningOffsets,
-        setTuningOffsets
-    } = useInstrument();
-
-    const handleInstrumentChange = (newInstrument: Instrument) => {
-        setInstrument(newInstrument);
-    };
+    const { instrument, stringCount, tuningOffsets } = useInstrument();
 
     const scaleNotes = getScale(selectedRoot, selectedScale);
     const characteristicInterval = CHARACTERISTIC_INTERVALS[selectedScale];
     const scaleSummary = `${getNoteName(selectedRoot, namingSystem)} · ${t(`scales.${selectedScale}`)}`;
 
     const controls = (
-        <Controls
-            selectedRoot={selectedRoot}
-            onRootChange={setSelectedRoot}
-            selectedScale={selectedScale}
-            onScaleChange={setSelectedScale}
-            instrument={instrument}
-            onInstrumentChange={handleInstrumentChange}
-            tuningOffsets={tuningOffsets}
-            onTuningChange={setTuningOffsets}
-            stringCount={stringCount}
-            onStringCountChange={setStringCount}
-        />
+        <Controls selectedRoot={selectedRoot} onRootChange={setSelectedRoot}>
+            <ScaleMatrixSelector
+                selectedScale={selectedScale}
+                onScaleChange={setSelectedScale}
+                selectedRoot={selectedRoot}
+            />
+        </Controls>
     );
 
     const fretboard = (

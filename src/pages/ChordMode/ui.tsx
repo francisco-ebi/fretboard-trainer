@@ -2,13 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fretboard from '@/widgets/Fretboard';
-import CircleOfFifths from '@/features/CircleOfFifths';
+import Controls from '@/widgets/Controls';
 import {
     CHROMATIC_SCALE,
-    INSTRUMENT_CONFIGS,
-    GUITAR_TUNINGS,
-    GUITAR_TUNINGS_7,
-    GUITAR_TUNINGS_8,
     getDiatonicChords,
     getSecondaryDominants,
     getBorrowedChords,
@@ -19,8 +15,6 @@ import {
     inferChordName,
     getNoteAtPosition,
     type Note,
-    type Instrument,
-    type Tuning,
     type ChordInfo,
     type QueuedChord,
     type ChordQuality,
@@ -116,18 +110,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
 
     // Context for instrument settings
     const { namingSystem } = useNaming();
-    const {
-        instrument,
-        setInstrument,
-        stringCount,
-        setStringCount,
-        tuningOffsets,
-        setTuningOffsets,
-        colorScheme,
-        setColorScheme
-    } = useInstrument();
-
-    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+    const { instrument, stringCount, tuningOffsets } = useInstrument();
 
     // Handlers
     const handleChordClick = (id: string) => {
@@ -202,42 +185,6 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     };
 
 
-
-    const handleInstrumentChange = (newInstrument: Instrument) => {
-        setInstrument(newInstrument);
-    };
-
-    const handleStringCountChange = (count: number) => {
-        setStringCount(count);
-        setTuningOffsets([]);
-    };
-
-    // Tuning logic (Duplicated from Controls.tsx for now to avoid complexity in refactoring Controls yet)
-    const getAvailableTunings = (): Record<string, Tuning> => {
-        if (instrument === 'GUITAR') {
-            if (stringCount === 7) return GUITAR_TUNINGS_7;
-            if (stringCount === 8) return GUITAR_TUNINGS_8;
-            return GUITAR_TUNINGS;
-        }
-        return {};
-    };
-    const availableTunings = getAvailableTunings();
-
-    const getCurrentTuningKey = () => {
-        if (tuningOffsets.length === 0) return 'STANDARD';
-        for (const [key, tuning] of Object.entries(availableTunings)) {
-            if (tuning.offsets.length === tuningOffsets.length &&
-                tuning.offsets.every((val, index) => val === tuningOffsets[index])) {
-                return key;
-            }
-        }
-        return 'CUSTOM';
-    };
-
-    const handleTuningChange = (key: string) => {
-        const tuning = availableTunings[key];
-        if (tuning) setTuningOffsets(tuning.offsets);
-    };
 
     const getFullChordName = (chord: ChordInfo, id: string) => {
         const modifier = chordModifiers[id];
@@ -485,94 +432,34 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     return (
         <div className={`chord-mode ${isFullScreen ? 'fullscreen' : ''}`}>
             {!isFullScreen && (
-                <div className="chord-controls">
+                <Controls
+                    selectedRoot={selectedRoot}
+                    onRootChange={(newRoot) => {
+                        setSelectedRoot(newRoot);
+                        setSelectedChordId(null);
+                        setChordModifiers({});
+                        setQueuedActiveChord(null);
+                        setActiveQueueIndex(-1);
+                    }}
+                >
                     <div className="control-group">
-                        <CircleOfFifths
-                            selectedRoot={selectedRoot}
-                            onRootChange={(newRoot) => {
-                                setSelectedRoot(newRoot);
+                        <label htmlFor="chord-scale-select">{t('controls.scale')}:</label>
+                        <select
+                            id="chord-scale-select"
+                            value={selectedScaleType}
+                            onChange={(e) => {
+                                setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR');
                                 setSelectedChordId(null);
                                 setChordModifiers({});
                                 setQueuedActiveChord(null);
                                 setActiveQueueIndex(-1);
                             }}
-                        />
-                    </div>
-                    <div className="control-group">
-                        <label>{t('controls.scale')}:</label>
-                        <select value={selectedScaleType} onChange={(e) => {
-                            setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR');
-                            setSelectedChordId(null);
-                            setChordModifiers({});
-                            setQueuedActiveChord(null);
-                            setActiveQueueIndex(-1);
-                        }}>
+                        >
                             <option value="MAJOR">{t('scales.MAJOR')}</option>
                             <option value="MINOR">{t('scales.MINOR')}</option>
                         </select>
                     </div>
-
-                    {/* Instrument Controls (Mini version) */}
-                    <div className="control-group">
-                        <label>{t('controls.instrument')}:</label>
-                        <select value={instrument} onChange={(e) => handleInstrumentChange(e.target.value as Instrument)}>
-                            {(Object.keys(INSTRUMENT_CONFIGS) as Instrument[]).map((inst) => (
-                                <option key={inst} value={inst}>{t(`instruments.${inst}`)}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className={`advanced-section ${isAdvancedOpen ? 'open' : ''}`}>
-                        <button className="advanced-toggle" onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}>
-                            <motion.span
-                                animate={{ rotate: isAdvancedOpen ? 90 : 0 }}
-                                style={{ display: 'inline-block', marginRight: '8px' }}
-                            >
-                                ▶
-                            </motion.span>
-                            {t('controls.advanced')}
-                        </button>
-                        <AnimatePresence>
-                            {isAdvancedOpen && (
-                                <motion.div
-                                    className="advanced-controls"
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                                    style={{ overflow: 'hidden' }}
-                                >
-                                    <div className="control-group">
-                                        <label htmlFor="theme-select">Theme:</label>
-                                        <select id="theme-select" value={colorScheme} onChange={(e) => setColorScheme(e.target.value as any)}>
-                                            <option value="OKLCH">OKLCH (Perceptual)</option>
-                                            <option value="LEGACY">Legacy (Bright)</option>
-                                        </select>
-                                    </div>
-                                    {instrument === 'GUITAR' && (
-                                        <>
-                                            <div className="control-group">
-                                                <label>{t('controls.strings')}:</label>
-                                                <select value={stringCount} onChange={(e) => handleStringCountChange(parseInt(e.target.value))}>
-                                                    <option value={6}>6</option>
-                                                    <option value={7}>7</option>
-                                                    <option value={8}>8</option>
-                                                </select>
-                                            </div>
-                                            <div className="control-group">
-                                                <label>{t('controls.tuning')}:</label>
-                                                <select value={getCurrentTuningKey()} onChange={(e) => handleTuningChange(e.target.value)}>
-                                                    {Object.entries(availableTunings).map(([key, tuning]) => (
-                                                        <option key={key} value={key}>{tuning.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </>
-                                    )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
+                </Controls>
             )}
 
             {!isFullScreen && groupedDegrees.length > 0 && (

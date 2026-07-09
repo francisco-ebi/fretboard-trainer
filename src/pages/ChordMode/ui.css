@@ -7,17 +7,6 @@
     margin: 0 auto;
 }
 
-.chord-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    padding: 1rem;
-    background: rgba(30, 30, 35, 0.4);
-    border-radius: 0.5rem;
-    align-items: center;
-    justify-content: center;
-}
-
 .chord-lists-container {
     display: flex;
     flex-direction: column;

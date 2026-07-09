@@ -1,40 +1,38 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type ScaleType, type Instrument, type Tuning, type NamingSystem } from '@/shared/lib/music/musicTheory';
+import { INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8, type Note, type Instrument, type Tuning, type NamingSystem } from '@/shared/lib/music/musicTheory';
 import { useInstrument } from '@/app/providers';
 import { useNaming } from '@/app/providers';
 import CircleOfFifths from '@/features/CircleOfFifths';
-import ScaleMatrixSelector from '@/features/ScaleMatrixSelector';
 import './ui.css';
 
+// Shared control panel for every mode page: key selector, instrument,
+// and the Setup & Preferences section (naming, theme, strings, tuning).
+// Instrument state comes from InstrumentProvider directly; pages only own
+// their root note (and pass mode-specific selectors like scale as children).
 interface ControlsProps {
     selectedRoot: Note;
     onRootChange: (root: Note) => void;
-    selectedScale: ScaleType;
-    onScaleChange: (scale: ScaleType) => void;
-    instrument: Instrument;
-    onInstrumentChange: (instrument: Instrument) => void;
-    tuningOffsets: number[];
-    onTuningChange: (offsets: number[]) => void;
-    stringCount: number;
-    onStringCountChange: (count: number) => void;
+    children?: React.ReactNode;
 }
 
 const Controls: React.FC<ControlsProps> = ({
     selectedRoot,
     onRootChange,
-    selectedScale,
-    onScaleChange,
-    instrument,
-    onInstrumentChange,
-    tuningOffsets,
-    onTuningChange,
-    stringCount,
-    onStringCountChange
+    children
 }) => {
     const { t } = useTranslation();
-    const { colorScheme, setColorScheme } = useInstrument();
+    const {
+        instrument,
+        setInstrument,
+        stringCount,
+        setStringCount,
+        tuningOffsets,
+        setTuningOffsets,
+        colorScheme,
+        setColorScheme
+    } = useInstrument();
     const { namingSystem, setNamingSystem } = useNaming();
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
@@ -65,13 +63,13 @@ const Controls: React.FC<ControlsProps> = ({
     const handleTuningChange = (key: string) => {
         const tuning = availableTunings[key];
         if (tuning) {
-            onTuningChange(tuning.offsets);
+            setTuningOffsets(tuning.offsets);
         }
     };
 
     const handleStringCountChange = (count: number) => {
-        onStringCountChange(count);
-        onTuningChange([]); // Reset tuning when changing string count
+        setStringCount(count);
+        setTuningOffsets([]); // Reset tuning when changing string count
     };
 
     return (
@@ -82,7 +80,7 @@ const Controls: React.FC<ControlsProps> = ({
                 <select
                     id="instrument-select"
                     value={instrument}
-                    onChange={(e) => onInstrumentChange(e.target.value as Instrument)}
+                    onChange={(e) => setInstrument(e.target.value as Instrument)}
                 >
                     {(Object.keys(INSTRUMENT_CONFIGS) as Instrument[]).map((inst) => (
                         <option key={inst} value={inst}>
@@ -92,13 +90,13 @@ const Controls: React.FC<ControlsProps> = ({
                 </select>
             </div>
 
-            {/* 2. Primary Actions: Key & Scale (Grouped) */}
+            {/* 2. Primary Actions: Key + page-specific selectors (Grouped) */}
             <div className="primary-controls-group">
                 <div className="control-group">
                     <CircleOfFifths selectedRoot={selectedRoot} onRootChange={onRootChange} />
                 </div>
 
-                <ScaleMatrixSelector selectedScale={selectedScale} onScaleChange={onScaleChange} selectedRoot={selectedRoot} />
+                {children}
             </div>
 
             {/* 3. Setup & Preferences (Collapsed) */}
