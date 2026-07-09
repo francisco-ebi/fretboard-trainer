@@ -18,147 +18,188 @@
     justify-content: center;
 }
 
-.chord-list {
-    display: flex;
-    gap: 1rem;
-    overflow-x: auto;
-    padding: 1rem 0;
-    justify-content: center;
-    /* Ensure there's space for modifiers popping out below */
-    padding-bottom: 4rem;
-}
-
-/* Wrapper to position modifiers relative to the card */
-.chord-card-wrapper {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.chord-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0.5rem;
-    padding: 1rem;
-    min-width: 80px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    position: relative;
-    z-index: 2;
-    /* Keep card above modifiers container if overlapping, though container is below */
-}
-
-.chord-card:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-}
-
-.chord-card.selected {
-    background: rgba(100, 108, 255, 0.2);
-    border-color: #646cff;
-    box-shadow: 0 0 10px rgba(100, 108, 255, 0.3);
-}
-
-.chord-card .roman {
-    font-size: 0.9rem;
-    color: #aaa;
-    font-weight: bold;
-}
-
-.chord-card .name {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #fff;
-}
-
-/* Modifiers Container */
-.modifiers-container {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 0.5rem;
-    padding-top: 0.75rem;
-    z-index: 10;
-}
-
-
-
-.modifier-btn {
-    background: rgba(40, 40, 45, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ccc;
-    border-radius: 4px;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.7rem;
-    font-weight: bold;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-.modifier-btn:hover {
-    background: #444;
-    border-color: #fff;
-    color: #fff;
-    transform: scale(1.1);
-}
-
-.modifier-btn.selected {
-    background: #646cff;
-    border-color: #8888ff;
-    color: #fff;
-    box-shadow: 0 0 8px rgba(100, 108, 255, 0.5);
-}
-
-.mod-label {
-    text-align: center;
-    line-height: 1;
-}
-
-@media (max-width: 600px) {
-    .chord-list {
-        flex-wrap: wrap;
-        overflow-x: visible;
-        justify-content: center;
-        padding: 1rem;
-        padding-bottom: 2rem;
-    }
-
-    .modifiers-container {
-        flex-direction: column;
-        gap: 0.25rem;
-        background: rgba(30, 30, 35, 0.95);
-        padding: 0.5rem;
-        border-radius: 6px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        min-width: 60px;
-        z-index: 100;
-    }
-
-    .modifier-btn {
-        width: 100%;
-        height: 30px;
-    }
-}
-
-/* Harmonic Palette Container */
 .chord-lists-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
+    box-sizing: border-box;
+}
+
+/* While the queue floats (>1024px), keep the table out from under it.
+   Above 1680px the centered 1200px layout clears the queue on its own. */
+@media (min-width: 1025px) and (max-width: 1680px) {
+    .chord-lists-container {
+        padding-right: 260px;
+    }
+}
+
+/* Harmonization table: columns are scale degrees, rows are harmonic
+   functions (in key, secondary dominants, borrowed, mediants). Cells are
+   placed with explicit grid coordinates via --deg/--cat so the mobile
+   media query can transpose the matrix (degrees become rows) in CSS only. */
+.harmonization-table {
+    display: grid;
+    grid-template-columns: auto repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(20, 20, 25, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+.ht-corner {
+    grid-row: 1;
+    grid-column: 1;
+}
+
+.ht-degree-header {
+    grid-row: 1;
+    grid-column: calc(var(--deg) + 2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding-bottom: 6px;
+}
+
+.ht-degree-roman {
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: #646cff;
+}
+
+.ht-degree-root {
+    font-size: 0.75rem;
+    color: #aaa;
+}
+
+.ht-row-label {
+    grid-column: 1;
+    grid-row: calc(var(--cat) + 2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.ht-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #777;
+    flex-shrink: 0;
+}
+
+.ht-row-label.secondary .ht-dot { background: #ffa726; }
+.ht-row-label.borrowed .ht-dot { background: #29b6f6; }
+.ht-row-label.mediant .ht-dot { background: #ec407a; }
+
+.ht-cell {
+    grid-row: calc(var(--cat) + 2);
+    grid-column: calc(var(--deg) + 2);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 54px;
+}
+
+.ht-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 1rem;
+}
+
+.ht-chord-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 0.5rem 0.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ht-chord-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+.ht-chord-name {
+    font-size: 1.05rem;
+    font-weight: bold;
+}
+
+.ht-chord-roman {
+    font-size: 0.65rem;
+    color: #aaa;
+    line-height: 1;
+}
+
+.ht-cell.secondary .ht-chord-btn {
+    background: rgba(255, 167, 38, 0.07);
+    border-color: rgba(255, 167, 38, 0.25);
+}
+
+.ht-cell.secondary .ht-chord-roman { color: #ffa726; }
+
+.ht-cell.borrowed .ht-chord-btn {
+    background: rgba(41, 182, 246, 0.07);
+    border-color: rgba(41, 182, 246, 0.25);
+}
+
+.ht-cell.borrowed .ht-chord-roman { color: #29b6f6; }
+
+.ht-cell.mediant .ht-chord-btn {
+    background: rgba(236, 64, 122, 0.07);
+    border-color: rgba(236, 64, 122, 0.25);
+}
+
+.ht-cell.mediant .ht-chord-roman { color: #ec407a; }
+
+.ht-cell .ht-chord-btn.selected {
+    background: rgba(100, 108, 255, 0.25);
+    border-color: #646cff;
+    box-shadow: 0 0 10px rgba(100, 108, 255, 0.35);
+}
+
+/* Extended rows mount on expand; fade them in */
+.ht-cell.secondary,
+.ht-cell.borrowed,
+.ht-cell.mediant,
+.ht-row-label.secondary,
+.ht-row-label.borrowed,
+.ht-row-label.mediant {
+    animation: ht-fade-in 0.25s ease both;
+}
+
+@keyframes ht-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .harmonic-palette-toggle {
@@ -170,8 +211,7 @@
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-top: -1rem; /* Pull it slightly into the diatonic row's bottom padding */
-    margin-bottom: 1rem;
+    margin: 0.75rem 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -188,226 +228,134 @@
     transform: translateY(-2px);
 }
 
-.harmonic-palette-toggle .sparkle {
-    font-size: 1.1rem;
-}
-
-.harmonic-palette-drawer {
-    background: rgba(20, 20, 25, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.harmony-columns-container {
-    display: flex;
-    gap: 1.25rem;
-    width: 100%;
-    overflow-x: auto;
-    padding: 0.5rem 0.25rem;
-    scrollbar-width: none; /* Hide scrollbars for the track */
-}
-
-.harmony-columns-container::-webkit-scrollbar {
-    display: none;
-}
-
-.harmony-degree-column {
-    flex: 1;
-    min-width: 130px;
-    max-width: 160px;
-    display: flex;
-    flex-direction: column;
-    background: rgba(255, 255, 255, 0.015);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 0.75rem;
-    padding: 0.75rem 0.5rem;
-    align-items: center;
-    transition: all 0.3s ease;
-}
-
-.harmony-degree-column:hover {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.08);
-}
-
-.degree-column-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    width: 100%;
-    padding-bottom: 0.5rem;
-}
-
-.degree-roman {
-    font-size: 0.95rem;
-    font-weight: bold;
-    color: #646cff;
-    text-transform: uppercase;
-}
-
-.degree-root {
-    font-size: 0.8rem;
-    color: #aaa;
-    font-weight: 500;
-}
-
-.degree-column-carousel-wrapper {
-    position: relative;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.degree-column-carousel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    height: 240px; /* Fit about 3 cards vertically */
-    width: 100%;
-    overflow-y: auto;
-    scroll-snap-type: y mandatory;
-    scrollbar-width: none;
-    scroll-behavior: smooth;
-    padding: 0.5rem 0;
-}
-
-.degree-column-carousel::-webkit-scrollbar {
-    display: none;
-}
-
-.carousel-nav-btn {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(30, 30, 35, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
+/* Selected chord detail strip: replaces the old hover-only modifier popovers */
+.chord-detail-strip {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 0.75rem 1.5rem;
+    flex-wrap: wrap;
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(30, 30, 35, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.strip-main {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.strip-roman {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #646cff;
+}
+
+.strip-name {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.strip-name.custom {
+    color: #D3AF37;
+    text-shadow: 0 0 5px rgba(211, 175, 55, 0.4);
+}
+
+.strip-notes {
+    font-size: 0.85rem;
+    color: #aaa;
+    letter-spacing: 0.08em;
+}
+
+.strip-modifiers {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.strip-mod-btn {
+    background: rgba(40, 40, 45, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ccc;
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: bold;
     cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
     transition: all 0.2s ease;
-    z-index: 10;
 }
 
-.carousel-nav-btn.up {
-    top: -12px;
+.strip-mod-btn:hover {
+    border-color: #fff;
+    color: #fff;
 }
 
-.carousel-nav-btn.down {
-    bottom: -12px;
-}
-
-.degree-column-carousel-wrapper:hover .carousel-nav-btn {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.carousel-nav-btn:hover {
+.strip-mod-btn.selected {
     background: #646cff;
     border-color: #8888ff;
-    transform: translateX(-50%) scale(1.1);
-}
-
-.degree-column-carousel .chord-card-wrapper {
-    scroll-snap-align: center;
-    flex-shrink: 0;
-    width: 100%;
-    margin: 2px 0;
-}
-
-.degree-column-carousel .chord-card {
-    width: 100%;
-    min-width: 0;
-    padding: 0.6rem 0.5rem;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    transition: all 0.2s ease;
-}
-
-.degree-column-carousel .chord-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.degree-column-carousel .chord-card.selected {
-    background: rgba(100, 108, 255, 0.15);
-    border-color: #646cff;
-    box-shadow: 0 0 10px rgba(100, 108, 255, 0.25);
-}
-
-.degree-column-carousel .chord-card .roman {
-    font-size: 0.75rem;
-    color: #888;
-}
-
-.degree-column-carousel .chord-card .name {
-    font-size: 1rem;
     color: #fff;
-    font-weight: bold;
 }
 
-/* Category Badges & Color Accents */
-.category-tag {
-    font-size: 0.55rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 1px 4px;
-    border-radius: 3px;
-    margin-top: 2px;
-    font-weight: bold;
-}
+/* Transposed table on small screens: degrees become rows, functions
+   become columns, so everything stays visible without nested scrolling. */
+@media (max-width: 640px) {
+    .harmonization-table {
+        grid-template-columns: auto repeat(4, minmax(0, 1fr));
+        gap: 5px;
+        padding: 0.75rem;
+    }
 
-.chord-card-wrapper.secondary .chord-card {
-    border-left: 2px solid #ffa726; /* Orange */
-}
+    .harmonization-table.collapsed {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
 
-.chord-card-wrapper.secondary .category-tag {
-    color: #ffa726;
-    background: rgba(255, 167, 38, 0.1);
-}
+    .ht-degree-header {
+        grid-column: 1;
+        grid-row: calc(var(--deg) + 2);
+        padding: 0 10px 0 2px;
+    }
 
-.chord-card-wrapper.borrowed .chord-card {
-    border-left: 2px solid #29b6f6; /* Light Blue */
-}
+    .ht-row-label {
+        grid-row: 1;
+        grid-column: calc(var(--cat) + 2);
+        justify-content: center;
+        padding: 0 0 4px;
+        font-size: 0.58rem;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.25;
+    }
 
-.chord-card-wrapper.borrowed .category-tag {
-    color: #29b6f6;
-    background: rgba(41, 182, 246, 0.1);
-}
+    .ht-row-label .ht-dot {
+        display: none;
+    }
 
-.chord-card-wrapper.mediant .chord-card {
-    border-left: 2px solid #ec407a; /* Pink */
-}
+    .ht-row-label.secondary { color: #ffa726; }
+    .ht-row-label.borrowed { color: #29b6f6; }
+    .ht-row-label.mediant { color: #ec407a; }
 
-.chord-card-wrapper.mediant .category-tag {
-    color: #ec407a;
-    background: rgba(236, 64, 122, 0.1);
-}
+    .harmonization-table.collapsed .ht-row-label {
+        display: none;
+    }
 
-/* Adjust margins on modifiers in columns so they don't break vertical alignment */
-.degree-column-carousel .modifiers-container {
-    padding-top: 0.5rem;
+    .ht-cell {
+        grid-column: calc(var(--cat) + 2);
+        grid-row: calc(var(--deg) + 2);
+        min-height: 48px;
+    }
+
+    .ht-chord-name {
+        font-size: 0.95rem;
+    }
 }
 
 /* Floating Chord Queue UI */
