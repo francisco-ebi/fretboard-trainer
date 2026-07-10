@@ -634,9 +634,11 @@ export const getSecondaryDominants = (keyRoot: Note, scaleType: HarmonizableScal
         if (chord.quality !== 'MAJOR' && chord.quality !== 'MINOR') return;
 
         const targetRootIndex = getNoteIndex(chord.root);
-        // V is a perfect fifth (7 semitones) up from target
-        const rotated = getRotatedScale(targetRootIndex, useFlats);
-        const secDomRoot = rotated[7];
+        // The dominant sits a perfect fifth above the target: 7 semitones
+        // and 4 letter steps. Letter math keeps the accidental on the
+        // target's side (Ab7 for Db, E#7 for A#m) where a chromatic-scale
+        // lookup keyed on the key signature picks the wrong letter.
+        const secDomRoot = getProperSpelling(chord.root, (targetRootIndex + 7) % 12, 4);
 
         const quality: ChordQuality = 'DOM7'; // Secondary dominants are typically dominant 7ths
         const notes = getChordNotes(secDomRoot, quality, useFlats);

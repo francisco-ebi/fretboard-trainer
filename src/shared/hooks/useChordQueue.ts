@@ -45,7 +45,11 @@ export const useChordQueue = (options?: UseChordQueueOptions) => {
         } else {
             newUrl.searchParams.delete('chords');
         }
-        window.history.replaceState({}, '', newUrl.toString());
+        // chordQueueSync marks this URL as self-written. history.state
+        // survives reloads but is null on fresh navigations, letting the app
+        // tell a reload apart from an incoming shared link (App.tsx only
+        // switches to the Library for the latter).
+        window.history.replaceState({ ...window.history.state, chordQueueSync: true }, '', newUrl.toString());
     }, [chordQueue]);
 
     const selectFromQueue = useCallback((index: number) => {

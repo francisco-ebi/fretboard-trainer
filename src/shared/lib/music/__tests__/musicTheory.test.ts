@@ -220,6 +220,21 @@ describe('musicTheory - Enharmonic Spelling', () => {
             expect(result.every(c => c.quality === 'DOM7')).toBe(true);
             expect(result.map(c => c.romanNumeral)).toEqual(['V7/ii', 'V7/iii', 'V7/IV', 'V7/V', 'V7/vi']);
         });
+
+        it('should spell the dominant root a proper fifth above its target', () => {
+            // Db's dominant is Ab7, not G#7, even though C Double Harmonic
+            // resolves to a sharp-side key signature heuristic.
+            const doubleHarmonic = getSecondaryDominants('C', 'DOUBLE_HARMONIC');
+            const vOfII = doubleHarmonic.find(c => c.romanNumeral === 'V7/II');
+            expect(vOfII?.root).toBe('Ab');
+            expect(vOfII?.displayName).toBe('Ab7');
+
+            // Sharp keys get proper leading-tone spelling: A#m's dominant is
+            // E#7, not F7.
+            const fSharpMajor = getSecondaryDominants('F#', 'MAJOR');
+            const vOfIii = fSharpMajor.find(c => c.romanNumeral === 'V7/iii');
+            expect(vOfIii?.root).toBe('E#');
+        });
     });
 
     describe('getBorrowedChords', () => {

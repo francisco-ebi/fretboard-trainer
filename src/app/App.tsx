@@ -28,7 +28,12 @@ const AppContent = () => {
   const { instrument, stringCount } = useInstrument();
   const [currentMode, setCurrentModeState] = useState<AppMode>(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('chords')) {
+    // ?chords on a fresh navigation is a shared queue link → open the
+    // Library. The queue hook also mirrors the queue into the URL while the
+    // user works, tagging its writes in history.state — reloading such a
+    // URL must keep the user's own mode instead of hijacking them.
+    if (params.has('chords') && !window.history.state?.chordQueueSync) {
+      localStorage.setItem('app-mode', 'LIBRARY');
       return 'LIBRARY';
     }
     return (localStorage.getItem('app-mode') as AppMode) || 'SCALE';
