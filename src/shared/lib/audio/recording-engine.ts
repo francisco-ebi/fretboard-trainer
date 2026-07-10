@@ -13,9 +13,8 @@ import {
 // returns its URL. Plain ?url ships raw TypeScript in production builds,
 // which AudioWorklet.addModule cannot execute.
 import audioCaptureProcessorUrl from '@/shared/lib/audio/audio-capture-processor.ts?worker&url';
-import { type AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
 import { AudioReader, RingBuffer, createRingBufferSab, AUDIO_RING_CAPACITY } from '@/shared/lib/audio/sab-ring-buffer';
-import { FEATURE_POSITIONS } from '@/shared/lib/audio/worklet-types';
+import { FEATURE_POSITIONS, type AnalysisResult } from '@/shared/lib/audio/worklet-types';
 
 const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)

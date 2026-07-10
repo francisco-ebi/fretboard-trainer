@@ -8,9 +8,8 @@ import { HARMONIC_PARTIAL_COUNT } from '@/shared/lib/audio/harmonic-features';
 // returns its URL. Plain ?url ships raw TypeScript in production builds,
 // which AudioWorklet.addModule cannot execute.
 import audioCaptureProcessorUrl from '@/shared/lib/audio/audio-capture-processor.ts?worker&url';
-import type { AnalysisResult } from '@/shared/lib/audio/audio-backend-types';
 import { AudioReader, RingBuffer, createRingBufferSab, AUDIO_RING_CAPACITY } from '@/shared/lib/audio/sab-ring-buffer';
-import { FEATURE_POSITIONS, PIPELINE_VERSIONS } from '@/shared/lib/audio/worklet-types';
+import { FEATURE_POSITIONS, PIPELINE_VERSIONS, type AnalysisResult } from '@/shared/lib/audio/worklet-types';
 import { validateManifestEntry, validateModelShape, type ModelManifest, type PipelineExpectations } from '@/shared/lib/audio/model-manifest';
 
 

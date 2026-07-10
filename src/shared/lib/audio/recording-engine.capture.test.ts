@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NUM_FEATURES } from './dataset-preparation';
-import type { AnalysisResult } from './audio-backend-types';
+import type { AnalysisResult } from './worklet-types';
 
 // Fresh engine singleton per test (the autosave store no-ops in jsdom)
 beforeEach(() => {
