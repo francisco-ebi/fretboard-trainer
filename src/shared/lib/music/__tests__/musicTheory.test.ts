@@ -90,6 +90,17 @@ describe('musicTheory - Enharmonic Spelling', () => {
             const result = getChordNotes('E', 'MINADD9');
             expect(result).toEqual(['E', 'G', 'B', 'F#']);
         });
+
+        it('should spell G Major b5 with a flattened fifth letter', () => {
+            const result = getChordNotes('G', 'MAJB5');
+            expect(result).toEqual(['G', 'B', 'Db']);
+        });
+
+        it('should spell B Sus2 b5 with a second, not a diminished third', () => {
+            // Readability choice: B·C#·F rather than the scale letter B·Db·F.
+            const result = getChordNotes('B', 'SUS2B5');
+            expect(result).toEqual(['B', 'C#', 'F']);
+        });
     });
 
     describe('getDiatonicChords', () => {
@@ -162,6 +173,23 @@ describe('musicTheory - Enharmonic Spelling', () => {
             const result = getDiatonicChords('C#', 'HARMONIC_MINOR');
             expect(result[6].root).toBe('B#');
             expect(result[6].quality).toBe('DIMINISHED');
+        });
+
+        it('should harmonize C Double Harmonic with b5 and sus2b5 degrees', () => {
+            const result = getDiatonicChords('C', 'DOUBLE_HARMONIC');
+            expect(result.map(c => c.displayName)).toEqual([
+                'C', 'Db', 'Em', 'Fm', 'G(b5)', 'Ab+', 'Bsus2(b5)'
+            ]);
+            expect(result.map(c => c.romanNumeral)).toEqual([
+                'I', 'II', 'iii', 'iv', 'Vb5', 'VI+', 'VII'
+            ]);
+        });
+
+        it('should harmonize C Hungarian Minor', () => {
+            const result = getDiatonicChords('C', 'HUNGARIAN_MINOR');
+            expect(result.map(c => c.displayName)).toEqual([
+                'Cm', 'D(b5)', 'Eb+', 'F#sus2(b5)', 'G', 'Ab', 'Bm'
+            ]);
         });
     });
 

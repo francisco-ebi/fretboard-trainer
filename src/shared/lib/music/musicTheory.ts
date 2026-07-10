@@ -448,7 +448,7 @@ export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
 // Chord Theory
 
 export type ChordQuality =
-    | 'MAJOR' | 'MINOR' | 'DIMINISHED' | 'AUGMENTED'
+    | 'MAJOR' | 'MINOR' | 'DIMINISHED' | 'AUGMENTED' | 'MAJB5' | 'SUS2B5'
     | 'SUS2' | 'SUS4'
     | 'ADD2' | 'ADD4' | 'ADD6' | 'ADD9' | 'MINADD9'
     | 'DOM7' | 'MAJ7' | 'MIN7' | 'MIN7B5' | 'DIM7' | 'MINMAJ7'
@@ -470,6 +470,8 @@ export const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
     MINOR: [0, 3, 7],
     DIMINISHED: [0, 3, 6],
     AUGMENTED: [0, 4, 8],
+    MAJB5: [0, 4, 6],
+    SUS2B5: [0, 2, 6],
     SUS2: [0, 2, 7],
     SUS4: [0, 5, 7],
     ADD2: [0, 2, 4, 7],
@@ -501,6 +503,8 @@ export const CHORD_DEGREES: Record<ChordQuality, number[]> = {
     MINOR: [0, 2, 4],
     DIMINISHED: [0, 2, 4],
     AUGMENTED: [0, 2, 4],
+    MAJB5: [0, 2, 4],
+    SUS2B5: [0, 1, 4], // spelled as a 2nd (readable name) even when the scale letter is a b3
     SUS2: [0, 1, 4],
     SUS4: [0, 3, 4],
     ADD2: [0, 1, 2, 4],
@@ -526,14 +530,14 @@ export const CHORD_DEGREES: Record<ChordQuality, number[]> = {
 };
 
 // --- Diatonic harmonization ---
-// Heptatonic scales whose stacked-thirds triads all classify as standard
-// qualities (major/minor/diminished/augmented). Only these are offered in
-// the Chord Viewer; the remaining heptatonics (Double Harmonic, Hungarian
-// Minor, Neapolitans) contain b5-major or diminished-third stacks that have
-// no ChordQuality yet. A test asserts this list matches the derivation.
+// Heptatonic scales whose stacked-thirds triads all classify into a named
+// ChordQuality. The exotic scales rely on the MAJB5 ([0,4,6]) and SUS2B5
+// ([0,2,6]) qualities for their altered-fifth degrees. A test asserts this
+// list matches the derivation.
 export const HARMONIZABLE_SCALES = [
     'MAJOR', 'MINOR', 'IONIAN', 'DORIAN', 'PHRYGIAN', 'LYDIAN',
-    'MIXOLYDIAN', 'AEOLIAN', 'LOCRIAN', 'HARMONIC_MINOR', 'MELODIC_MINOR'
+    'MIXOLYDIAN', 'AEOLIAN', 'LOCRIAN', 'HARMONIC_MINOR', 'MELODIC_MINOR',
+    'DOUBLE_HARMONIC', 'HUNGARIAN_MINOR', 'NEAPOLITAN_MINOR', 'NEAPOLITAN_MAJOR'
 ] as const;
 export type HarmonizableScale = (typeof HARMONIZABLE_SCALES)[number];
 
@@ -541,7 +545,9 @@ const TRIAD_QUALITY_BY_STACK: Record<string, ChordQuality> = {
     '4,3': 'MAJOR',
     '3,4': 'MINOR',
     '3,3': 'DIMINISHED',
-    '4,4': 'AUGMENTED'
+    '4,4': 'AUGMENTED',
+    '4,2': 'MAJB5',
+    '2,4': 'SUS2B5'
 };
 
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
@@ -549,7 +555,9 @@ const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 const DIATONIC_SUFFIXES: Partial<Record<ChordQuality, string>> = {
     MINOR: 'm',
     DIMINISHED: '°',
-    AUGMENTED: '+'
+    AUGMENTED: '+',
+    MAJB5: '(b5)',
+    SUS2B5: 'sus2(b5)'
 };
 
 // Triad built on a scale degree by stacking scale thirds (degree, degree+2,
@@ -598,6 +606,8 @@ export const getDiatonicChords = (keyRoot: Note, scaleType: HarmonizableScale): 
         if (quality === 'MINOR' || quality === 'DIMINISHED') roman = roman.toLowerCase();
         if (quality === 'DIMINISHED') roman += '°';
         if (quality === 'AUGMENTED') roman += '+';
+        if (quality === 'MAJB5') roman += 'b5';
+        // SUS2B5 keeps the plain numeral; the chord symbol carries the detail.
 
         chords.push({
             root: note,
@@ -752,6 +762,8 @@ export const inferChordName = (root: Note, notes: Note[]): string => {
     if (key.includes('0,4,7')) return `${root}`;
     if (key.includes('0,3,7')) return `${root}m`;
     if (key.includes('0,4,8')) return `${root}aug`;
+    if (key.includes('0,4,6')) return `${root}(b5)`;
+    if (key.includes('0,2,6')) return `${root}sus2(b5)`;
     if (key.includes('0,3,6')) return `${root}dim`;
 
     return `${root}*`;
@@ -806,6 +818,8 @@ export const CHORD_SYMBOLS: Record<ChordQuality, string> = {
     MINOR: 'm',
     DIMINISHED: 'dim',
     AUGMENTED: 'aug',
+    MAJB5: '(b5)',
+    SUS2B5: 'sus2(b5)',
     SUS2: 'sus2',
     SUS4: 'sus4',
     ADD2: 'add2',
@@ -835,7 +849,7 @@ export const CHORD_SYMBOLS: Record<ChordQuality, string> = {
 export const ENCODING_QUALITIES: ChordQuality[] = [
     'MAJOR', 'MINOR', 'DIMINISHED', 'AUGMENTED', 'SUS2', 'SUS4', 'ADD2', 'ADD4', 'ADD6', 'ADD9',
     'DOM7', 'MAJ7', 'MIN7', 'MIN7B5', 'DIM7', 'MINMAJ7', 'DOM9', 'MAJ9', 'MIN9', 'DOM11', 'MAJ11',
-    'MIN11', 'DOM13', 'MAJ13', 'MIN13', 'MINADD9'
+    'MIN11', 'DOM13', 'MAJ13', 'MIN13', 'MINADD9', 'MAJB5', 'SUS2B5'
 ];
 
 export const encodeDense = (queue: QueuedChord[]): string => {
