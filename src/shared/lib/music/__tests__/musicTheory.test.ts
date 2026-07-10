@@ -83,6 +83,13 @@ describe('musicTheory - Enharmonic Spelling', () => {
             const result = getChordNotes('C', 'DOM9');
             expect(result).toEqual(['C', 'E', 'G', 'Bb', 'D']);
         });
+
+        it('should spell E Minor Add9 with a minor third', () => {
+            // Modifier "add9" on a minor triad must keep the b3 (E G B F#),
+            // unlike ADD9 whose intervals carry a major third.
+            const result = getChordNotes('E', 'MINADD9');
+            expect(result).toEqual(['E', 'G', 'B', 'F#']);
+        });
     });
 
     describe('getDiatonicChords', () => {

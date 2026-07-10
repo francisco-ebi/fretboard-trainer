@@ -50,15 +50,34 @@ const CATEGORY_ROWS = [
     { key: 'mediant', index: 3, labelKey: 'mediant' }
 ] as const;
 
-const MODIFIER_DISPLAY_NAMES: Record<string, string> = {
-    'SUS2': 'sus2',
-    'SUS4': 'sus4',
-    'ADD9': 'add9',
-    'DOM7': '7',
-    'MAJ7': 'maj7'
+type ChordModifier = 'SUS2' | 'SUS4' | 'ADD9' | 'DOM7' | 'MAJ7';
+
+const MODIFIER_DISPLAY_NAMES: Record<ChordModifier, string> = {
+    SUS2: 'sus2',
+    SUS4: 'sus4',
+    ADD9: 'add9',
+    DOM7: '7',
+    MAJ7: 'maj7'
 };
 
-const MODIFIERS: ChordQuality[] = ['SUS2', 'SUS4', 'ADD9', 'DOM7', 'MAJ7'];
+// A modifier extends the selected chord, so the result depends on the base
+// quality: "7" on C is C7 but on Em is Em7 and on F#° is F#m7b5. A missing
+// entry means the combination has no quality in the system and the chip is
+// not offered (e.g. maj7 on a diminished triad). DOM7 rows (secondary
+// dominants) keep the historical replace-the-quality behavior.
+const MODIFIER_RESOLUTION: Partial<Record<ChordQuality, Partial<Record<ChordModifier, ChordQuality>>>> = {
+    MAJOR: { SUS2: 'SUS2', SUS4: 'SUS4', ADD9: 'ADD9', DOM7: 'DOM7', MAJ7: 'MAJ7' },
+    MINOR: { SUS2: 'SUS2', SUS4: 'SUS4', ADD9: 'MINADD9', DOM7: 'MIN7', MAJ7: 'MINMAJ7' },
+    DIMINISHED: { DOM7: 'MIN7B5' },
+    DOM7: { SUS2: 'SUS2', SUS4: 'SUS4', ADD9: 'ADD9', DOM7: 'DOM7', MAJ7: 'MAJ7' }
+};
+
+const resolveModifier = (base: ChordQuality, modifier: ChordModifier): ChordQuality | undefined =>
+    MODIFIER_RESOLUTION[base]?.[modifier];
+
+const availableModifiers = (base: ChordQuality): ChordModifier[] =>
+    (Object.keys(MODIFIER_DISPLAY_NAMES) as ChordModifier[])
+        .filter(mod => resolveModifier(base, mod) !== undefined);
 
 import { useInstrument } from '@/app/providers';
 import { useNaming } from '@/app/providers';
@@ -83,7 +102,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     };
 
     const [selectedChordId, setSelectedChordId] = useState<string | null>(null);
-    const [chordModifiers, setChordModifiers] = useState<Record<string, any>>({});
+    const [chordModifiers, setChordModifiers] = useState<Record<string, ChordModifier | null>>({});
     const [isCopied, setIsCopied] = useState(false);
     const [queuedActiveChord, setQueuedActiveChord] = useState<{ root: Note, quality: ChordQuality } | null>(null);
 
@@ -173,7 +192,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
         });
     };
 
-    const handleModifierClick = (modifier: any, id: string, e: React.MouseEvent) => {
+    const handleModifierClick = (modifier: ChordModifier, id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setChordModifiers(prev => ({
             ...prev,
@@ -188,8 +207,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
 
     const getFullChordName = (chord: ChordInfo, id: string) => {
         const modifier = chordModifiers[id];
-        if (modifier) {
-            return `${chord.root}${MODIFIER_DISPLAY_NAMES[modifier]}`;
+        const resolved = modifier ? resolveModifier(chord.quality, modifier) : undefined;
+        if (resolved) {
+            return `${chord.root}${CHORD_SYMBOLS[resolved]}`;
         }
         return chord.displayName;
     };
@@ -300,13 +320,18 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
         [selectedRoot, selectedScaleType]
     );
 
+    const activeModifier = selectedChordId !== null ? chordModifiers[selectedChordId] : null;
+    const resolvedModifierQuality = activeModifier && activeChord
+        ? resolveModifier(activeChord.quality, activeModifier)
+        : undefined;
+
     const activeChordQuality = selectedChordId !== null && activeChord
-        ? (chordModifiers[selectedChordId] || activeChord.quality)
+        ? (resolvedModifierQuality || activeChord.quality)
         : (queuedActiveChord ? queuedActiveChord.quality : null);
 
     const notesToDisplay = selectedChordId !== null && activeChord
-        ? (chordModifiers[selectedChordId]
-            ? getChordNotes(activeChord.root, chordModifiers[selectedChordId], useFlats)
+        ? (resolvedModifierQuality
+            ? getChordNotes(activeChord.root, resolvedModifierQuality, useFlats)
             : activeChord.notes)
         : (queuedActiveChord
             ? getChordNotes(queuedActiveChord.root, queuedActiveChord.quality, useFlats)
@@ -332,7 +357,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     const handleSelectChordFromQueue = useCallback((queued: QueuedChord) => {
         // 1. Try to find if this chord exists in the current key/scale list.
         let foundId: string | null = null;
-        let foundModifier: ChordQuality | null = null;
+        let foundModifier: ChordModifier | null = null;
 
         const checkList = (list: ChordInfo[], prefix: string) => {
             for (let i = 0; i < list.length; i++) {
@@ -343,10 +368,13 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                         foundModifier = null;
                         break;
                     }
-                    const modifiers = ['SUS2', 'SUS4', 'ADD9', 'DOM7', 'MAJ7'];
-                    if (modifiers.includes(queued.quality)) {
+                    // A queued Em7 maps back to the Em card with the "7" chip
+                    // active, so find the modifier that resolves to it.
+                    const inverse = availableModifiers(chord.quality)
+                        .find(mod => resolveModifier(chord.quality, mod) === queued.quality);
+                    if (inverse) {
                         foundId = `${prefix}-${i}`;
-                        foundModifier = queued.quality as ChordQuality;
+                        foundModifier = inverse;
                         break;
                     }
                 }
@@ -537,9 +565,9 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                                     </span>
                                     <span className="strip-notes">{notesToDisplay.join(' · ')}</span>
                                 </div>
-                                {selectedChordId !== null && (
+                                {selectedChordId !== null && activeChord && availableModifiers(activeChord.quality).length > 0 && (
                                     <div className="strip-modifiers">
-                                        {MODIFIERS.map(mod => (
+                                        {availableModifiers(activeChord.quality).map(mod => (
                                             <button
                                                 key={mod}
                                                 className={`strip-mod-btn ${chordModifiers[selectedChordId] === mod ? 'selected' : ''}`}

@@ -450,7 +450,7 @@ export const GUITAR_TUNINGS_8: Record<string, Tuning> = {
 export type ChordQuality =
     | 'MAJOR' | 'MINOR' | 'DIMINISHED' | 'AUGMENTED'
     | 'SUS2' | 'SUS4'
-    | 'ADD2' | 'ADD4' | 'ADD6' | 'ADD9'
+    | 'ADD2' | 'ADD4' | 'ADD6' | 'ADD9' | 'MINADD9'
     | 'DOM7' | 'MAJ7' | 'MIN7' | 'MIN7B5' | 'DIM7' | 'MINMAJ7'
     | 'DOM9' | 'MAJ9' | 'MIN9'
     | 'DOM11' | 'MAJ11' | 'MIN11'
@@ -476,6 +476,7 @@ export const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
     ADD4: [0, 4, 5, 7],
     ADD6: [0, 4, 7, 9],
     ADD9: [0, 4, 7, 14],
+    MINADD9: [0, 3, 7, 14],
     DOM7: [0, 4, 7, 10],
     MAJ7: [0, 4, 7, 11],
     MIN7: [0, 3, 7, 10],
@@ -506,6 +507,7 @@ export const CHORD_DEGREES: Record<ChordQuality, number[]> = {
     ADD4: [0, 2, 3, 4],
     ADD6: [0, 2, 4, 5],
     ADD9: [0, 2, 4, 1], // 9th is same letter as 2nd
+    MINADD9: [0, 2, 4, 1],
     DOM7: [0, 2, 4, 6],
     MAJ7: [0, 2, 4, 6],
     MIN7: [0, 2, 4, 6],
@@ -781,6 +783,7 @@ export const CHORD_SYMBOLS: Record<ChordQuality, string> = {
     ADD4: 'add4',
     ADD6: 'add6',
     ADD9: 'add9',
+    MINADD9: 'm(add9)',
     DOM7: '7',
     MAJ7: 'maj7',
     MIN7: 'm7',
@@ -798,10 +801,12 @@ export const CHORD_SYMBOLS: Record<ChordQuality, string> = {
     MIN13: 'm13'
 };
 
+// Wire format for shared queue URLs: qualities are encoded by index, so this
+// list is append-only — inserting or reordering breaks previously shared links.
 export const ENCODING_QUALITIES: ChordQuality[] = [
     'MAJOR', 'MINOR', 'DIMINISHED', 'AUGMENTED', 'SUS2', 'SUS4', 'ADD2', 'ADD4', 'ADD6', 'ADD9',
     'DOM7', 'MAJ7', 'MIN7', 'MIN7B5', 'DIM7', 'MINMAJ7', 'DOM9', 'MAJ9', 'MIN9', 'DOM11', 'MAJ11',
-    'MIN11', 'DOM13', 'MAJ13', 'MIN13'
+    'MIN11', 'DOM13', 'MAJ13', 'MIN13', 'MINADD9'
 ];
 
 export const encodeDense = (queue: QueuedChord[]): string => {
