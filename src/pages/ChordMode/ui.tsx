@@ -5,6 +5,8 @@ import Fretboard from '@/widgets/Fretboard';
 import Controls from '@/widgets/Controls';
 import {
     CHROMATIC_SCALE,
+    HARMONIZABLE_SCALES,
+    SCALE_CATEGORIES,
     getDiatonicChords,
     getSecondaryDominants,
     getBorrowedChords,
@@ -18,6 +20,7 @@ import {
     type ChordInfo,
     type QueuedChord,
     type ChordQuality,
+    type HarmonizableScale,
     CHORD_SYMBOLS
 } from '@/shared/lib/music/musicTheory';
 import { getChordVoicings } from '@/shared/lib/music/chordVoicings';
@@ -43,11 +46,12 @@ interface DegreeColumn {
 }
 
 // Rows of the harmonization table, ordered from "inside the key" outward.
+// Grid rows are assigned by position among the visible rows at render time.
 const CATEGORY_ROWS = [
-    { key: 'diatonic', index: 0, labelKey: 'inKey' },
-    { key: 'secondary', index: 1, labelKey: 'secondary' },
-    { key: 'borrowed', index: 2, labelKey: 'borrowed' },
-    { key: 'mediant', index: 3, labelKey: 'mediant' }
+    { key: 'diatonic', labelKey: 'inKey' },
+    { key: 'secondary', labelKey: 'secondary' },
+    { key: 'borrowed', labelKey: 'borrowed' },
+    { key: 'mediant', labelKey: 'mediant' }
 ] as const;
 
 type ChordModifier = 'SUS2' | 'SUS4' | 'ADD9' | 'DOM7' | 'MAJ7';
@@ -87,8 +91,11 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
     const [selectedRoot, setSelectedRootState] = useState<Note>(() => {
         return (localStorage.getItem('chordmode-root') as Note) || 'C';
     });
-    const [selectedScaleType, setSelectedScaleTypeState] = useState<'MAJOR' | 'MINOR'>(() => {
-        return (localStorage.getItem('chordmode-scale') as 'MAJOR' | 'MINOR') || 'MAJOR';
+    const [selectedScaleType, setSelectedScaleTypeState] = useState<HarmonizableScale>(() => {
+        const stored = localStorage.getItem('chordmode-scale');
+        return stored && (HARMONIZABLE_SCALES as readonly string[]).includes(stored)
+            ? stored as HarmonizableScale
+            : 'MAJOR';
     });
 
     const setSelectedRoot = (root: Note) => {
@@ -96,7 +103,7 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
         localStorage.setItem('chordmode-root', root);
     };
 
-    const setSelectedScaleType = (scaleType: 'MAJOR' | 'MINOR') => {
+    const setSelectedScaleType = (scaleType: HarmonizableScale) => {
         setSelectedScaleTypeState(scaleType);
         localStorage.setItem('chordmode-scale', scaleType);
     };
@@ -444,7 +451,13 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
         );
     };
 
-    const visibleCategories = isExtendedOpen ? CATEGORY_ROWS : CATEGORY_ROWS.slice(0, 1);
+    // Hide category rows with no chords at all (e.g. borrowed/mediants for
+    // modes, which only exist for the major/minor pair).
+    const visibleCategories = React.useMemo(() => {
+        const rows = isExtendedOpen ? CATEGORY_ROWS : CATEGORY_ROWS.slice(0, 1);
+        return rows.filter(row => row.key === 'diatonic'
+            || groupedDegrees.some(col => col.chords.some(item => item.category === row.key)));
+    }, [isExtendedOpen, groupedDegrees]);
 
     // Selected chord summary shown in the detail strip between table and fretboard.
     const isCustomVoicingActive = selectedChordId !== null && activeChord !== null
@@ -476,15 +489,26 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                             id="chord-scale-select"
                             value={selectedScaleType}
                             onChange={(e) => {
-                                setSelectedScaleType(e.target.value as 'MAJOR' | 'MINOR');
+                                setSelectedScaleType(e.target.value as HarmonizableScale);
                                 setSelectedChordId(null);
                                 setChordModifiers({});
                                 setQueuedActiveChord(null);
                                 setActiveQueueIndex(-1);
                             }}
                         >
-                            <option value="MAJOR">{t('scales.MAJOR')}</option>
-                            <option value="MINOR">{t('scales.MINOR')}</option>
+                            {(['MAJOR_BASED', 'MINOR_BASED', 'OTHER'] as const).map(category => {
+                                const scales = SCALE_CATEGORIES[category].filter(scale =>
+                                    (HARMONIZABLE_SCALES as readonly string[]).includes(scale)
+                                );
+                                if (scales.length === 0) return null;
+                                return (
+                                    <optgroup key={category} label={t(`controls.categories.${category}`)}>
+                                        {scales.map(scale => (
+                                            <option key={scale} value={scale}>{t(`scales.${scale}`)}</option>
+                                        ))}
+                                    </optgroup>
+                                );
+                            })}
                         </select>
                     </div>
                 </Controls>
@@ -494,11 +518,11 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                 <div className="chord-lists-container">
                     <div className={`harmonization-table ${isExtendedOpen ? 'expanded' : 'collapsed'}`}>
                         <div className="ht-corner" aria-hidden="true"></div>
-                        {visibleCategories.map((cat) => (
+                        {visibleCategories.map((cat, rowIndex) => (
                             <div
                                 key={cat.key}
                                 className={`ht-row-label ${cat.key}`}
-                                style={{ '--cat': cat.index } as React.CSSProperties}
+                                style={{ '--cat': rowIndex } as React.CSSProperties}
                             >
                                 <span className="ht-dot" aria-hidden="true"></span>
                                 <span className="ht-label-text">{t(`harmony.${cat.labelKey}`)}</span>
@@ -513,13 +537,13 @@ const ChordMode: React.FC<ChordModeProps> = ({ isFullScreen = false }) => {
                                     <span className="ht-degree-roman">{col.degreeName}</span>
                                     <span className="ht-degree-root">{col.rootNote}</span>
                                 </div>
-                                {visibleCategories.map((cat) => {
+                                {visibleCategories.map((cat, rowIndex) => {
                                     const items = col.chords.filter(item => item.category === cat.key);
                                     return (
                                         <div
                                             key={cat.key}
                                             className={`ht-cell ${cat.key}`}
-                                            style={{ '--deg': col.degreeIndex, '--cat': cat.index } as React.CSSProperties}
+                                            style={{ '--deg': col.degreeIndex, '--cat': rowIndex } as React.CSSProperties}
                                         >
                                             {items.length === 0 ? (
                                                 <span className="ht-empty" aria-hidden="true">·</span>

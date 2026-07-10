@@ -525,26 +525,41 @@ export const CHORD_DEGREES: Record<ChordQuality, number[]> = {
     MIN13: [0, 2, 4, 6, 1, 3, 5]
 };
 
-// Diatonic patterns
-const DIATONIC_PATTERNS: Record<'MAJOR' | 'MINOR', { quality: ChordQuality, roman: string }[]> = {
-    MAJOR: [
-        { quality: 'MAJOR', roman: 'I' },
-        { quality: 'MINOR', roman: 'ii' },
-        { quality: 'MINOR', roman: 'iii' },
-        { quality: 'MAJOR', roman: 'IV' },
-        { quality: 'MAJOR', roman: 'V' },
-        { quality: 'MINOR', roman: 'vi' },
-        { quality: 'DIMINISHED', roman: 'vii°' }
-    ],
-    MINOR: [
-        { quality: 'MINOR', roman: 'i' },
-        { quality: 'DIMINISHED', roman: 'ii°' },
-        { quality: 'MAJOR', roman: 'III' },
-        { quality: 'MINOR', roman: 'iv' },
-        { quality: 'MINOR', roman: 'v' },
-        { quality: 'MAJOR', roman: 'VI' },
-        { quality: 'MAJOR', roman: 'VII' }
-    ]
+// --- Diatonic harmonization ---
+// Heptatonic scales whose stacked-thirds triads all classify as standard
+// qualities (major/minor/diminished/augmented). Only these are offered in
+// the Chord Viewer; the remaining heptatonics (Double Harmonic, Hungarian
+// Minor, Neapolitans) contain b5-major or diminished-third stacks that have
+// no ChordQuality yet. A test asserts this list matches the derivation.
+export const HARMONIZABLE_SCALES = [
+    'MAJOR', 'MINOR', 'IONIAN', 'DORIAN', 'PHRYGIAN', 'LYDIAN',
+    'MIXOLYDIAN', 'AEOLIAN', 'LOCRIAN', 'HARMONIC_MINOR', 'MELODIC_MINOR'
+] as const;
+export type HarmonizableScale = (typeof HARMONIZABLE_SCALES)[number];
+
+const TRIAD_QUALITY_BY_STACK: Record<string, ChordQuality> = {
+    '4,3': 'MAJOR',
+    '3,4': 'MINOR',
+    '3,3': 'DIMINISHED',
+    '4,4': 'AUGMENTED'
+};
+
+const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+
+const DIATONIC_SUFFIXES: Partial<Record<ChordQuality, string>> = {
+    MINOR: 'm',
+    DIMINISHED: '°',
+    AUGMENTED: '+'
+};
+
+// Triad built on a scale degree by stacking scale thirds (degree, degree+2,
+// degree+4). Undefined when the stack is not a standard triad — cannot
+// happen for HARMONIZABLE_SCALES.
+export const getDegreeTriadQuality = (intervals: number[], index: number): ChordQuality | undefined => {
+    const root = intervals[index];
+    const third = intervals[(index + 2) % 7] + (index + 2 >= 7 ? 12 : 0);
+    const fifth = intervals[(index + 4) % 7] + (index + 4 >= 7 ? 12 : 0);
+    return TRIAD_QUALITY_BY_STACK[`${third - root},${fifth - third}`];
 };
 
 export const getChordNotes = (root: Note, quality: ChordQuality, forceFlats?: boolean): Note[] => {
@@ -567,39 +582,46 @@ export const getChordNotes = (root: Note, quality: ChordQuality, forceFlats?: bo
     });
 };
 
-export const getDiatonicChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+export const getDiatonicChords = (keyRoot: Note, scaleType: HarmonizableScale): ChordInfo[] => {
+    const intervals = SCALES[scaleType];
+    if (intervals.length !== 7) return [];
+
     const scaleNotes = getScale(keyRoot, scaleType);
     const useFlats = shouldUseFlats(keyRoot, scaleType);
-    const pattern = DIATONIC_PATTERNS[scaleType];
+    const chords: ChordInfo[] = [];
 
-    return scaleNotes.map((note, index) => {
-        const { quality, roman } = pattern[index];
-        const notes = getChordNotes(note, quality, useFlats);
+    scaleNotes.forEach((note, index) => {
+        const quality = getDegreeTriadQuality(intervals, index);
+        if (!quality) return; // degree not harmonizable as a standard triad
 
-        let suffix = '';
-        if (quality === 'MINOR') suffix = 'm';
-        if (quality === 'DIMINISHED') suffix = '°';
+        let roman = ROMAN_NUMERALS[index];
+        if (quality === 'MINOR' || quality === 'DIMINISHED') roman = roman.toLowerCase();
+        if (quality === 'DIMINISHED') roman += '°';
+        if (quality === 'AUGMENTED') roman += '+';
 
-        return {
+        chords.push({
             root: note,
             quality,
-            notes,
-            displayName: `${note}${suffix}`,
+            notes: getChordNotes(note, quality, useFlats),
+            displayName: `${note}${DIATONIC_SUFFIXES[quality] ?? ''}`,
             romanNumeral: roman
-        };
+        });
     });
+
+    return chords;
 };
 
-export const getSecondaryDominants = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+export const getSecondaryDominants = (keyRoot: Note, scaleType: HarmonizableScale): ChordInfo[] => {
     const diatonicChords = getDiatonicChords(keyRoot, scaleType);
     const useFlats = shouldUseFlats(keyRoot, scaleType);
     const results: ChordInfo[] = [];
 
-    // Valid targets for secondary dominants (usually major or minor diatonic chords, not diminished)
-    diatonicChords.forEach((chord) => {
-        if (chord.quality === 'DIMINISHED') return;
-        // Don't do V/I or V/i because that's just the primary dominant
-        if (chord.romanNumeral.toLowerCase() === 'i') return;
+    // Only major and minor degrees are tonicized (diminished and augmented
+    // chords make no stable target), and the tonic's dominant is the primary
+    // dominant, not a secondary one.
+    diatonicChords.forEach((chord, degreeIndex) => {
+        if (degreeIndex === 0) return;
+        if (chord.quality !== 'MAJOR' && chord.quality !== 'MINOR') return;
 
         const targetRootIndex = getNoteIndex(chord.root);
         // V is a perfect fifth (7 semitones) up from target
@@ -621,7 +643,11 @@ export const getSecondaryDominants = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR
     return results;
 };
 
-export const getBorrowedChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+export const getBorrowedChords = (keyRoot: Note, scaleType: HarmonizableScale): ChordInfo[] => {
+    // Parallel-key interchange is only defined between the major/minor pair;
+    // modes get no borrowed row.
+    if (scaleType !== 'MAJOR' && scaleType !== 'MINOR') return [];
+
     const originalChords = getDiatonicChords(keyRoot, scaleType);
     const borrowedScaleType = scaleType === 'MAJOR' ? 'MINOR' : 'MAJOR';
     const borrowedChords = getDiatonicChords(keyRoot, borrowedScaleType);
@@ -632,7 +658,10 @@ export const getBorrowedChords = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): 
     );
 };
 
-export const getChromaticMediants = (keyRoot: Note, scaleType: 'MAJOR' | 'MINOR'): ChordInfo[] => {
+export const getChromaticMediants = (keyRoot: Note, scaleType: HarmonizableScale): ChordInfo[] => {
+    // Mediants are defined relative to a major/minor tonic triad only.
+    if (scaleType !== 'MAJOR' && scaleType !== 'MINOR') return [];
+
     const rootIndex = getNoteIndex(keyRoot);
     const useFlats = shouldUseFlats(keyRoot, scaleType);
     const diatonicChords = getDiatonicChords(keyRoot, scaleType);

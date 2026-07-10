@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getScale, getChordNotes, getDiatonicChords, getSecondaryDominants, getBorrowedChords, getChromaticMediants } from '../musicTheory';
+import { getScale, getChordNotes, getDiatonicChords, getSecondaryDominants, getBorrowedChords, getChromaticMediants, getDegreeTriadQuality, HARMONIZABLE_SCALES, SCALES, type ScaleType } from '../musicTheory';
 
 describe('musicTheory - Enharmonic Spelling', () => {
     describe('getScale', () => {
@@ -95,8 +95,8 @@ describe('musicTheory - Enharmonic Spelling', () => {
     describe('getDiatonicChords', () => {
         it('should generate correctly spelled diatonic chords for C Major', () => {
             const result = getDiatonicChords('C', 'MAJOR');
-            expect(result.map((c: any) => c.root)).toEqual(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
-            expect(result.map((c: any) => c.quality)).toEqual([
+            expect(result.map(c => c.root)).toEqual(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
+            expect(result.map(c => c.quality)).toEqual([
                 'MAJOR', 'MINOR', 'MINOR', 'MAJOR', 'MAJOR', 'MINOR', 'DIMINISHED'
             ]);
             // Check specific spelling of vi
@@ -106,7 +106,7 @@ describe('musicTheory - Enharmonic Spelling', () => {
         it('should generate correctly spelled diatonic chords for F# Major', () => {
             const result = getDiatonicChords('F#', 'MAJOR');
             // Root should be E# for vii°
-            expect(result.map((c: any) => c.root)).toEqual(['F#', 'G#', 'A#', 'B', 'C#', 'D#', 'E#']);
+            expect(result.map(c => c.root)).toEqual(['F#', 'G#', 'A#', 'B', 'C#', 'D#', 'E#']);
             
             const viiDim = result[6];
             expect(viiDim.quality).toBe('DIMINISHED');
@@ -118,11 +118,67 @@ describe('musicTheory - Enharmonic Spelling', () => {
         
         it('should generate correctly spelled diatonic chords for Eb Minor', () => {
             const result = getDiatonicChords('Eb', 'MINOR');
-            expect(result.map((c: any) => c.root)).toEqual(['Eb', 'F', 'Gb', 'Ab', 'Bb', 'Cb', 'Db']);
-            
+            expect(result.map(c => c.root)).toEqual(['Eb', 'F', 'Gb', 'Ab', 'Bb', 'Cb', 'Db']);
+
             const vMin = result[4];
             expect(vMin.quality).toBe('MINOR');
             expect(vMin.notes).toEqual(['Bb', 'Db', 'F']);
+        });
+
+        it('should keep the historical roman numeral scheme for major and minor', () => {
+            expect(getDiatonicChords('C', 'MAJOR').map(c => c.romanNumeral))
+                .toEqual(['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°']);
+            expect(getDiatonicChords('A', 'MINOR').map(c => c.romanNumeral))
+                .toEqual(['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII']);
+        });
+
+        it('should harmonize A Harmonic Minor with augmented III and major V', () => {
+            const result = getDiatonicChords('A', 'HARMONIC_MINOR');
+            expect(result.map(c => c.displayName)).toEqual(['Am', 'B°', 'C+', 'Dm', 'E', 'F', 'G#°']);
+            expect(result.map(c => c.quality)).toEqual([
+                'MINOR', 'DIMINISHED', 'AUGMENTED', 'MINOR', 'MAJOR', 'MAJOR', 'DIMINISHED'
+            ]);
+            expect(result.map(c => c.romanNumeral)).toEqual(['i', 'ii°', 'III+', 'iv', 'V', 'VI', 'vii°']);
+        });
+
+        it('should harmonize A Melodic Minor with two diminished degrees', () => {
+            const result = getDiatonicChords('A', 'MELODIC_MINOR');
+            expect(result.map(c => c.displayName)).toEqual(['Am', 'Bm', 'C+', 'D', 'E', 'F#°', 'G#°']);
+        });
+
+        it('should harmonize D Dorian with the characteristic major IV', () => {
+            const result = getDiatonicChords('D', 'DORIAN');
+            expect(result.map(c => c.displayName)).toEqual(['Dm', 'Em', 'F', 'G', 'Am', 'B°', 'C']);
+            expect(result.map(c => c.romanNumeral)).toEqual(['i', 'ii', 'III', 'IV', 'v', 'vi°', 'VII']);
+        });
+
+        it('should harmonize B Locrian with a diminished tonic', () => {
+            const result = getDiatonicChords('B', 'LOCRIAN');
+            expect(result[0].displayName).toBe('B°');
+            expect(result[0].romanNumeral).toBe('i°');
+        });
+
+        it('should spell the raised leading tone chord of C# Harmonic Minor with B#', () => {
+            const result = getDiatonicChords('C#', 'HARMONIC_MINOR');
+            expect(result[6].root).toBe('B#');
+            expect(result[6].quality).toBe('DIMINISHED');
+        });
+    });
+
+    describe('HARMONIZABLE_SCALES', () => {
+        it('should contain exactly the heptatonic scales whose degrees all form standard triads', () => {
+            const derived = (Object.keys(SCALES) as ScaleType[]).filter(scale => {
+                const intervals = SCALES[scale];
+                if (intervals.length !== 7) return false;
+                return intervals.every((_, i) => getDegreeTriadQuality(intervals, i) !== undefined);
+            });
+            expect([...HARMONIZABLE_SCALES].sort()).toEqual(derived.sort());
+        });
+
+        it('should produce a chord for every degree of every harmonizable scale', () => {
+            for (const scale of HARMONIZABLE_SCALES) {
+                expect(getDiatonicChords('C', scale)).toHaveLength(7);
+            }
         });
     });
 
