@@ -6,7 +6,10 @@ import {
     MAX_FRET,
     PLUCK_POSITION_LABELS,
     STRING_LABELS,
+    type Dynamics,
+    type Excitation,
     type PlanPreset,
+    type PluckPosition,
     type PluckSpec
 } from '@/shared/lib/audio/session-plan';
 import { useSessionRunner } from '@/shared/hooks/useSessionRunner';
@@ -24,6 +27,141 @@ const formatPluck = (pluck: PluckSpec) =>
     `${pluck.dynamics} · ${pluck.excitation} · ${PLUCK_POSITION_LABELS[pluck.position]}`;
 
 const ACTIVE_PHASES: RunnerPhase[] = ['transition', 'armWait', 'prompting', 'ringing', 'paused'];
+
+// --- Pluck-prompt visuals -------------------------------------------------
+// Color encodes dynamics, an icon encodes excitation, and a body diagram
+// shows the pluck position: the operator has a pick in hand and eyes on the
+// frets, so the prompt must scan at a glance rather than read as a sentence.
+
+const DYNAMICS_COLORS: Record<Dynamics, string> = {
+    soft: '#7bd88f',
+    medium: '#ffc107',
+    hard: '#ff6b6b'
+};
+const DYNAMICS_LEVEL: Record<Dynamics, number> = { soft: 1, medium: 2, hard: 3 };
+const POSITION_COLOR = '#8ab4ff';
+
+const captionStyle: React.CSSProperties = { fontSize: '0.72rem', fontWeight: 700, textAlign: 'center' };
+const badgeBoxStyle = (border: string, background: string): React.CSSProperties => ({
+    height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
+    padding: '0 12px', borderRadius: '10px', border: `1.5px solid ${border}`, background
+});
+const badgeColumnStyle: React.CSSProperties = {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px'
+};
+
+const DynamicsBadge = ({ dynamics }: { dynamics: Dynamics }) => {
+    const color = DYNAMICS_COLORS[dynamics];
+    return (
+        <div style={badgeColumnStyle}>
+            <div style={{ ...badgeBoxStyle(color, `${color}1f`), alignItems: 'flex-end', paddingBottom: '9px' }}>
+                {[1, 2, 3].map((level) => (
+                    <span
+                        key={level}
+                        style={{
+                            width: '7px', height: `${4 + level * 8}px`, borderRadius: '2px',
+                            background: color, opacity: level <= DYNAMICS_LEVEL[dynamics] ? 1 : 0.18
+                        }}
+                    />
+                ))}
+            </div>
+            <span style={{ ...captionStyle, color }}>{dynamics}</span>
+        </div>
+    );
+};
+
+const PickIcon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+        {/* plectrum: rounded shoulders, tapering tip */}
+        <path
+            d="M12 21.5 C9.2 18 4.5 13.4 4.5 8.7 C4.5 5.2 7.8 2.8 12 2.8 C16.2 2.8 19.5 5.2 19.5 8.7 C19.5 13.4 14.8 18 12 21.5 Z"
+            fill="rgba(255,255,255,0.92)"
+        />
+    </svg>
+);
+
+const FingerIcon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+        {/* index finger raised from a closed hand */}
+        <rect x="9.7" y="2" width="4.6" height="12.5" rx="2.3" fill="rgba(255,255,255,0.92)" />
+        <rect x="4.8" y="10.2" width="14.4" height="9.8" rx="4.9" fill="rgba(255,255,255,0.92)" />
+    </svg>
+);
+
+const ExcitationBadge = ({ excitation }: { excitation: Excitation }) => (
+    <div style={badgeColumnStyle}>
+        <div style={badgeBoxStyle('rgba(255,255,255,0.35)', 'rgba(255,255,255,0.06)')}>
+            {excitation === 'pick' ? <PickIcon /> : <FingerIcon />}
+        </div>
+        <span style={{ ...captionStyle, opacity: 0.85 }}>{excitation}</span>
+    </div>
+);
+
+// Zones in the diagram's viewBox: over the fretboard end, over the
+// soundhole, and just ahead of the bridge
+const POSITION_ZONES: Record<PluckPosition, { x: number; width: number }> = {
+    neck: { x: 50, width: 42 },
+    middle: { x: 96, width: 40 },
+    bridge: { x: 140, width: 44 }
+};
+
+const PositionDiagram = ({ position }: { position: PluckPosition }) => {
+    const zone = POSITION_ZONES[position];
+    return (
+        <div style={badgeColumnStyle}>
+            <svg width="205" height="48" viewBox="0 0 210 64" aria-hidden="true">
+                {/* fretboard end */}
+                <rect x="0" y="24" width="62" height="16" rx="2" fill="rgba(255,255,255,0.14)" />
+                {[10, 22, 34, 46, 58].map((x) => (
+                    <line key={x} x1={x} y1="24" x2={x} y2="40" stroke="rgba(255,255,255,0.28)" strokeWidth="1" />
+                ))}
+                {/* body outline with waist */}
+                <path
+                    d="M62 20 C76 6 98 6 112 16 C117 20 123 20 128 16 C142 4 176 6 190 22 C196 28 196 36 190 42 C176 58 142 60 128 48 C123 44 117 44 112 48 C98 58 76 58 62 44 Z"
+                    fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.25)" strokeWidth="1"
+                />
+                <circle cx="112" cy="32" r="8.5" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                {/* bridge */}
+                <rect x="168" y="25" width="11" height="14" rx="2" fill="rgba(255,255,255,0.4)" />
+                {/* strings */}
+                {[28, 32, 36].map((y) => (
+                    <line key={y} x1="0" y1={y} x2="173" y2={y} stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" />
+                ))}
+                {/* active pluck zone */}
+                <rect
+                    x={zone.x} y="9" width={zone.width} height="46" rx="7"
+                    fill="rgba(138,180,255,0.16)" stroke={POSITION_COLOR} strokeWidth="1.6"
+                />
+                <path d={`M${zone.x + zone.width / 2 - 5.5} 1 h11 l-5.5 7 Z`} fill={POSITION_COLOR} />
+            </svg>
+            <span style={{ ...captionStyle, color: POSITION_COLOR }}>{PLUCK_POSITION_LABELS[position]}</span>
+        </div>
+    );
+};
+
+// One dot per pluck of the current fret, colored by its dynamics: done plucks
+// solid, the current one ringed, upcoming ones dimmed — progress and what's
+// coming next in a single glance
+const PluckDots = ({ plucks, pluckPos, ringing }: { plucks: PluckSpec[]; pluckPos: number; ringing: boolean }) => (
+    <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+        {plucks.map((pluck, index) => {
+            const done = index < pluckPos || (index === pluckPos && ringing);
+            const current = index === pluckPos;
+            return (
+                <span
+                    key={index}
+                    title={formatPluck(pluck)}
+                    style={{
+                        width: '11px', height: '11px', borderRadius: '50%',
+                        background: DYNAMICS_COLORS[pluck.dynamics],
+                        opacity: done ? 1 : current ? 0.9 : 0.25,
+                        boxShadow: current ? '0 0 0 2px rgba(255,255,255,0.8)' : 'none'
+                    }}
+                />
+            );
+        })}
+    </div>
+);
 
 const inputStyle: React.CSSProperties = {
     padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)',
@@ -170,12 +308,20 @@ const GuidedSession = ({ manualActive }: { manualActive: boolean }) => {
                     )}
 
                     {(snap.phase === 'prompting' || snap.phase === 'ringing') && snap.currentString && snap.currentFret && snap.currentPluck && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>
                                 String {snap.currentString.stringIndex} — {snap.currentString.stringLabel} · Fret {snap.currentFret.fret} ({snap.currentFret.noteName})
                             </div>
+                            <div
+                                style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}
+                                title={formatPluck(snap.currentPluck)}
+                            >
+                                <DynamicsBadge dynamics={snap.currentPluck.dynamics} />
+                                <ExcitationBadge excitation={snap.currentPluck.excitation} />
+                                <PositionDiagram position={snap.currentPluck.position} />
+                            </div>
                             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>{formatPluck(snap.currentPluck)}</span>
+                                <PluckDots plucks={snap.currentFret.plucks} pluckPos={snap.pluckPos} ringing={snap.phase === 'ringing'} />
                                 <span style={{ opacity: 0.8 }}>pluck {snap.pluckPos + 1}/{snap.currentFret.plucks.length}</span>
                                 <span style={{ opacity: 0.8 }}>cell sequences: {snap.cellSequences}</span>
                                 {snap.phase === 'ringing' && <span style={{ color: '#7bd88f' }}>✓ counted — let it ring</span>}
