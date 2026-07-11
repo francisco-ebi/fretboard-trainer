@@ -1,6 +1,6 @@
 # Protocolo de grabación del dataset
 
-> *Traducción de [recording-protocol.md](recording-protocol.md), sincronizada a 2026-07-08. Ante cualquier discrepancia, el original en inglés es la referencia.*
+> *Traducción de [recording-protocol.md](recording-protocol.md), sincronizada a 2026-07-11. Ante cualquier discrepancia, el original en inglés es la referencia.*
 
 Un protocolo paso a paso para grabar un dataset de entrenamiento para el modelo de clasificación de cuerdas. Síguelo al pie de la letra y obtendrás un dataset equilibrado, con etiquetas limpias y concentrado donde el modelo de verdad se gana el sueldo. Sáltate pasos y obtendrás un modelo que memoriza tu sesión de grabación en lugar de tus cuerdas.
 
@@ -39,6 +39,8 @@ Hazlo una vez por sesión, antes de grabar nada:
 - **Deja sonar cada nota ~2 segundos y apágala del todo** con la palma; espera ~0.5 s antes de la siguiente pulsación. El hueco de silencio (> 150 ms) vacía el búfer de secuencias y deja que la puerta se recalibre; cada pulsación produce entonces una secuencia anclada al onset más varias secuencias limpias de decaimiento.
 - **Sin armónicos, sin notas muertas o que trastean.** El cerdeo añade parciales de ruido que envenenan el ajuste de B; si un traste cerdea en tu guitarra, sáltatelo y anótalo en los metadatos.
 - **Vigila el contador de la consola.** Cada secuencia capturada registra `Captured sequence for <nota>` (los nombres de nota van en notación inglesa: C=Do, D=Re, …). Si el nombre de la nota no es lo que estás tocando — para; estás desafinado o el rastreador de pitch está saltando de octava en esa nota.
+- **El runner guiado (§4) hace cumplir por ti la mecánica de esta sección** — los 2 s de silencio de armado (se rearma si oye algo), el ritmo de sonar/apagar, y la vigilancia de notas equivocadas (comprueba cada nota detectada contra el traste que pidió). Lo físico — pisar limpio, apagar cuerdas, sin vibrato, afinación — sigue siendo cosa tuya.
+- **Pulsar `Start` (manual o guiado) descarta los frames rancios previos al Start**, de modo que el audio analizado mientras la grabación estaba parada ya no puede colarse bajo la etiqueta de la siguiente cuerda.
 
 ---
 
@@ -107,12 +109,20 @@ Esto pone cada cuerda en cada sesión, de modo que los artefactos de sesión (de
 3. Configura el **`Guitar tag`** con el id de este instrumento (se recuerda entre sesiones — verifica que coincide con la guitarra que tienes en las manos, sobre todo si rotas instrumentos).
 4. **¿Pasada B (continuando un día anterior)?** Pulsa `Import dataset` y selecciona el `guitar_dataset_*.json` de la pasada anterior — el contador de secuencias debería saltar al total anterior. La grabación continúa desde ahí. Si en su lugar aparece un aviso *"Autosaved session found"*, la sesión anterior nunca se descargó: haz `Restore` (sin importar nada) o `Discard` antes de grabar.
 5. Afina. Verifica con unas pulsaciones de prueba que la consola muestra los nombres de nota correctos.
-6. Para cada cuerda del plan de la pasada:
+6. Elige el preset de la pasada en **Guided session** (Pass A / Pass B / Full / Single string) y pulsa `Start session`. El runner conduce toda la pasada — tú solo tocas:
+   - **Él mismo fija la etiqueta de cuerda** — sin clics en `Start N`, así que la etiqueta siempre coincide con el plan. Entre cuerdas tienes una cuenta atrás para mover la mano y revisar la afinación; `Espacio` (o `I'm ready`) empieza antes.
+   - **Guarda silencio siempre que diga *arming*** — hace cumplir la ventana de 2 s de aprendizaje de la puerta y se rearma si oye algo.
+   - **Te dicta cada traste y cada variación de pulsación** (avisos de voz opcionales — ojos en el diapasón), cuenta las pulsaciones por detección de onset y avanza traste → cuerda → fin automáticamente. Dejar sonar de más tras la última pulsación de un traste no pasa nada; adelantarse también cuenta.
+   - **Comprueba cada nota tocada contra el traste esperado**: una nota equivocada se avisa y no se cuenta; tres seguidas levantan la alerta de *revisa tu cuerda*. Esto verifica la **nota**, no la cuerda — el principio 2 de §0 sigue en pie; la etiqueta se confía al plan, que es exactamente por lo que la fija el runner y no tú.
+   - `Espacio` también pausa/reanuda a mitad de cuerda (la pausa detiene la captura; reanudar rearma con silencio fresco en el mismo punto). Usa `Skip fret` para trastes que cerdean — los trastes saltados aparecen en el resumen de la sesión; cópialos al archivo de metadatos.
+   - Cerrar el modal del Studio **no** termina la sesión — sigue corriendo y el panel se rehidrata al reabrirlo. Terminarla es siempre el `Abort` explícito.
+
+   **Manual (respaldo)** (regrabaciones puntuales, o si el runner falla) — para cada cuerda del plan de la pasada:
    1. Pulsa `Start <índice de cuerda>` (**comprueba tres veces el índice**: 0 = E agudo … 5 = E grave — un índice equivocado aquí es un lote mal etiquetado que ningún filtro atrapará del todo).
    2. 2 s de silencio.
    3. Recorre los trastes planificados de grave a agudo ejecutando la rejilla de variación; apaga la cuerda + pausa entre pulsaciones.
    4. Pulsa `Stop`. Estira, revisa la afinación.
-7. Tras la última cuerda: **Descarga dataset + stats** (un solo botón produce ambos archivos — son una pareja; el archivo de estadísticas es el contrato de normalización del modelo que entrenarás).
+7. Tras la última cuerda: **Descarga dataset + stats** (un solo botón produce ambos archivos — son una pareja; el archivo de estadísticas es el contrato de normalización del modelo que entrenarás). El runner guiado te lo ofrece al terminar la sesión.
 8. Nómbralos de forma consistente, p. ej. `guitar_dataset_<guitarra>_<AAAAMMDD>.json` + sus stats, deja el dataset en `public/datasets/<nombre>/` y escribe el archivo de metadatos junto a ellos.
 
 ---

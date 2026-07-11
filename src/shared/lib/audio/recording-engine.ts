@@ -16,7 +16,8 @@ import audioCaptureProcessorUrl from '@/shared/lib/audio/audio-capture-processor
 import { AudioReader, RingBuffer, createRingBufferSab, AUDIO_RING_CAPACITY } from '@/shared/lib/audio/sab-ring-buffer';
 import { FEATURE_POSITIONS, type AnalysisResult } from '@/shared/lib/audio/worklet-types';
 
-const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
+// min is the open-string MIDI note — session-plan.ts pins its own copy to it
+export const STRING_MIDI_RANGES: Record<number, { min: number, max: number }> = {
     0: { min: 64, max: 82 }, // High E: E4 (64) - A#5 (82)
     1: { min: 59, max: 77 }, // B: B3 (59) - F5 (77)
     2: { min: 55, max: 73 }, // G: G3 (55) - C#5 (73)
@@ -49,6 +50,25 @@ export interface DatasetEntry {
     normalizedFeatures: number[][];
 }
 
+// Every pitched frame, emitted BEFORE the string range filter — observers
+// (the guided session runner) need to see the notes the filter drops.
+export interface EngineNoteEvent {
+    midi: number;
+    noteName: string;
+    isOnset: boolean;
+    accepted: boolean; // passed the current string's range filter
+    rms: number;
+    pitchConfidence: number;
+}
+
+export interface EngineSequenceEvent {
+    midi: number;
+    noteName: string;
+    stringNum: number; // label the sequence was saved under
+    isOnsetAnchored: boolean; // sequence starts at a pluck attack (one per pluck)
+    datasetLength: number;
+}
+
 class GuitarAudioRecordingEngine {
     audioContext: AudioContext | null;
     gainNode: GainNode | null;
@@ -61,7 +81,10 @@ class GuitarAudioRecordingEngine {
     currentLabel: number;
     guitarId: string; // provenance tag stamped onto every captured sequence
     onDataCaptured: ((note: number, count: number) => void) | null;
+    onNoteEvent: ((event: EngineNoteEvent) => void) | null;
+    onSequenceCaptured: ((event: EngineSequenceEvent) => void) | null;
     private frameBuffer: { features: number[] }[] = [];
+    private frameBufferStartsWithOnset = false;
     private lastFrameNote: number | null = null;
     private lastFrameTime: number = 0;
     private sharedBuffer: SharedArrayBuffer | null = null;
@@ -89,6 +112,8 @@ class GuitarAudioRecordingEngine {
         this.currentLabel = 0; // Current String Index
         this.guitarId = '';
         this.onDataCaptured = null;
+        this.onNoteEvent = null;
+        this.onSequenceCaptured = null;
         this.frameBuffer = [];
         // Resolves in ms, long before the user can init the mic and record
         this.autosaveBoundary = maxAutosavedKey().catch(() => 0);
@@ -237,14 +262,20 @@ class GuitarAudioRecordingEngine {
             const midiNote = this.hertzToMidi(pitch);
             // String-specific Range Filter
             const range = STRING_MIDI_RANGES[this.currentLabel];
+            const accepted = range
+                ? midiNote >= range.min && midiNote <= range.max
+                : midiNote >= 40 && midiNote <= 90;
 
-            if (range) {
-                if (midiNote < range.min || midiNote > range.max) {
-                    return;
-                }
-            } else {
-                if (midiNote < 40 || midiNote > 90) return;
-            }
+            this.onNoteEvent?.({
+                midi: midiNote,
+                noteName: this.getNoteNameFromMidi(midiNote),
+                isOnset: features[FEATURE_POSITIONS.ONSET] > 0.5,
+                accepted,
+                rms: features[FEATURE_POSITIONS.RMS],
+                pitchConfidence: features[FEATURE_POSITIONS.PITCH_CONFIDENCE]
+            });
+
+            if (!accepted) return;
 
             // Extract MFCCs
             const mfcc = Array.from(features.subarray(FEATURE_POSITIONS.MFCC_START, FEATURE_POSITIONS.MFCC_START + 13));
@@ -334,7 +365,10 @@ class GuitarAudioRecordingEngine {
             ];
         }
 
-        // Buffer the frame
+        // Buffer the frame; remember whether this sequence starts at an attack
+        if (this.frameBuffer.length === 0) {
+            this.frameBufferStartsWithOnset = !!extraFeatures.isOnset;
+        }
         this.frameBuffer.push({
             features: currentFrameFeatures
         });
@@ -357,6 +391,13 @@ class GuitarAudioRecordingEngine {
                 this.onDataCaptured(note, this.dataset.length);
                 console.log(`Captured sequence for ${this.getNoteNameFromMidi(note)}. Total sequences: ${this.dataset.length}`);
             }
+            this.onSequenceCaptured?.({
+                midi: note,
+                noteName: sequenceEntry.noteName,
+                stringNum: this.currentLabel,
+                isOnsetAnchored: this.frameBufferStartsWithOnset,
+                datasetLength: this.dataset.length
+            });
 
             // Clear buffer to start next sequence
             this.frameBuffer = [];
@@ -385,6 +426,15 @@ class GuitarAudioRecordingEngine {
         this.lastFrameTime = 0;
 
         console.log("Recording started for string", stringIndex);
+
+        // Frames written to the feature SAB while polling was stopped belong
+        // to earlier audio (previous string, pause noise); buffered now they
+        // would be saved under the NEW label — overlapping string ranges let
+        // them pass the filter. Discard the backlog.
+        if (this.audioReader) {
+            const stale = this.audioReader.available_read();
+            if (stale > 0) this.audioReader.dequeue(new Float32Array(stale));
+        }
 
         this.startPolling();
     }

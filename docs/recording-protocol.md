@@ -39,6 +39,8 @@ Do this once per session, before recording anything:
 - **Let each note ring ~2 seconds, then fully mute** with your palm and wait ~0.5 s before the next pluck. The silent gap (> 150 ms) flushes the sequence buffer and lets the gate re-track; each pluck then produces one onset-anchored sequence plus several clean decay sequences.
 - **No harmonics, no dead/buzzing notes.** Fret buzz adds noise partials that poison the B fit; if a fret buzzes on your guitar, skip that fret and note it in the metadata.
 - **Watch the console counter.** Each captured sequence logs `Captured sequence for <note>`. If the note name is not what you're playing — stop; you're detuned or the pitch tracker is octave-slipping on that note.
+- **The guided runner (§4) enforces the mechanics of this section for you** — the 2 s arm silence (re-armed if it hears anything), the ring/mute pacing, and the wrong-note watch (it checks every detected note against the fret it asked for). The physical items — clean fretting, muting, no vibrato, tuning — remain your job.
+- **Pressing `Start` (manual or guided) discards any stale pre-Start frames**, so audio analyzed while recording was stopped can no longer leak into the next string's label.
 
 ---
 
@@ -107,12 +109,20 @@ This puts every string in every session, so session artifacts (mic drift, humidi
 3. Set the **`Guitar tag`** to this instrument's id (it is remembered between sessions — verify it matches the guitar in your hands, especially if you rotate instruments).
 4. **Pass B (continuing an earlier day)?** Press `Import dataset` and select the previous pass's `guitar_dataset_*.json` — the sequence counter should jump to the previous total. Recording appends from there. If an *"Autosaved session found"* banner appears instead, the previous session was never downloaded: `Restore` it (no import needed) or `Discard` it before recording.
 5. Tune. Verify with a few test plucks that the console shows the right note names.
-6. For each string in the pass plan:
+6. Pick the pass preset in **Guided session** (Pass A / Pass B / Full / Single string) and press `Start session`. The runner drives the whole pass — you only play:
+   - **It sets the string label itself** — no `Start N` clicks, so the label always matches the plan. Between strings you get a countdown to move your hand and re-check tuning; `Space` (or `I'm ready`) starts early.
+   - **Keep silent whenever it says *arming*** — it enforces the 2 s gate-learning window and re-arms if it hears anything.
+   - **It prompts every fret and pluck variation** (voice prompts optional — keep eyes on the fretboard), counts plucks by onset detection, and advances fret → string → done automatically. Extra ring after the last pluck of a fret is fine; playing ahead is counted.
+   - **It checks every played note against the expected fret**: a wrong note is warned and not counted; three in a row raise a *check your string* alert. This verifies the **note**, not the string — §0 principle 2 still stands; the label is trusted from the plan, which is exactly why the runner, not you, sets it.
+   - `Space` also pauses/resumes mid-string (pause stops capture; resume re-arms with fresh silence at the same spot). Use `Skip fret` for buzzing frets — skipped frets are listed in the session summary; copy them into the metadata file.
+   - Closing the Studio modal does **not** end the session — it keeps running and the panel re-hydrates when you reopen. Ending it is always the explicit `Abort`.
+
+   **Manual fallback** (targeted re-records, or if the runner misbehaves) — for each string in the pass plan:
    1. Press `Start <string index>` (**triple-check the index**: 0 = high E … 5 = low E — a wrong index here is a mislabeled batch that no filter will fully catch).
    2. 2 s of silence.
    3. Walk the planned frets low→high, executing the variation grid; mute + pause between plucks.
    4. Press `Stop`. Stretch, re-check tuning.
-7. After the last string: **Download dataset + stats** (one button produces both files — they are a pair; the stats file is the normalization contract for the model you'll train).
+7. After the last string: **Download dataset + stats** (one button produces both files — they are a pair; the stats file is the normalization contract for the model you'll train). The guided runner prompts this at session end.
 8. Name them consistently, e.g. `guitar_dataset_<guitar>_<YYYYMMDD>.json` + matching stats, drop the dataset under `public/datasets/<name>/`, and write the metadata file next to them.
 
 ---

@@ -1,6 +1,8 @@
 import { audioRecordingEngine, type DatasetEntry } from '@/shared/lib/audio/recording-engine';
 import { useEffect, useRef, useState } from 'react';
 import DeviceSelector from '@/features/DeviceSelector';
+import GuidedSession from './GuidedSession';
+import { useSessionRunner } from '@/shared/hooks/useSessionRunner';
 
 // Remembered across sessions so multi-day passes keep a consistent provenance tag
 const GUITAR_TAG_STORAGE_KEY = 'recording-guitar-tag';
@@ -16,6 +18,10 @@ const RecordingControls = () => {
     // Provenance tag stamped onto every captured sequence (protocol §7)
     const [guitarTag, setGuitarTag] = useState(() => localStorage.getItem(GUITAR_TAG_STORAGE_KEY) ?? '');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // While the guided runner drives the engine, manual controls must not
+    // fight it over the string label
+    const guided = useSessionRunner();
+    const guidedActive = guided.phase !== 'idle' && guided.phase !== 'done';
 
     useEffect(() => {
         audioRecordingEngine.guitarId = guitarTag;
@@ -128,7 +134,7 @@ const RecordingControls = () => {
                     <span>
                         Autosaved session found: <strong>{pendingAutosave}</strong> sequences were never downloaded.
                     </span>
-                    <button className="mode-btn" onClick={handleRestoreAutosave} disabled={activeRecording !== null}>Restore</button>
+                    <button className="mode-btn" onClick={handleRestoreAutosave} disabled={activeRecording !== null || guidedActive}>Restore</button>
                     <button className="mode-btn" onClick={handleDiscardAutosave}>Discard</button>
                 </div>
             )}
@@ -140,7 +146,7 @@ const RecordingControls = () => {
                     type="text"
                     value={guitarTag}
                     onChange={(e) => setGuitarTag(e.target.value)}
-                    disabled={activeRecording !== null}
+                    disabled={activeRecording !== null || guidedActive}
                     placeholder="e.g. strat-daddario-10s"
                     title="Provenance tag stamped onto every captured sequence — one stable id per instrument + string set. Enables leave-one-guitar-out evaluation and per-family models."
                     style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: 'inherit' }}
@@ -150,12 +156,16 @@ const RecordingControls = () => {
                 <button className="mode-btn" onClick={() => audioRecordingEngine.init(selectedDeviceId)}>Init</button>
             </div>
 
+            <GuidedSession manualActive={activeRecording !== null} />
+
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, opacity: 0.9 }}>Manual (fallback)</div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 {[0, 1, 2, 3, 4, 5].map((index) => (
                     <button
                         key={index}
                         className={`mode-btn ${activeRecording === index ? 'active' : ''}`}
                         onClick={() => handleStartRecording(index)}
+                        disabled={guidedActive}
                     >
                         Start {index}
                     </button>
@@ -163,12 +173,12 @@ const RecordingControls = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button className="mode-btn" onClick={handleStopRecording}>Stop</button>
+                <button className="mode-btn" onClick={handleStopRecording} disabled={guidedActive}>Stop</button>
                 <button className="mode-btn" onClick={handleStats}>Generate stats</button>
                 <button
                     className="mode-btn"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={activeRecording !== null}
+                    disabled={activeRecording !== null || guidedActive}
                     title="Resume a multi-day recording: load a previously downloaded dataset file; new sequences append to it"
                 >
                     Import dataset
