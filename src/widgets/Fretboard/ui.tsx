@@ -391,7 +391,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                     aria-label={`${instrument} fretboard`}
                 >
                     {renderMeasurementOverlay()}
-                    <PredictionOverlay stringCount={STRINGS} />
+                    <PredictionOverlay />
                     {renderStrings()}
                 </div>
                 {renderFretNumbers()}

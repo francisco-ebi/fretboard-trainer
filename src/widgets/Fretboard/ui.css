@@ -447,15 +447,22 @@
 
 /* --- PREDICTION & ANIMATION --- */
 
-.prediction-marker-ring {
+/* Anchored at the target cell's center; the translate centers the ring on
+   that point so the ring itself stays free to run its rotate animation */
+.prediction-marker {
     position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.prediction-marker-ring {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
     border: 2px dashed #D3AF37;
     pointer-events: none;
     animation: rotateRing 3s linear infinite;
-    z-index: 10;
 }
 
 @keyframes rotateRing {

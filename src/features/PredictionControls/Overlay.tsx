@@ -1,59 +1,51 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { guitarPredictionEngine, type PredictionResult } from '@/shared/lib/audio/prediction-engine';
 import { useOrientation } from '@/app/providers';
 
-interface PredictionOverlayProps {
-    stringCount: number;
-}
-
-const PredictionOverlay: React.FC<PredictionOverlayProps> = ({ stringCount }) => {
+// Positioned by measuring the target cell's rect (same pattern as the
+// fretboard's measurement overlay) rather than by grid placement: an
+// explicitly-placed grid item collides with the auto-placed, full-span
+// string rows — the target row gets bumped down and the marker strands in a
+// zero-height inserted row, rendering on the boundary between two strings.
+const PredictionOverlay: React.FC = () => {
     const { orientation } = useOrientation();
     const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+    const markerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!guitarPredictionEngine) return;
-        
         const subscription = guitarPredictionEngine.fretPredicted$.subscribe(setPrediction);
         return () => subscription.unsubscribe();
     }, []);
 
+    // Writes coordinates straight to the marker element: position is derived
+    // DOM geometry, not React state
+    useLayoutEffect(() => {
+        if (!prediction) return;
+
+        const update = () => {
+            const marker = markerRef.current;
+            const cell = document.getElementById(`fret-${prediction.predictedStringNumber}-${prediction.predictedFret}`);
+            const board = cell?.closest('.fretboard');
+            if (!marker || !cell || !board) return;
+            const cellRect = cell.getBoundingClientRect();
+            const boardRect = board.getBoundingClientRect();
+            // Absolute children anchor to the board's padding box, but the
+            // rects measure its border box — clientLeft/Top are the borders
+            marker.style.left = `${cellRect.left + cellRect.width / 2 - boardRect.left - board.clientLeft}px`;
+            marker.style.top = `${cellRect.top + cellRect.height / 2 - boardRect.top - board.clientTop}px`;
+            marker.style.visibility = 'visible';
+        };
+
+        update();
+        window.addEventListener('resize', update);
+        return () => window.removeEventListener('resize', update);
+    }, [prediction, orientation]);
+
     if (!prediction) return null;
 
-    // Calculate grid position
-    // Horizontal Mode: Strings are rows (0 to stringCount - 1)
-    // Row = stringIndex + 1 (since CSS grid starts at 1)
-    // Column = fret + 1 (fret 0 is open string)
-    
-    // Vertical Mode: Strings are columns (lowest string on left, highest index)
-    // Col = (stringCount - 1 - stringIndex) + 1 = stringCount - stringIndex
-    // Row = fret + 1
-
-    let gridRow = 1;
-    let gridColumn = 1;
-
-    if (orientation === 'VERTICAL') {
-        gridColumn = stringCount - prediction.predictedStringNumber;
-        gridRow = prediction.predictedFret + 1;
-    } else {
-        gridRow = prediction.predictedStringNumber + 1;
-        gridColumn = prediction.predictedFret + 1;
-    }
-
     return (
-        <div 
-            style={{ 
-                gridRow, 
-                gridColumn, 
-                position: 'relative', 
-                zIndex: 10,
-                pointerEvents: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%'
-            }}
-        >
+        // Hidden until the first measurement so it can't flash at (0,0)
+        <div ref={markerRef} className="prediction-marker" style={{ visibility: 'hidden' }}>
             <div className="prediction-marker-ring" />
         </div>
     );
