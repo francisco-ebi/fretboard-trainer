@@ -38,14 +38,14 @@ The neural network's job is to read those differences from short feature sequenc
  └───────────────────────────────────────────────────────────┘
      │  raw-audio SAB (~1.4s capacity, lock-free)
      ▼
- Feature Worker (non-realtime; one per backend)
+ Feature Worker (non-realtime)
  ┌───────────────────────────────────────────────────────────┐
- │ {essentia|meyda}-feature-worker.ts → base-feature-worker  │
+ │ essentia-feature-worker.ts → base-feature-worker          │
  │   10ms drain loop → feature-extraction-loop.ts:           │
  │     2048-sample window, 1024 hop (50% overlap, ~23ms)     │
  │     → adaptive RMS gate (noise-floor tracking) + onsets   │
  │     → backend.process(window)  ── null → frame dropped    │
- │         EssentiaBackend / MeydaBackend (WASM lives here)  │
+ │         EssentiaBackend (WASM lives here)                 │
  │   → Float32Array[34] into the feature SAB ring            │
  └───────────────────────────────────────────────────────────┘
      │  feature SAB (needs cross-origin isolation)
@@ -99,11 +99,11 @@ What moved where:
 |---|---|---|
 | Sample capture | worklet | worklet (`audio-capture-processor.ts`, ~4KB, allocation-free) |
 | Windowing, gate, onset | worklet | Worker (`feature-extraction-loop.ts`, pure & unit-tested) |
-| Feature extraction (WASM) | worklet | Worker (`base-feature-worker.ts` + per-backend entries) |
+| Feature extraction (WASM) | worklet | Worker (`base-feature-worker.ts` + the essentia entry) |
 | Backend init cost | audio thread | Worker |
 | Feature SAB → engines | unchanged | unchanged |
 
-Costs: one extra thread per active backend, ≤10ms added latency from the worker drain loop (irrelevant next to the ~116ms sequence window), and the raw-audio SAB (256KB). If the worker stalls entirely, the capture worklet drops quanta instead of blocking — degradation is silent-to-the-ear, never a glitch. This also unblocks a 4096-sample analysis window for better low-note partial resolution (roadmap).
+Costs: one extra thread, ≤10ms added latency from the worker drain loop (irrelevant next to the ~116ms sequence window), and the raw-audio SAB (256KB). If the worker stalls entirely, the capture worklet drops quanta instead of blocking — degradation is silent-to-the-ear, never a glitch. This also unblocks a 4096-sample analysis window for better low-note partial resolution (roadmap).
 
 Key files:
 
@@ -113,9 +113,7 @@ Key files:
 | `src/shared/lib/audio/feature-extraction-loop.ts` | Pure analysis pipeline (windowing, adaptive gate, onset, backend, sink) — unit-tested |
 | `src/shared/lib/audio/base-feature-worker.ts` | Worker driver: drains the raw-audio SAB into the extraction loop, parameterized by backend |
 | `src/shared/lib/audio/essentia-feature-worker.ts` | Thin worker entry with `EssentiaBackend` (own bundle, carries the WASM) |
-| `src/shared/lib/audio/meyda-feature-worker.ts` | Thin worker entry with `MeydaBackend` |
 | `src/shared/lib/audio/essentia-worklet-backend.ts` | Feature extraction with essentia.js (WASM) |
-| `src/shared/lib/audio/meyda-worklet-backend.ts` | Feature extraction with Meyda + pitchfinder |
 | `src/shared/lib/audio/inharmonicity.ts` | Pure math: partial tracking + stiffness-coefficient fit (unit-tested) |
 | `src/shared/lib/audio/adaptive-gate.ts` | Pure state machine: noise-floor-tracking RMS gate + onset + SNR (unit-tested) |
 | `src/shared/lib/audio/worklet-types.ts` | The SAB frame layout (`FEATURE_POSITIONS`) — single source of truth |
@@ -127,19 +125,11 @@ Key files:
 | `src/shared/lib/audio/model.ts` | Model definition + training loop |
 | `src/shared/lib/audio/dataset-loader.ts` | Fetches datasets from `public/datasets/` (kept out of the JS bundle) |
 | `src/shared/lib/audio/model-manifest.ts` | Manifest schema + pure validation (model↔stats↔pipeline pairing, unit-tested) |
-| `public/model/manifest.json` | Deployment manifest: per-mode model pointer + embedded normalization stats |
+| `public/model/manifest.json` | Deployment manifest: model pointer + embedded normalization stats (`modes.default`) |
 
-### Two backends, two modes
+### One backend: essentia
 
-| | `essentia` ("precision" mode) | `meyda` ("performance" mode) |
-|---|---|---|
-| Pitch | essentia `PitchYinFFT` (+ confidence) | pitchfinder Macleod (probability-gated) or YIN |
-| Features | Full set incl. inharmonicity, fitted B, harmonic structure | MFCC + centroid + rolloff + brightness only |
-| Cost | Heavier (WASM FFTs ×2, peaks, partial fit) | Lighter (pure JS) |
-| Model input | 33 features/frame | 17 features/frame |
-| Deployed model | `public/model/guitar-essentia-ts.json` (**stale — retrain needed**, see §8) | `public/model/guitar-meyda-ts-brightness-model.json` |
-
-The mode is chosen in the prediction engine (`setMode`), which swaps both the worklet processor and the model+stats pair.
+The pipeline runs exclusively on essentia.js (WASM): `PitchYinFFT` pitch (+ confidence) and the full 33-feature set including the fitted B and harmonic structure. A second, pure-JS Meyda backend ("performance mode", 17 envelope-only features) existed until 2026-07 and was removed — its original reason (the AudioWorklet's hard realtime budget on slow devices) died when extraction moved to a Worker (§2.1), and it could not compute any of the features the model actually relies on. On slow devices the Worker simply analyzes fewer frames (graceful degradation); the essentia worker bundle (~2.4 MB, embeds the WASM) is fetched on demand when listening/recording starts, not at install time.
 
 ---
 
@@ -156,26 +146,26 @@ The mode is chosen in the prediction engine (`setMode`), which swaps both the wo
 
 | Slot | Name | Producer | Notes |
 |---|---|---|---|
-| 0 | PITCH | backend | Hz, YIN/Macleod |
+| 0 | PITCH | backend | Hz, YIN |
 | 1–13 | MFCC (13) | backend | mel-cepstral envelope |
-| 14 | CENTROID | backend | essentia: normalized 0–1; meyda: bin index |
+| 14 | CENTROID | backend | normalized 0–1 |
 | 15 | ROLLOFF | backend | Hz |
-| 16 | FLUX | backend | essentia only (0 in meyda) |
-| 17 | INHARMONICITY | backend | essentia's generic scalar (0 in meyda) |
+| 16 | FLUX | backend | frame-to-frame spectral change |
+| 17 | INHARMONICITY | backend | essentia's generic scalar |
 | 18 | RMS | extraction loop | window energy |
-| 19 | PITCH_CONFIDENCE | backend | YIN confidence / Macleod probability |
-| 20 | INHARMONICITY_B | backend | **log10(fitted B)** (0 in meyda) |
+| 19 | PITCH_CONFIDENCE | backend | YIN confidence |
+| 20 | INHARMONICITY_B | backend | **log10(fitted B)** |
 | 21 | ONSET | extraction loop | 1 on the first frame of a pluck |
 | 22 | SNR | extraction loop | log10(rms / noise floor), gain-invariant |
-| 23–29 | HARMONIC_DB (7) | backend | partials 2–8 in dB re partial 1 (0 in meyda), see §4.5 |
-| 30–32 | TRISTIMULUS (3) | backend | energy shares of partial 1 / 2–4 / 5–8 (0 in meyda) |
-| 33 | ODD_EVEN | backend | log10 odd/even overtone energy ratio (0 in meyda) |
+| 23–29 | HARMONIC_DB (7) | backend | partials 2–8 in dB re partial 1, see §4.4 |
+| 30–32 | TRISTIMULUS (3) | backend | energy shares of partial 1 / 2–4 / 5–8 |
+| 33 | ODD_EVEN | backend | log10 odd/even overtone energy ratio |
 
 ---
 
 ## 4. The features, and why each one helps
 
-### 4.1 Model input vector — essentia path (33 per frame)
+### 4.1 Model input vector (33 per frame)
 
 Order matters and must match between `recording-engine.saveData` and `prediction-engine.makeSequencePrediction`:
 
@@ -196,7 +186,7 @@ Order matters and must match between `recording-engine.saveData` and `prediction
 | **log10(B)** — *the star feature* | Fitted stiffness coefficient of the inharmonic string model | Directly measures string construction; see below |
 | **Onset flag** | 1 on the pluck's first frame | Tells the net whether a frame is attack or decay, so both are usable |
 | **SNR** | log10(rms / noise floor) from the adaptive gate | Gain-invariant loudness/decay: unlike raw RMS, comparable across interfaces and rooms |
-| **H2…H8** (7) | Partials 2–8 in dB re partial 1 | Pluck-point comb filter + string-dependent upper-partial balance and decay (§4.5) |
+| **H2…H8** (7) | Partials 2–8 in dB re partial 1 | Pluck-point comb filter + string-dependent upper-partial balance and decay (§4.4) |
 | **Tristimulus** (3) | Energy shares of partial 1 / partials 2–4 / partials 5–8 | Compact summary of the harmonic balance |
 | **Odd/even ratio** | log10 of odd (3,5,7) vs even (2,4,6) overtone energy | Pluck position and string construction shift this balance in opposite, learnable ways |
 
@@ -223,15 +213,7 @@ Additionally, the *generic* essentia `Inharmonicity` input is made meaningful by
 
 A frame must pass **all** of: adaptive gate open → YIN pitch > 0 → YIN confidence ≥ 0.4 → windowing/spectrum/MFCC succeed → spectral peaks exist and match the pitch → ≥4 partials for the B fit. Anything else returns `null` and the frame never leaves the worklet. Downstream, the engines additionally range-check the note (per-string MIDI ranges while recording; instrument range at inference).
 
-### 4.4 Meyda path (17 per frame)
-
-```
-[ mfcc×13, midiNote, centroid, rolloff, brightnessPerNote ]
-```
-
-`brightnessPerNote = midiNote / centroid` — a hand-crafted brightness-vs-pitch ratio. The meyda path cannot compute flux (needs the previous frame) or inharmonicity (no spectral peaks), which is exactly why it is the "performance" (fast) mode and the essentia path is the "precision" mode.
-
-### 4.5 Harmonic-structure features (11 per frame, essentia only)
+### 4.4 Harmonic-structure features (11 per frame)
 
 Computed in `harmonic-features.ts` from the **same pitch-guided partials the B fit already tracks** — no additional spectral analysis:
 
@@ -296,7 +278,7 @@ It is deliberately small: it runs on the main thread in real time alongside the 
 
 1. Frames stream in exactly as during recording (same worklet, same gates) — **train/inference symmetry is the core invariant of this codebase**.
 2. A sliding 5-frame buffer (with the same flush rules) produces a sequence per hop.
-3. Features are assembled *in the same order as `saveData`* and normalized with the stats **embedded in the model manifest** (`public/model/manifest.json`). The manifest is the single source of truth per mode: model filename, backend, feature count, sequence length, pipeline version, and normalization stats travel as one artifact. At load time (`loadResourcesForMode` → `model-manifest.ts`) dimension mismatches — stats vs entry, entry vs running pipeline, entry vs the *actual* loaded model input shape — disable the model with explicit console errors, and pipeline-version drift logs a loud "retrain recommended" warning. Manifest entries are generated by `trainModel`, never written by hand.
+3. Features are assembled *in the same order as `saveData`* and normalized with the stats **embedded in the model manifest** (`public/model/manifest.json`, key `modes.default`). The manifest is the single source of truth: model filename, backend, feature count, sequence length, pipeline version, and normalization stats travel as one artifact. At load time (`loadResources` → `model-manifest.ts`) dimension mismatches — stats vs entry, entry vs running pipeline, entry vs the *actual* loaded model input shape — disable the model with explicit console errors, and pipeline-version drift logs a loud "retrain recommended" warning. Manifest entries are generated by `trainModel`, never written by hand.
 4. **Feasibility masking**: for the detected pitch, only strings whose implied fret is within 0–24 are physically possible (C3 → 2 candidates; open E2 → 1). The softmax argmax runs only over feasible classes. This is a free accuracy win and needs no retraining.
 5. `calculateLocation` converts (midi, string) → fret.
 6. **RxJS stabilization**: raw predictions pass through a sliding window (`bufferCount(5,1)`); a (string, fret) pair must win ≥70% of the window to emit. An emitted prediction auto-clears after 5 s of silence (`switchMap` + timer).
@@ -327,9 +309,10 @@ These were made in one review-and-fix pass; the "before" states are documented b
 | **Worklet imports switched to `?worker&url`** | Plain `?url` never compiles TS in production builds — `addModule()` received a data-URI of raw TypeScript, so **worklets could not load in any production build** (dev worked because Vite transforms on the fly). `?worker&url` emits real compiled per-backend bundles; they are excluded from the PWA precache (opt-in feature, essentia bundle ~2.4MB) |
 | **DSP moved off the realtime audio thread** (§2.1) | Feature extraction ran inside the worklet's ~2.7ms `process()` budget; slow devices glitched and dropped the input being analyzed. Now: tiny capture worklet → raw-audio SAB → per-backend feature Worker (extraction loop is pure and unit-tested) → feature SAB (unchanged) |
 | **Ring-buffer modulo wraparound** | The FIFO reset indices to 0 on wrap — only correct when every push divides capacity exactly (true for 128-quanta, broken for the worker's variable-size drains). Indices now wrap with real modulo arithmetic |
-| **Harmonic-structure features** (7 partial dB ratios + tristimulus + odd/even; 22 → 33 features, essentia pipeline v3) | The MFCC envelope carries pluck-point comb filtering entangled with string identity; explicit ratios of the already-tracked partials hand the model the harmonic structure directly (was roadmap item 1, §4.5) |
+| **Harmonic-structure features** (7 partial dB ratios + tristimulus + odd/even; 22 → 33 features, essentia pipeline v3) | The MFCC envelope carries pluck-point comb filtering entangled with string identity; explicit ratios of the already-tracked partials hand the model the harmonic structure directly (was roadmap item 1, §4.4) |
+| **Meyda backend removed** (backend, worker, models, dataset, `meyda`+`pitchfinder` deps) | Its reason to exist — the worklet's realtime budget on slow devices — died with the Worker move above, and it zero-filled 16 of 33 feature slots including log10(B), the star feature. One science stack to maintain; slow devices degrade by analyzing fewer frames instead of switching feature families |
 
-**Consequences for artifacts**: the bundled dataset (18-feature frames) and both deployed *essentia* models predate these changes. The essentia/"precision" path will not predict until a new dataset is recorded and a model retrained; `prepareStratifiedSplit` fails fast with an explanatory error. The meyda/"performance" path (17 features, unchanged layout) still works.
+**Consequences for artifacts**: the dataset in `public/datasets/` (18-feature frames) and the deployed essentia models predate these changes, and the removed meyda model was the last deployable one — `public/model/manifest.json` currently has **no `modes.default` entry, so live prediction is disabled** (loud console warning) until a new dataset is recorded (see the guided runner in [recording-protocol.md](recording-protocol.md) §4) and a model trained; `prepareStratifiedSplit` fails fast on old datasets with an explanatory error.
 
 ---
 
@@ -345,7 +328,6 @@ These were made in one review-and-fix pass; the "before" states are documented b
 - **~116 ms sequences** may miss slower decay differences; sequence start is now onset-aligned, but only the first sequence of a pluck contains the attack.
 - **MFCC resolution at low frequencies** is poor exactly where partials 1–4 of low notes live; the fitted B and the harmonic-structure features compensate.
 - **Octave errors**: YIN octave slips within the per-string range filter still mislabel `midiNote`; confidence gating reduces but does not eliminate them.
-- **B is undefined for the meyda path**, so performance mode still relies on envelope features only.
 - **Class imbalance & note coverage**: only pitch ranges shared by ≥2 strings actually need the model; the dataset isn't concentrated there.
 
 ---
@@ -359,7 +341,7 @@ Ordered roughly by expected value per effort.
 3. **Per-pluck aggregation at inference**: aggregate all sequences of one pluck (median of per-sequence softmax, weighted by confidence/RMS) instead of the generic sliding majority vote.
 4. **Physics-prior hybrid**: per-guitar calibration pass that measures B per (string, fret) once, then classifies by nearest-B with the network as a tie-breaker. Would personalize accuracy cheaply and degrade gracefully.
 
-*(The former item 1 — harmonic-structure features — landed in 2026-07; see §4.5 and the §8 change log.)*
+*(The former item 1 — harmonic-structure features — landed in 2026-07; see §4.4 and the §8 change log.)*
 
 **Alternative model architectures**, if engineered features plateau:
 
@@ -383,5 +365,5 @@ The honest guidance: **data quality and train/inference symmetry have been worth
 2. For each string 0–5: press `Start n`, play notes along that string (each sustained pluck yields several sequences), `Stop`.
 3. Download dataset + stats. Place the dataset under `public/datasets/<name>/guitar_dataset.json` and keep the stats file with it.
 4. Point `model.ts` (`fetchDataset`) at it if the name changed; run training from the Recording Studio (`Train Model`). Watch per-epoch `val_acc` in the console.
-5. Training downloads **three artifacts**: the model JSON + weights, and a generated `manifest-entry-*.json` (model pointer, feature/sequence dims, pipeline version, embedded normalization stats). Move the model files into `public/model/` and paste the entry under the right mode key in `public/model/manifest.json`. Never edit dims/stats by hand — the prediction engine validates the entry against the running pipeline *and* the loaded model's real input shape, and disables the model with console errors on any mismatch.
-6. Verify: `npx vitest run` (pipeline math), then live: precision mode, play the same pitch on two strings, watch the overlay.
+5. Training downloads **three artifacts**: the model JSON + weights, and a generated `manifest-entry-*.json` (model pointer, feature/sequence dims, pipeline version, embedded normalization stats). Move the model files into `public/model/` and paste the entry under `modes.default` in `public/model/manifest.json`. Never edit dims/stats by hand — the prediction engine validates the entry against the running pipeline *and* the loaded model's real input shape, and disables the model with console errors on any mismatch.
+6. Verify: `npx vitest run` (pipeline math), then live: start listening, play the same pitch on two strings, watch the overlay.

@@ -108,7 +108,7 @@ export async function trainModel(data: DatasetEntry[] = [], options: TrainOption
         stats: calculateStatistics(data)
     };
     downloadJSON(manifestEntry, `manifest-entry-${MODEL_NAME}.json`);
-    console.log('Manifest entry downloaded — paste it under modes.precision in public/model/manifest.json');
+    console.log('Manifest entry downloaded — paste it under modes.default in public/model/manifest.json');
 
     return model;
 }

@@ -27,8 +27,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'framer-motion', 'i18next', 'react-i18next'],
-          tensorflow: ['@tensorflow/tfjs'],
-          audio: ['meyda', 'pitchfinder']
+          tensorflow: ['@tensorflow/tfjs']
         }
       }
     }

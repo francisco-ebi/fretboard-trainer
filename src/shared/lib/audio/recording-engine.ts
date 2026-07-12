@@ -75,7 +75,6 @@ class GuitarAudioRecordingEngine {
     workletNode: AudioWorkletNode | null;
     sourceNode: MediaStreamAudioSourceNode | null;
     backend: any | null; // Placeholder as actual backend is in worklet
-    activeBackendType: 'meyda' | 'essentia';
     dataset: DatasetEntry[];
     isRecording: boolean;
     currentLabel: number;
@@ -105,7 +104,6 @@ class GuitarAudioRecordingEngine {
         this.gainNode = null;
         this.workletNode = null;
         this.sourceNode = null;
-        this.activeBackendType = 'essentia';
         this.backend = null;
         this.dataset = [];
         this.isRecording = false;
@@ -129,8 +127,7 @@ class GuitarAudioRecordingEngine {
         });
     }
 
-    async setBackendType(type: 'meyda' | 'essentia') {
-        this.activeBackendType = type;
+    async setupPipeline() {
         if (this.audioContext && this.sourceNode) {
             if (this.workletNode) {
                 this.workletNode.disconnect();
@@ -147,9 +144,7 @@ class GuitarAudioRecordingEngine {
             this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor', { numberOfInputs: 1 });
             this.workletNode.port.postMessage({ command: 'sab', sab: audioSab });
 
-            this.featureWorker = type === 'essentia'
-                ? new Worker(new URL('./essentia-feature-worker.ts', import.meta.url), { type: 'module' })
-                : new Worker(new URL('./meyda-feature-worker.ts', import.meta.url), { type: 'module' });
+            this.featureWorker = new Worker(new URL('./essentia-feature-worker.ts', import.meta.url), { type: 'module' });
             this.featureWorker.postMessage({
                 command: 'init',
                 audioSab,
@@ -169,10 +164,8 @@ class GuitarAudioRecordingEngine {
             } else {
                 this.stopPolling();
             }
-
-            console.log(`Switched audio backend to: ${type}`);
         } else {
-            console.warn("Audio Context or Source Node not initialized yet, backend preference saved.");
+            console.warn("Audio Context or Source Node not initialized yet.");
         }
     }
 
@@ -248,8 +241,7 @@ class GuitarAudioRecordingEngine {
 
             console.log("GuitarAudioEngine initialized");
 
-            // Set default backend
-            await this.setBackendType(this.activeBackendType);
+            await this.setupPipeline();
         } catch (err) {
             console.error("Error accessing microphone:", err);
         }
@@ -322,48 +314,29 @@ class GuitarAudioRecordingEngine {
         this.lastFrameNote = note;
         this.lastFrameTime = now;
 
-        let currentFrameFeatures: number[] = [];
+        // Full feature set. Order is the model-input contract and must match
+        // prediction-engine's makeSequencePrediction exactly.
+        const harmonicsDb = extraFeatures.harmonicsDb ?? [];
+        const tristimulus = extraFeatures.tristimulus ?? [];
+        const currentFrameFeatures = [
+            ...mfcc,
+            note,
+            extraFeatures.spectralCentroid || 0,
+            extraFeatures.spectralFlux || 0,
+            extraFeatures.spectralRolloff || 0,
+            extraFeatures.inharmonicity || 0,
+            extraFeatures.rms || 0,
+            extraFeatures.inharmonicityB || 0,
+            extraFeatures.isOnset ? 1 : 0,
+            extraFeatures.snr || 0,
+            ...Array.from({ length: HARMONIC_PARTIAL_COUNT }, (_, i) => harmonicsDb[i] ?? 0),
+            tristimulus[0] ?? 0,
+            tristimulus[1] ?? 0,
+            tristimulus[2] ?? 0,
+            extraFeatures.oddEvenRatio || 0
+        ];
 
-        // The active backend determines the feature layout. The meyda worklet
-        // serializes flux/inharmonicity slots as 0, so those values cannot be
-        // used to tell the backends apart.
-        // Essentia: full feature set. Order is the model-input contract and
-        // must match prediction-engine's makeSequencePrediction exactly.
-        if (this.activeBackendType === 'essentia') {
-            const harmonicsDb = extraFeatures.harmonicsDb ?? [];
-            const tristimulus = extraFeatures.tristimulus ?? [];
-            const extendedFeatures = [
-                ...mfcc,
-                note,
-                extraFeatures.spectralCentroid || 0,
-                extraFeatures.spectralFlux || 0,
-                extraFeatures.spectralRolloff || 0,
-                extraFeatures.inharmonicity || 0,
-                extraFeatures.rms || 0,
-                extraFeatures.inharmonicityB || 0,
-                extraFeatures.isOnset ? 1 : 0,
-                extraFeatures.snr || 0,
-                ...Array.from({ length: HARMONIC_PARTIAL_COUNT }, (_, i) => harmonicsDb[i] ?? 0),
-                tristimulus[0] ?? 0,
-                tristimulus[1] ?? 0,
-                tristimulus[2] ?? 0,
-                extraFeatures.oddEvenRatio || 0
-            ];
-
-            if (extendedFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check
-            currentFrameFeatures = extendedFeatures;
-
-        } else {
-            // Meyda style (MFCC + Note + Centroid + Rolloff + brightnessPerNote)
-            const brightnessPerNote = (note / (extraFeatures?.spectralCentroid || 1)) || 0;
-            currentFrameFeatures = [
-                ...mfcc,
-                note,
-                extraFeatures.spectralCentroid || 0,
-                extraFeatures.spectralRolloff || 0,
-                brightnessPerNote
-            ];
-        }
+        if (currentFrameFeatures.some(f => f === null || f === undefined || isNaN(f))) return; // Strict check
 
         // Buffer the frame; remember whether this sequence starts at an attack
         if (this.frameBuffer.length === 0) {

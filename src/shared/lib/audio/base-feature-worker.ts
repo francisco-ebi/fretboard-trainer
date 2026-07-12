@@ -2,9 +2,8 @@ import { AudioReader, AudioWriter, RingBuffer } from './sab-ring-buffer';
 import { FeatureExtractionLoop } from './feature-extraction-loop';
 import type { AudioBackend } from './worklet-types';
 
-// Shared driver for the feature-extraction Workers. The essentia and meyda
-// worker entry modules differ only in which backend they instantiate — keep
-// the entries separate so each worker bundle only carries its own backend.
+// Driver for the feature-extraction Worker, parameterized by backend so the
+// worker entry module stays a thin shell around the backend it instantiates.
 //
 // The worker drains the raw-audio SAB written by audio-capture-processor on a
 // short poll and feeds the (thread-agnostic) FeatureExtractionLoop, which

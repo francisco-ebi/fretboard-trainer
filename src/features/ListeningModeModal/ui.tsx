@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import DeviceSelector from '@/features/DeviceSelector';
@@ -7,29 +7,28 @@ import './ui.css';
 interface ListeningModeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (mode: 'performance' | 'precision', deviceId: string | null) => void;
+    onConfirm: (deviceId: string | null) => void;
 }
 
+// WASM support cannot change at runtime — detect once at module load
+const isWasmSupported = (() => {
+    try {
+        if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
+            const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
+            if (module instanceof WebAssembly.Module)
+                return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
+        }
+    } catch {
+        // not supported
+    }
+    return false;
+})();
+
+// Pre-listen dialog: pick the input device and start. Analysis runs on the
+// essentia (WebAssembly) pipeline, so listening requires WASM support.
 const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose, onConfirm }) => {
     const { t } = useTranslation();
-    const [isWasmSupported, setIsWasmSupported] = useState(false);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
-
-    useEffect(() => {
-        // Check for WebAssembly support
-        const supported = (() => {
-            try {
-                if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
-                    const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
-                    if (module instanceof WebAssembly.Module)
-                        return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
-                }
-            } catch (e) {
-            }
-            return false;
-        })();
-        setIsWasmSupported(supported);
-    }, []);
 
     if (!isOpen) return null;
 
@@ -48,30 +47,15 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
                 <DeviceSelector onDeviceSelected={setSelectedDeviceId} />
 
                 <div className="listening-mode-options">
-                    {/* Performance Mode Card */}
-                    <div
-                        className="mode-card performance"
-                        onClick={() => onConfirm('performance', selectedDeviceId)}
-                    >
-                        <div className="mode-icon">⚡</div>
-                        <div className="mode-info">
-                            <h3>{t('listeningModal.performance.title')}</h3>
-                            <span className="mode-tag mobile">{t('listeningModal.performance.tag')}</span>
-                            <p dangerouslySetInnerHTML={{ __html: t('listeningModal.performance.desc') }} />
-                        </div>
-                    </div>
-
-                    {/* Precision Mode Card */}
                     <div
                         className={`mode-card precision ${!isWasmSupported ? 'disabled' : ''}`}
-                        onClick={() => isWasmSupported && onConfirm('precision', selectedDeviceId)}
+                        onClick={() => isWasmSupported && onConfirm(selectedDeviceId)}
                     >
                         <div className="mode-icon">🎯</div>
                         <div className="mode-info">
-                            <h3>{t('listeningModal.precision.title')}</h3>
-                            <span className="mode-tag desktop">{t('listeningModal.precision.tag')}</span>
-                            <p dangerouslySetInnerHTML={{ __html: t('listeningModal.precision.desc') }} />
-                            {!isWasmSupported && <div className="wasm-warning">{t('listeningModal.precision.warning')}</div>}
+                            <h3>{t('listeningModal.start.title')}</h3>
+                            <p>{t('listeningModal.start.desc')}</p>
+                            {!isWasmSupported && <div className="wasm-warning">{t('listeningModal.start.warning')}</div>}
                         </div>
                     </div>
                 </div>

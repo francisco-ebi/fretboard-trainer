@@ -19,7 +19,7 @@ export interface ModelStats {
 
 export interface ModelManifestEntry {
     model: string; // filename inside public/model/
-    backend: 'essentia' | 'meyda';
+    backend: 'essentia';
     numFeatures: number;
     sequenceLength: number;
     pipelineVersion: number;

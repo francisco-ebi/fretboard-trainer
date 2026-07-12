@@ -13,7 +13,7 @@ const VisualAnalysis: React.FC = () => {
     const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchDataset<DatasetEntry[]>('meyda-ts-plus/synthetic_guitar_dataset.json')
+        fetchDataset<DatasetEntry[]>('essentia-acoustic-ts/guitar_dataset.json')
             .then(setDataset)
             .catch(err => setLoadError(String(err)));
     }, []);

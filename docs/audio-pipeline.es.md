@@ -1,6 +1,6 @@
 # Pipeline de audio y modelo de clasificación de cuerdas
 
-> *Traducción de [audio-pipeline.md](audio-pipeline.md), sincronizada a 2026-07-08. Ante cualquier discrepancia, el original en inglés es la referencia.*
+> *Traducción de [audio-pipeline.md](audio-pipeline.md), sincronizada a 2026-07-12. Ante cualquier discrepancia, el original en inglés es la referencia.*
 
 Este documento explica cómo Fretboard Trainer escucha una guitarra y predice **en qué cuerda se tocó una nota**. Cubre la ruta completa de la señal, cada feature que alimenta a la red neuronal, los flujos de entrenamiento e inferencia, las limitaciones conocidas y la hoja de ruta de mejoras.
 
@@ -38,16 +38,16 @@ El trabajo de la red neuronal es leer esas diferencias en secuencias cortas de f
  └───────────────────────────────────────────────────────────┘
      │  SAB de audio crudo (~1.4s de capacidad, sin bloqueos)
      ▼
- Worker de features (sin tiempo real; uno por backend)
+ Worker de features (sin tiempo real)
  ┌───────────────────────────────────────────────────────────┐
- │ {essentia|meyda}-feature-worker.ts → base-feature-worker  │
+ │ essentia-feature-worker.ts → base-feature-worker          │
  │   bucle de drenado de 10ms → feature-extraction-loop.ts:  │
  │     ventana de 2048 muestras, salto de 1024 (50% de       │
  │     solape, ~23ms)                                        │
  │     → puerta RMS adaptativa (sigue el suelo de ruido)     │
  │       + onsets                                            │
  │     → backend.process(ventana) ── null → frame descartado │
- │         EssentiaBackend / MeydaBackend (el WASM vive aquí)│
+ │         EssentiaBackend (el WASM vive aquí)               │
  │   → Float32Array[34] al ring SAB de features              │
  └───────────────────────────────────────────────────────────┘
      │  SAB de features (requiere aislamiento cross-origin)
@@ -117,9 +117,7 @@ Archivos clave:
 | `src/shared/lib/audio/feature-extraction-loop.ts` | Pipeline de análisis puro (enventanado, puerta adaptativa, onset, backend, sink) — con tests unitarios |
 | `src/shared/lib/audio/base-feature-worker.ts` | Conductor del worker: drena el SAB de audio crudo hacia el bucle de extracción, parametrizado por backend |
 | `src/shared/lib/audio/essentia-feature-worker.ts` | Entrada fina del worker con `EssentiaBackend` (bundle propio, carga el WASM) |
-| `src/shared/lib/audio/meyda-feature-worker.ts` | Entrada fina del worker con `MeydaBackend` |
 | `src/shared/lib/audio/essentia-worklet-backend.ts` | Extracción de features con essentia.js (WASM) |
-| `src/shared/lib/audio/meyda-worklet-backend.ts` | Extracción de features con Meyda + pitchfinder |
 | `src/shared/lib/audio/inharmonicity.ts` | Matemática pura: seguimiento de parciales + ajuste del coeficiente de rigidez (con tests unitarios) |
 | `src/shared/lib/audio/adaptive-gate.ts` | Máquina de estados pura: puerta RMS que sigue el suelo de ruido + onset + SNR (con tests unitarios) |
 | `src/shared/lib/audio/worklet-types.ts` | El layout de frames del SAB (`FEATURE_POSITIONS`) — fuente única de verdad |
@@ -131,19 +129,11 @@ Archivos clave:
 | `src/shared/lib/audio/model.ts` | Definición del modelo + bucle de entrenamiento |
 | `src/shared/lib/audio/dataset-loader.ts` | Descarga datasets desde `public/datasets/` (fuera del bundle de JS) |
 | `src/shared/lib/audio/model-manifest.ts` | Esquema del manifiesto + validación pura (emparejado modelo↔stats↔pipeline, con tests unitarios) |
-| `public/model/manifest.json` | Manifiesto de despliegue: puntero al modelo por modo + estadísticas de normalización embebidas |
+| `public/model/manifest.json` | Manifiesto de despliegue: puntero al modelo + estadísticas de normalización embebidas (`modes.default`) |
 
-### Dos backends, dos modos
+### Un solo backend: essentia
 
-| | `essentia` (modo "precisión") | `meyda` (modo "rendimiento") |
-|---|---|---|
-| Pitch | essentia `PitchYinFFT` (+ confianza) | pitchfinder Macleod (filtrado por probabilidad) o YIN |
-| Features | Conjunto completo incl. inarmonicidad, B ajustado y estructura armónica | Solo MFCC + centroide + rolloff + brillo |
-| Coste | Más pesado (FFTs WASM ×2, picos, ajuste de parciales) | Más ligero (JS puro) |
-| Entrada del modelo | 33 features/frame | 17 features/frame |
-| Modelo desplegado | `public/model/guitar-essentia-ts.json` (**obsoleto — requiere reentrenar**, ver §8) | `public/model/guitar-meyda-ts-brightness-model.json` |
-
-El modo se elige en el motor de predicción (`setMode`), que intercambia tanto el procesador del worklet como el par modelo+stats.
+El pipeline corre exclusivamente sobre essentia.js (WASM): pitch `PitchYinFFT` (+ confianza) y el conjunto completo de 33 features, incluidos el B ajustado y la estructura armónica. Hasta 2026-07 existió un segundo backend en JS puro, Meyda ("modo rendimiento", 17 features solo de envolvente), y fue eliminado — su razón de ser (el presupuesto duro de tiempo real del AudioWorklet en dispositivos lentos) murió cuando la extracción se movió a un Worker (§2.1), y no podía calcular ninguna de las features de las que el modelo realmente depende. En dispositivos lentos el Worker simplemente analiza menos frames (degradación elegante); el bundle del worker de essentia (~2.4 MB, incluye el WASM) se descarga bajo demanda cuando arranca la escucha/grabación, no en la instalación.
 
 ---
 
@@ -162,18 +152,18 @@ El modo se elige en el motor de predicción (`setMode`), que intercambia tanto e
 |---|---|---|---|
 | 0 | PITCH | backend | Hz, YIN/Macleod |
 | 1–13 | MFCC (13) | backend | envolvente mel-cepstral |
-| 14 | CENTROID | backend | essentia: normalizado 0–1; meyda: índice de bin |
+| 14 | CENTROID | backend | normalizado 0–1 |
 | 15 | ROLLOFF | backend | Hz |
-| 16 | FLUX | backend | solo essentia (0 en meyda) |
-| 17 | INHARMONICITY | backend | el escalar genérico de essentia (0 en meyda) |
+| 16 | FLUX | backend | cambio espectral entre frames |
+| 17 | INHARMONICITY | backend | el escalar genérico de essentia |
 | 18 | RMS | bucle de extracción | energía de la ventana |
 | 19 | PITCH_CONFIDENCE | backend | confianza YIN / probabilidad Macleod |
-| 20 | INHARMONICITY_B | backend | **log10(B ajustado)** (0 en meyda) |
+| 20 | INHARMONICITY_B | backend | **log10(B ajustado)** |
 | 21 | ONSET | bucle de extracción | 1 en el primer frame de una pulsación |
 | 22 | SNR | bucle de extracción | log10(rms / suelo de ruido), invariante a la ganancia |
-| 23–29 | HARMONIC_DB (7) | backend | parciales 2–8 en dB respecto al parcial 1 (0 en meyda), ver §4.5 |
-| 30–32 | TRISTIMULUS (3) | backend | cuotas de energía del parcial 1 / 2–4 / 5–8 (0 en meyda) |
-| 33 | ODD_EVEN | backend | log10 del cociente de energía impar/par de los sobretonos (0 en meyda) |
+| 23–29 | HARMONIC_DB (7) | backend | parciales 2–8 en dB respecto al parcial 1, ver §4.4 |
+| 30–32 | TRISTIMULUS (3) | backend | cuotas de energía del parcial 1 / 2–4 / 5–8 |
+| 33 | ODD_EVEN | backend | log10 del cociente de energía impar/par de los sobretonos |
 
 ---
 
@@ -227,15 +217,7 @@ Además, la entrada *genérica* `Inharmonicity` de essentia se vuelve significat
 
 Un frame debe pasar **todo** esto: puerta adaptativa abierta → pitch YIN > 0 → confianza YIN ≥ 0.4 → enventanado/espectro/MFCC exitosos → existen picos espectrales y casan con el pitch → ≥4 parciales para el ajuste de B. Cualquier otra cosa devuelve `null` y el frame nunca sale del worklet. Aguas abajo, los engines además comprueban el rango de la nota (rangos MIDI por cuerda al grabar; rango del instrumento en inferencia).
 
-### 4.4 Ruta meyda (17 por frame)
-
-```
-[ mfcc×13, midiNote, centroid, rolloff, brightnessPerNote ]
-```
-
-`brightnessPerNote = midiNote / centroid` — un cociente artesanal de brillo vs pitch. La ruta meyda no puede calcular flux (necesita el frame anterior) ni inarmonicidad (no hay picos espectrales), que es exactamente por lo que es el modo "rendimiento" (rápido) y la ruta essentia es el modo "precisión".
-
-### 4.5 Features de estructura armónica (11 por frame, solo essentia)
+### 4.4 Features de estructura armónica (11 por frame)
 
 Se calculan en `harmonic-features.ts` a partir de **los mismos parciales guiados por el pitch que ya rastrea el ajuste de B** — sin análisis espectral adicional:
 
@@ -300,7 +282,7 @@ Es deliberadamente pequeño: corre en el hilo principal en tiempo real junto al 
 
 1. Los frames llegan exactamente igual que durante la grabación (mismo worklet, mismas puertas) — **la simetría entrenamiento/inferencia es el invariante central de este código**.
 2. Un búfer deslizante de 5 frames (con las mismas reglas de vaciado) produce una secuencia por salto.
-3. Las features se ensamblan *en el mismo orden que `saveData`* y se normalizan con las estadísticas **embebidas en el manifiesto del modelo** (`public/model/manifest.json`). El manifiesto es la fuente única de verdad por modo: nombre de archivo del modelo, backend, número de features, longitud de secuencia, versión del pipeline y estadísticas de normalización viajan como un solo artefacto. Al cargar (`loadResourcesForMode` → `model-manifest.ts`), los desajustes de dimensiones — stats vs entrada, entrada vs pipeline en ejecución, entrada vs la forma de entrada *real* del modelo cargado — deshabilitan el modelo con errores explícitos en consola, y la deriva de versión del pipeline registra un aviso bien visible de "se recomienda reentrenar". Las entradas del manifiesto las genera `trainModel`, nunca se escriben a mano.
+3. Las features se ensamblan *en el mismo orden que `saveData`* y se normalizan con las estadísticas **embebidas en el manifiesto del modelo** (`public/model/manifest.json`, clave `modes.default`). El manifiesto es la fuente única de verdad: nombre de archivo del modelo, backend, número de features, longitud de secuencia, versión del pipeline y estadísticas de normalización viajan como un solo artefacto. Al cargar (`loadResources` → `model-manifest.ts`), los desajustes de dimensiones — stats vs entrada, entrada vs pipeline en ejecución, entrada vs la forma de entrada *real* del modelo cargado — deshabilitan el modelo con errores explícitos en consola, y la deriva de versión del pipeline registra un aviso bien visible de "se recomienda reentrenar". Las entradas del manifiesto las genera `trainModel`, nunca se escriben a mano.
 4. **Máscara de viabilidad**: para el pitch detectado, solo son físicamente posibles las cuerdas cuyo traste implícito cae en 0–24 (C3 → 2 candidatas; E2 al aire → 1). El argmax del softmax corre solo sobre las clases viables. Es una ganancia de precisión gratis y no requiere reentrenar.
 5. `calculateLocation` convierte (midi, cuerda) → traste.
 6. **Estabilización con RxJS**: las predicciones crudas pasan por una ventana deslizante (`bufferCount(5,1)`); un par (cuerda, traste) debe ganar ≥70% de la ventana para emitirse. Una predicción emitida se limpia sola tras 5 s de silencio (`switchMap` + timer).
@@ -331,9 +313,10 @@ Se hicieron en una sola pasada de revisión y corrección; los estados "antes" e
 | **Imports del worklet cambiados a `?worker&url`** | Un `?url` a secas nunca compila TS en builds de producción — `addModule()` recibía un data-URI de TypeScript crudo, así que **los worklets no cargaban en ningún build de producción** (en dev funcionaba porque Vite transforma al vuelo). `?worker&url` emite bundles reales compilados por backend; quedan excluidos de la precaché de la PWA (funcionalidad opcional, el bundle de essentia pesa ~2.4MB) |
 | **El DSP fuera del hilo de audio de tiempo real** (§2.1) | La extracción de features corría dentro del presupuesto de ~2.7ms del `process()` del worklet; los dispositivos lentos producían glitches y perdían la entrada que se analizaba. Ahora: worklet de captura mínimo → SAB de audio crudo → Worker de features por backend (el bucle de extracción es puro y con tests) → SAB de features (sin cambios) |
 | **Envoltura con módulo real en el ring buffer** | El FIFO reiniciaba los índices a 0 al dar la vuelta — solo correcto cuando cada push divide exactamente la capacidad (cierto para quanta de 128, roto para los drenados de tamaño variable del worker). Los índices ahora envuelven con aritmética modular real |
-| **Features de estructura armónica** (7 ratios de parciales en dB + tristimulus + impar/par; 22 → 33 features, pipeline essentia v3) | La envolvente MFCC lleva el filtrado de peine del punto de pulsación entrelazado con la identidad de la cuerda; los ratios explícitos de los parciales ya rastreados le entregan al modelo la estructura armónica directamente (era el punto 1 de la hoja de ruta, §4.5) |
+| **Features de estructura armónica** (7 ratios de parciales en dB + tristimulus + impar/par; 22 → 33 features, pipeline essentia v3) | La envolvente MFCC lleva el filtrado de peine del punto de pulsación entrelazado con la identidad de la cuerda; los ratios explícitos de los parciales ya rastreados le entregan al modelo la estructura armónica directamente (era el punto 1 de la hoja de ruta, §4.4) |
+| **Backend Meyda eliminado** (backend, worker, modelos, dataset, dependencias `meyda`+`pitchfinder`) | Su razón de existir — el presupuesto de tiempo real del worklet en dispositivos lentos — murió con la mudanza al Worker de arriba, y rellenaba con ceros 16 de las 33 features, incluida log10(B), la feature estrella. Una sola pila científica que mantener; los dispositivos lentos se degradan analizando menos frames en vez de cambiar de familia de features |
 
-**Consecuencias para los artefactos**: el dataset empaquetado (frames de 18 features) y los dos modelos *essentia* desplegados son anteriores a estos cambios. La ruta essentia/"precisión" no predecirá hasta que se grabe un dataset nuevo y se reentrene un modelo; `prepareStratifiedSplit` falla pronto con un error explicativo. La ruta meyda/"rendimiento" (17 features, layout sin cambios) sigue funcionando.
+**Consecuencias para los artefactos**: el dataset de `public/datasets/` (frames de 18 features) y los modelos essentia desplegados son anteriores a estos cambios, y el modelo meyda eliminado era el último desplegable — `public/model/manifest.json` ahora **no tiene entrada `modes.default`, así que la predicción en vivo está deshabilitada** (aviso bien visible en consola) hasta que se grabe un dataset nuevo (ver el runner guiado en [recording-protocol.es.md](recording-protocol.es.md) §4) y se entrene un modelo; `prepareStratifiedSplit` falla pronto con un error explicativo ante datasets antiguos.
 
 ---
 
@@ -349,7 +332,6 @@ Se hicieron en una sola pasada de revisión y corrección; los estados "antes" e
 - **Secuencias de ~116 ms** pueden perder diferencias de decaimiento más lentas; el inicio de secuencia ya se alinea al onset, pero solo la primera secuencia de una pulsación contiene el ataque.
 - **La resolución de los MFCC en bajas frecuencias** es pobre exactamente donde viven los parciales 1–4 de las notas graves; el B ajustado y las features de estructura armónica lo compensan.
 - **Errores de octava**: los saltos de octava de YIN dentro del filtro de rango por cuerda siguen etiquetando mal `midiNote`; la puerta de confianza los reduce pero no los elimina.
-- **B no está definido en la ruta meyda**, así que el modo rendimiento sigue dependiendo solo de features de envolvente.
 - **Desbalance de clases y cobertura de notas**: solo los rangos de pitch compartidos por ≥2 cuerdas necesitan de verdad el modelo; el dataset no está concentrado ahí.
 
 ---
@@ -363,7 +345,7 @@ Ordenadas aproximadamente por valor esperado por esfuerzo.
 3. **Agregación por pulsación en inferencia**: agregar todas las secuencias de una pulsación (mediana del softmax por secuencia, ponderada por confianza/RMS) en lugar del voto por mayoría deslizante genérico.
 4. **Híbrido con prior físico**: una pasada de calibración por guitarra que mida B por (cuerda, traste) una vez, y clasificar por B más cercano con la red como desempate. Personalizaría la precisión de forma barata y degradaría con gracia.
 
-*(El antiguo punto 1 — features de estructura armónica — se implementó en 2026-07; ver §4.5 y el registro de cambios de §8.)*
+*(El antiguo punto 1 — features de estructura armónica — se implementó en 2026-07; ver §4.4 y el registro de cambios de §8.)*
 
 **Arquitecturas de modelo alternativas**, si las features diseñadas se estancan:
 
@@ -387,5 +369,5 @@ La orientación honesta: **la calidad de los datos y la simetría entrenamiento/
 2. Para cada cuerda 0–5: pulsa `Start n`, toca notas a lo largo de esa cuerda (cada pulsación sostenida produce varias secuencias), `Stop`.
 3. Descarga dataset + stats. Coloca el dataset en `public/datasets/<nombre>/guitar_dataset.json` y guarda el archivo de estadísticas junto a él.
 4. Apunta `model.ts` (`fetchDataset`) hacia él si el nombre cambió; lanza el entrenamiento desde el Recording Studio (`Train Model`). Vigila `val_acc` por época en la consola.
-5. El entrenamiento descarga **tres artefactos**: el JSON del modelo + los pesos, y un `manifest-entry-*.json` generado (puntero al modelo, dimensiones de features/secuencia, versión del pipeline, estadísticas de normalización embebidas). Mueve los archivos del modelo a `public/model/` y pega la entrada bajo la clave de modo correcta en `public/model/manifest.json`. Nunca edites dimensiones/stats a mano — el motor de predicción valida la entrada contra el pipeline en ejecución *y* la forma de entrada real del modelo cargado, y deshabilita el modelo con errores en consola ante cualquier desajuste.
-6. Verifica: `npx vitest run` (matemática del pipeline), y después en vivo: modo precisión, toca el mismo pitch en dos cuerdas, observa el overlay.
+5. El entrenamiento descarga **tres artefactos**: el JSON del modelo + los pesos, y un `manifest-entry-*.json` generado (puntero al modelo, dimensiones de features/secuencia, versión del pipeline, estadísticas de normalización embebidas). Mueve los archivos del modelo a `public/model/` y pega la entrada bajo `modes.default` en `public/model/manifest.json`. Nunca edites dimensiones/stats a mano — el motor de predicción valida la entrada contra el pipeline en ejecución *y* la forma de entrada real del modelo cargado, y deshabilita el modelo con errores en consola ante cualquier desajuste.
+6. Verifica: `npx vitest run` (matemática del pipeline), y después en vivo: comienza a escuchar, toca el mismo pitch en dos cuerdas, observa el overlay.

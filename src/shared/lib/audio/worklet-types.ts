@@ -43,8 +43,6 @@ export const PIPELINE_VERSIONS = {
     // v3: harmonic-structure features (partial dB ratios, tristimulus,
     //     odd/even overtone ratio) from the tracked partials
     essentia: 3,
-    // v2: Meyda.sampleRate fix, drop-on-failure, adaptive gate frame selection
-    meyda: 2,
 };
 
 export interface AudioBackend {

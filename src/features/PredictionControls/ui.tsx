@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { guitarPredictionEngine, type PredictionMode } from '@/shared/lib/audio/prediction-engine';
+import { guitarPredictionEngine } from '@/shared/lib/audio/prediction-engine';
 import ListeningModeModal from '@/features/ListeningModeModal';
 import './ui.css';
 
@@ -31,11 +31,10 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
         setIsListening(false);
     };
 
-    const startListening = async (mode: PredictionMode, deviceId: string | null) => {
+    const startListening = async (deviceId: string | null) => {
         setShowModeModal(false);
         setIsLoading(true);
         try {
-            await guitarPredictionEngine.setMode(mode);
             await guitarPredictionEngine.init(deviceId);
             await guitarPredictionEngine.startRecording();
             setIsListening(true);
