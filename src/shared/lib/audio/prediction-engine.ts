@@ -1,7 +1,7 @@
 // import * as tf from '@tensorflow/tfjs'; // Removed static import
 import type { LayersModel, Tensor } from '@tensorflow/tfjs'; // Type-only import
-import { Subject, Observable, merge, of, timer } from 'rxjs';
-import { bufferCount, filter, map, switchMap } from 'rxjs/operators';
+import { Subject, type Observable } from 'rxjs';
+import { stabilizePredictions } from '@/shared/lib/audio/prediction-stabilizer';
 import { normalizeDataset, NUM_FEATURES, SEQUENCE_LENGTH } from '@/shared/lib/audio/dataset-preparation';
 import { HARMONIC_PARTIAL_COUNT } from '@/shared/lib/audio/harmonic-features';
 // ?worker&url bundles the worklet entry (TS compiled, imports resolved) and
@@ -64,6 +64,7 @@ class GuitarAudioPredictionEngine {
 
     // RxJS Logic
     private rawPrediction$: Subject<PredictionResult>;
+    private voteReset$: Subject<void>;
     public fretPredicted$: Observable<PredictionResult | null>;
 
     constructor() {
@@ -75,45 +76,12 @@ class GuitarAudioPredictionEngine {
         this.model = null;
 
         this.rawPrediction$ = new Subject<PredictionResult>();
-
-        const step = 1;
-        const windowSize = 5;
-        const majorityThreshold = windowSize * 0.7;
-        // Window size 10, step 1 (rolling/sliding window)
-        // Majority 70% of 10 = 7
-
-        const stableStream$ = this.rawPrediction$.pipe(
-            bufferCount(windowSize, step),
-            map((window: PredictionResult[]) => {
-                const countMap = new Map<string, { count: number, value: PredictionResult }>();
-
-                for (const prediction of window) {
-                    const key = `${prediction.predictedStringNumber}-${prediction.predictedFret}`;
-                    const current = countMap.get(key) || { count: 0, value: prediction };
-                    current.count++;
-                    countMap.set(key, current);
-                }
-
-                for (const { count, value } of countMap.values()) {
-                    if (count >= majorityThreshold) {
-                        return value;
-                    }
-                }
-                return null;
-            }),
-            filter((result): result is PredictionResult => result !== null)
+        this.voteReset$ = new Subject<void>();
+        this.fretPredicted$ = stabilizePredictions(
+            this.rawPrediction$,
+            this.voteReset$,
+            (prediction) => `${prediction.predictedStringNumber}-${prediction.predictedFret}`
         );
-
-        // SwitchMap to a merged observable of (value + null-timer)
-        // If a new value arrives, the previous timer is cancelled/switched away from.
-        this.fretPredicted$ = stableStream$.pipe(
-            switchMap(val => merge(
-                of(val),
-                timer(5000).pipe(map(() => null))
-            ))
-        );
-
-        // this.fretPredicted$.subscribe(p => console.log('Emitted Prediction:', p));
     }
 
     async loadResources() {
@@ -331,6 +299,13 @@ class GuitarAudioPredictionEngine {
                 if (this.lastFrameNote !== midiNote || now - this.lastFrameTime > MAX_FRAME_GAP_MS || resultObj.isOnset) {
                     this.frameBuffer = [];
                 }
+                if (resultObj.isOnset) {
+                    // A new pluck invalidates the previous note's votes: kept,
+                    // they would have to be out-voted by the new note — slow at
+                    // best, a deadlock when the monophonic tracker alternates
+                    // between the new note and a still-ringing string
+                    this.voteReset$.next();
+                }
                 this.lastFrameNote = midiNote;
                 this.lastFrameTime = now;
 
@@ -474,6 +449,7 @@ class GuitarAudioPredictionEngine {
         this.frameBuffer = []; // Reset buffer
         this.lastFrameNote = null;
         this.lastFrameTime = 0;
+        this.voteReset$.next(); // no votes survive from a previous session
 
         if (this.workletNode) {
             this.startPolling();
