@@ -75,10 +75,11 @@ That's 3 × 2 × 3 = **18 plucks per fret** for full coverage. In practice a com
 
 - **Overlap-zone frets:** 6 plucks per fret — {soft, medium, hard} × {pick, finger}, rotating pluck position between plucks.
 - **Unique-zone frets:** 2 plucks per fret (medium pick, medium finger). These only teach the model "what this string sounds like in general".
+- **Plain (unwound) strings get a ×1.5 pluck allowance**: 9 plucks per overlap fret (the grid above plus one extra {soft, medium, hard} sweep, alternating pick/finger) and 3 per unique fret. Thin strings decay fast and yield only ~6–7 sequences per pluck vs ~9–12 on wound strings (measured on the v1 dataset), so an equal-pluck plan lands ~2× unbalanced against the ≤1.5× target in §3.3. The guided runner applies this automatically to the high E and B strings; **if your set has a plain G** (typical electric sets), check its count in §5 and top it up with a single-string session — the runner can't know string construction.
 
 ### 3.3 Expected yield & targets
 
-Each ~2 s ringing pluck yields roughly 5–12 sequences (one onset-anchored + decay slices; hard plucks ring longer and yield more).
+Each ~2 s ringing pluck yields roughly 5–12 sequences (one onset-anchored + decay slices; hard plucks ring longer and yield more). The yield is string-dependent: wound strings sustain into ~9–12 sequences per pluck, plain strings decay into ~6–7 — which is what the ×1.5 allowance in §3.2 compensates for.
 
 | Quantity | Target |
 |---|---|
@@ -149,7 +150,7 @@ Red flags and what they mean:
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| One string count ≪ others | Gate never opened (too gentle?) or frames failed the B fit | Re-record that string, pluck firmer |
+| One string count ≪ others | Plain string's faster decay (expected — see §3.2/§3.3), gate never opened (too gentle?), or frames failed the B fit | Top up with a single-string guided session (`Import` the dataset first, §3.4), pluck firmer, let notes ring the full ~2 s |
 | Note names off by a semitone in some cells | Drifted tuning during the session | Delete those entries or re-record the string |
 | Notes present that you never played | Background sound / octave errors | Check environment; consider raising `MIN_PITCH_CONFIDENCE` |
 | Very low onset-sequence fraction (< ~10%) | Plucks not separated by silence (buffer never flushed at attack) | Mute harder between plucks |

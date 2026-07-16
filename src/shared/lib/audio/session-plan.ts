@@ -53,6 +53,13 @@ export const PLUCK_POSITION_LABELS: Record<PluckPosition, string> = {
     neck: 'near neck'
 };
 
+// Plain (unwound) strings decay fast: ~6–7 sequences per pluck vs ~9–12 on
+// wound strings (measured on the v1 dataset), so an equal-pluck plan lands
+// ~2× unbalanced against the ≤1.5× class-balance target. These strings get a
+// ×1.5 pluck allowance (protocol §3.2). Sets with a plain G need a manual
+// top-up for string 2 — string construction isn't knowable from here.
+export const PLAIN_STRINGS: number[] = [0, 1]; // high E, B
+
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 export function midiToNoteName(midi: number): string {
@@ -116,6 +123,7 @@ export function generateSessionPlan(options: PlanOptions): SessionPlan {
         const frets: FretTask[] = [];
         for (let fret = fretStart; fret <= fretEnd; fret++) {
             const zone = zoneOf(stringIndex, fret);
+            const plain = PLAIN_STRINGS.includes(stringIndex);
             const plucks: PluckSpec[] = [];
             if (zone === 'overlap') {
                 // Compressed grid (protocol §3.2): {soft,medium,hard} × {pick,finger}
@@ -124,10 +132,21 @@ export function generateSessionPlan(options: PlanOptions): SessionPlan {
                         plucks.push({ dynamics, excitation, position: nextPosition() });
                     }
                 }
+                if (plain) {
+                    // ×1.5 allowance: one extra dynamics sweep, alternating
+                    // excitation by fret so neither ends up over-represented
+                    const extras: Excitation[] = fret % 2 === 0 ? ['pick', 'finger', 'pick'] : ['finger', 'pick', 'finger'];
+                    DYNAMICS.forEach((dynamics, index) => {
+                        plucks.push({ dynamics, excitation: extras[index], position: nextPosition() });
+                    });
+                }
             } else {
                 // Unique zone: medium × {pick,finger}
                 for (const excitation of EXCITATIONS) {
                     plucks.push({ dynamics: 'medium', excitation, position: nextPosition() });
+                }
+                if (plain) {
+                    plucks.push({ dynamics: 'medium', excitation: fret % 2 === 0 ? 'pick' : 'finger', position: nextPosition() });
                 }
             }
             positionCursor += 2;

@@ -27,7 +27,7 @@ describe('session plan generation', () => {
             expect(stringTask.frets[0].fret).toBe(0);
             expect(stringTask.frets[stringTask.frets.length - 1].fret).toBe(9);
         }
-        expect(plan.totalPlucks).toBe(340);
+        expect(plan.totalPlucks).toBe(400);
     });
 
     it('pass B walks strings 0→5 over frets 10–18', () => {
@@ -37,12 +37,32 @@ describe('session plan generation', () => {
             expect(stringTask.frets[0].fret).toBe(10);
             expect(stringTask.frets[stringTask.frets.length - 1].fret).toBe(18);
         }
-        expect(plan.totalPlucks).toBe(304);
+        expect(plan.totalPlucks).toBe(348);
     });
 
     it('full pass covers the whole coverage map', () => {
         const plan = generateSessionPlan({ preset: 'full' });
-        expect(plan.totalPlucks).toBe(644);
+        expect(plan.totalPlucks).toBe(748);
+    });
+
+    it('gives plain strings the ×1.5 pluck allowance (protocol §3.2)', () => {
+        const plan = generateSessionPlan({ preset: 'full' });
+        const byIndex = (index: number) => plan.strings.find((s) => s.stringIndex === index)!;
+
+        // Wound string: base grid
+        expect(byIndex(4).frets[7].plucks).toHaveLength(6);
+        expect(byIndex(5).frets[0].plucks).toHaveLength(2); // unique zone
+
+        // Plain strings (high E, B): 9 per overlap fret, 3 per unique fret
+        const highE = byIndex(0);
+        const bString = byIndex(1);
+        expect(bString.frets[7].plucks).toHaveLength(9);
+        expect(highE.frets[2].plucks).toHaveLength(9); // overlap (fret ≤ 13)
+        expect(highE.frets[16].plucks).toHaveLength(3); // unique (fret ≥ 14)
+
+        // The extra sweep still covers all three dynamics
+        const extras = bString.frets[7].plucks.slice(6);
+        expect(extras.map((p) => p.dynamics).sort()).toEqual(['hard', 'medium', 'soft']);
     });
 
     it('builds the compressed variation grid per zone (protocol §3.2)', () => {

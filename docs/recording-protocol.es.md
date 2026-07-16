@@ -1,6 +1,6 @@
 # Protocolo de grabación del dataset
 
-> *Traducción de [recording-protocol.md](recording-protocol.md), sincronizada a 2026-07-11. Ante cualquier discrepancia, el original en inglés es la referencia.*
+> *Traducción de [recording-protocol.md](recording-protocol.md), sincronizada a 2026-07-16. Ante cualquier discrepancia, el original en inglés es la referencia.*
 
 Un protocolo paso a paso para grabar un dataset de entrenamiento para el modelo de clasificación de cuerdas. Síguelo al pie de la letra y obtendrás un dataset equilibrado, con etiquetas limpias y concentrado donde el modelo de verdad se gana el sueldo. Sáltate pasos y obtendrás un modelo que memoriza tu sesión de grabación en lugar de tus cuerdas.
 
@@ -75,10 +75,11 @@ Eso es 3 × 2 × 3 = **18 pulsaciones por traste** para cobertura completa. En l
 
 - **Trastes de la zona de solapamiento:** 6 pulsaciones por traste — {suave, media, fuerte} × {púa, dedo}, rotando la posición de pulsación entre pulsaciones.
 - **Trastes de la zona exclusiva:** 2 pulsaciones por traste (púa media, dedo medio). Estos solo le enseñan al modelo "cómo suena esta cuerda en general".
+- **Las cuerdas lisas (sin entorchar) reciben un margen de ×1.5 pulsaciones**: 9 pulsaciones por traste de solapamiento (la rejilla de arriba más una pasada extra {suave, media, fuerte}, alternando púa/dedo) y 3 por traste exclusivo. Las cuerdas finas decaen rápido y producen solo ~6–7 secuencias por pulsación frente a ~9–12 en las entorchadas (medido en el dataset v1), así que un plan con pulsaciones iguales queda ~2× desbalanceado frente al objetivo de ≤1.5× de §3.3. El runner guiado lo aplica automáticamente al E agudo y al B; **si tu juego lleva una G lisa** (típico en eléctricas), revisa su conteo en §5 y complétala con una sesión de cuerda única — el runner no puede saber la construcción de la cuerda.
 
 ### 3.3 Rendimiento esperado y objetivos
 
-Cada pulsación que suena ~2 s produce aproximadamente 5–12 secuencias (una anclada al onset + rebanadas de decaimiento; las pulsaciones fuertes suenan más tiempo y producen más).
+Cada pulsación que suena ~2 s produce aproximadamente 5–12 secuencias (una anclada al onset + rebanadas de decaimiento; las pulsaciones fuertes suenan más tiempo y producen más). El rendimiento depende de la cuerda: las entorchadas sostienen ~9–12 secuencias por pulsación, las lisas decaen en ~6–7 — que es lo que compensa el margen de ×1.5 de §3.2.
 
 | Cantidad | Objetivo |
 |---|---|
@@ -149,7 +150,7 @@ Señales de alarma y qué significan:
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
-| El conteo de una cuerda ≪ las demás | La puerta nunca se abrió (¿demasiado suave?) o los frames fallaron el ajuste de B | Regraba esa cuerda, pulsa con más firmeza |
+| El conteo de una cuerda ≪ las demás | Decaimiento más rápido de una cuerda lisa (esperado — ver §3.2/§3.3), la puerta nunca se abrió (¿demasiado suave?), o los frames fallaron el ajuste de B | Completa con una sesión guiada de cuerda única (`Import` del dataset primero, §3.4), pulsa con más firmeza, deja sonar las notas los ~2 s completos |
 | Nombres de nota desviados un semitono en algunas celdas | La afinación derivó durante la sesión | Borra esas entradas o regraba la cuerda |
 | Aparecen notas que nunca tocaste | Sonido de fondo / errores de octava | Revisa el entorno; considera subir `MIN_PITCH_CONFIDENCE` |
 | Fracción de secuencias con onset muy baja (< ~10%) | Pulsaciones sin silencio entre ellas (el búfer nunca se vació en el ataque) | Apaga las cuerdas con más decisión entre pulsaciones |
