@@ -15,7 +15,7 @@ const resources = {
             subtitle: "Visualize scales and master the fretboard.",
             listeningModal: {
                 title: "Start Listening",
-                description: "Pick your input device. Audio is analyzed locally on your device — nothing is uploaded.",
+                description: "Pick your input device. Detection is intended for an electric guitar running through an audio interface. Audio is analyzed locally on your device — nothing is uploaded.",
                 start: {
                     title: "Start",
                     desc: "String and fret detection runs on the Essentia (WebAssembly) engine.",
@@ -229,7 +229,7 @@ const resources = {
             subtitle: "Visualiza escalas y domina el diapasón.",
             listeningModal: {
                 title: "Comenzar a Escuchar",
-                description: "Elige tu dispositivo de entrada. El audio se analiza localmente en tu dispositivo — no se sube nada.",
+                description: "Elige tu dispositivo de entrada. La detección está pensada para una guitarra eléctrica conectada a través de una interfaz de audio. El audio se analiza localmente en tu dispositivo — no se sube nada.",
                 start: {
                     title: "Comenzar",
                     desc: "La detección de cuerda y traste corre sobre el motor Essentia (WebAssembly).",
