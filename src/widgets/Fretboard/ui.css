@@ -456,13 +456,21 @@
     pointer-events: none;
 }
 
+/* Sized to encircle the scaled-up predicted note marker with a small gap */
 .prediction-marker-ring {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 4.5rem;
+    height: 4.5rem;
     border-radius: 50%;
     border: 2px dashed #D3AF37;
     pointer-events: none;
     animation: rotateRing 3s linear infinite;
+}
+
+@media (max-width: 600px) {
+    .prediction-marker-ring {
+        width: 3.75rem;
+        height: 3.75rem;
+    }
 }
 
 @keyframes rotateRing {
@@ -477,6 +485,14 @@
     opacity: 1;
     transform: scale(1);
     pointer-events: auto;
+}
+
+/* Predicted note pops out over its neighbors; the wrapper's springy
+   transform transition animates the growth. Declared before .hidden so an
+   out-of-scale prediction stays hidden and only the ring marks it. */
+.note-marker-wrapper.predicted {
+    transform: scale(1.3);
+    z-index: 5;
 }
 
 .note-marker-wrapper.hidden {

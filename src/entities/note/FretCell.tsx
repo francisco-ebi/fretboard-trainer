@@ -21,6 +21,7 @@ interface FretCellProps {
     isDoubleInlayTop: boolean;
     isDoubleInlayBottom: boolean;
     isMeasured?: boolean;
+    isPredicted?: boolean;
     onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
     onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
     onNoteMeasureClick?: (stringIndex: number, fret: number, note: Note, octave: number) => void;
@@ -30,7 +31,7 @@ const FretCellComponent: React.FC<FretCellProps> = ({
     stringIndex, fret, noteToDisplay, isRoot, namingSystem, interval,
     isCharacteristic, octave, customInterval, isClickableRoot,
     isOutline, isCustomActive, isActive, shouldShake,
-    isSingleInlay, isDoubleInlayTop, isDoubleInlayBottom, isMeasured,
+    isSingleInlay, isDoubleInlayTop, isDoubleInlayBottom, isMeasured, isPredicted,
     onInteractiveRootClick, onInteractiveNoteToggle, onNoteMeasureClick
 }) => {
     const handleNoteClick = () => {
@@ -55,7 +56,7 @@ const FretCellComponent: React.FC<FretCellProps> = ({
             {isSingleInlay && <div className="inlay-dot" style={{ top: '100%', transform: 'translate(-50%, -50%)' }} />}
             {(isDoubleInlayTop || isDoubleInlayBottom) && <div className="inlay-dot" />}
 
-            <div className={`note-marker-wrapper ${isActive ? '' : 'hidden'}`}>
+            <div className={`note-marker-wrapper ${isActive ? '' : 'hidden'} ${isPredicted ? 'predicted' : ''}`}>
                 <NoteMarker
                     note={noteToDisplay}
                     isRoot={isRoot}
@@ -93,5 +94,6 @@ export const FretCell = React.memo(FretCellComponent, (prev, next) => {
         prev.isSingleInlay === next.isSingleInlay &&
         prev.isDoubleInlayTop === next.isDoubleInlayTop &&
         prev.isDoubleInlayBottom === next.isDoubleInlayBottom &&
-        prev.isMeasured === next.isMeasured;
+        prev.isMeasured === next.isMeasured &&
+        prev.isPredicted === next.isPredicted;
 });

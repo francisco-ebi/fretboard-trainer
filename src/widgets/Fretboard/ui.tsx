@@ -8,6 +8,7 @@ import { useInstrument } from '@/app/providers';
 
 import { FretCell } from '@/entities/note';
 import { PredictionOverlay } from '@/features/PredictionControls';
+import { guitarPredictionEngine } from '@/shared/lib/audio/prediction-engine';
 import './ui.css';
 
 interface FretboardProps {
@@ -53,6 +54,17 @@ const Fretboard: React.FC<FretboardProps> = ({
     const prevScaleNotes = usePrevious(scaleNotes);
     const prevRoot = usePrevious(selectedRoot);
     const [selectedVoicingIndex, setSelectedVoicingIndex] = React.useState<number | null>(null);
+
+    // Keyed as "string-fret" so repeated emissions for the same location bail
+    // out of re-rendering (the stabilizer re-emits while a note rings)
+    const [predictedKey, setPredictedKey] = React.useState<string | null>(null);
+
+    useEffect(() => {
+        const subscription = guitarPredictionEngine.fretPredicted$.subscribe((p) =>
+            setPredictedKey(p ? `${p.predictedStringNumber}-${p.predictedFret}` : null)
+        );
+        return () => subscription.unsubscribe();
+    }, []);
 
     const fretboardRef = useRef<HTMLDivElement>(null);
 
@@ -232,6 +244,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             }
 
             const isMeasured = measuredNotes.some(mn => mn.stringIndex === stringIndex && mn.fret === fret);
+            const isPredicted = predictedKey === `${stringIndex}-${fret}`;
 
             fretElements.push(
                 <FretCell
@@ -254,6 +267,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                     isDoubleInlayTop={isDoubleInlayTop || false}
                     isDoubleInlayBottom={isDoubleInlayBottom || false}
                     isMeasured={isMeasured}
+                    isPredicted={isPredicted}
                     onNoteMeasureClick={interactiveMode ? undefined : handleNoteMeasureClick}
                     onInteractiveRootClick={onInteractiveRootClick}
                     onInteractiveNoteToggle={onInteractiveNoteToggle}
