@@ -12,7 +12,7 @@ import {
 import { PIPELINE_VERSIONS } from "./worklet-types";
 import type { ModelManifestEntry } from "./model-manifest";
 
-const MODEL_NAME = "guitar-essentia-v1";
+const MODEL_NAME = "guitar-essentia-v1.1";
 
 function downloadJSON(data: unknown, filename: string) {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -74,7 +74,7 @@ export async function trainModel(
   if (data.length === 0) {
     console.warn("No data provided for training, fetching default dataset.");
     data = await fetchDataset<DatasetEntry[]>(
-      "essentia-v1/guitar_dataset.json",
+      "essentia-v1.1/guitar_dataset.json",
     );
   }
 
