@@ -201,6 +201,11 @@ class GuitarAudioRecordingEngine {
     async init(deviceId?: string | null) {
         if (this.audioContext) return;
 
+        if (typeof SharedArrayBuffer === "undefined") {
+            console.error("SharedArrayBuffer unavailable: the page is not cross-origin isolated (COOP/COEP headers missing), so the audio pipeline cannot start.");
+            return;
+        }
+
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         this.audioContext = new AudioContextClass();
 
