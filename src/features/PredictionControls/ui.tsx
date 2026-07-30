@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { guitarPredictionEngine } from '@/shared/lib/audio/prediction-engine';
-import ListeningModeModal from '@/features/ListeningModeModal';
+import ListeningModeModal, { type ListeningOptions } from '@/features/ListeningModeModal';
+import { intervalTrackingEnabled$ } from './interval-tracking';
 import './ui.css';
 
 interface PredictionControlsProps {
@@ -28,15 +29,17 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
 
     const stopListening = () => {
         guitarPredictionEngine.stopRecording();
+        intervalTrackingEnabled$.next(false);
         setIsListening(false);
     };
 
-    const startListening = async (deviceId: string | null) => {
+    const startListening = async (deviceId: string | null, options: ListeningOptions) => {
         setShowModeModal(false);
         setIsLoading(true);
         try {
             await guitarPredictionEngine.init(deviceId);
             await guitarPredictionEngine.startRecording();
+            intervalTrackingEnabled$.next(options.trackIntervals);
             setIsListening(true);
         } catch (error) {
             console.error("Failed to start prediction engine:", error);

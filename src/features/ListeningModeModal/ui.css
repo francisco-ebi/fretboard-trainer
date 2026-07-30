@@ -56,6 +56,45 @@
     line-height: 1.5;
 }
 
+/* Separated from the device picker above: it configures what listening shows,
+   not what it listens to */
+.listening-modal-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 20px 0 24px;
+    padding-top: 20px;
+    border-top: 1px solid #333;
+    cursor: pointer;
+}
+
+.listening-modal-toggle input {
+    /* Nudged down so it lines up with the label's first line */
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: #63b3ed;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.listening-modal-toggle-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.listening-modal-toggle-text strong {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.listening-modal-toggle-text span {
+    font-size: 0.85rem;
+    color: #999;
+    line-height: 1.4;
+}
+
 .listening-mode-options {
     display: grid;
     grid-template-columns: 1fr 1fr;

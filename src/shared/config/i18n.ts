@@ -20,6 +20,10 @@ const resources = {
                     title: "Start",
                     desc: "String and fret detection runs on the Essentia (WebAssembly) engine.",
                     warning: "⚠️ WebAssembly is not supported in this browser — listening is unavailable."
+                },
+                trackIntervals: {
+                    label: "Show interval between the last two notes",
+                    desc: "As you play, the interval between the two most recent notes is drawn on the fretboard and fades after a few seconds."
                 }
             },
             controls: {
@@ -234,6 +238,10 @@ const resources = {
                     title: "Comenzar",
                     desc: "La detección de cuerda y traste corre sobre el motor Essentia (WebAssembly).",
                     warning: "⚠️ WebAssembly no está soportado en este navegador — la escucha no está disponible."
+                },
+                trackIntervals: {
+                    label: "Mostrar el intervalo entre las dos últimas notas",
+                    desc: "Mientras tocas, el intervalo entre las dos notas más recientes se dibuja en el diapasón y desaparece a los pocos segundos."
                 }
             },
             controls: {

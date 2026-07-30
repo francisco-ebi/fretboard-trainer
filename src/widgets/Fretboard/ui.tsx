@@ -7,7 +7,7 @@ import { useOrientation } from '@/app/providers';
 import { useInstrument } from '@/app/providers';
 
 import { FretCell } from '@/entities/note';
-import { PredictionOverlay } from '@/features/PredictionControls';
+import { PredictionOverlay, PredictionIntervalOverlay } from '@/features/PredictionControls';
 import { guitarPredictionEngine } from '@/shared/lib/audio/prediction-engine';
 import './ui.css';
 
@@ -405,6 +405,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                     aria-label={`${instrument} fretboard`}
                 >
                     {renderMeasurementOverlay()}
+                    <PredictionIntervalOverlay suppressed={measuredNotes.length === 2} />
                     <PredictionOverlay />
                     {renderStrings()}
                 </div>

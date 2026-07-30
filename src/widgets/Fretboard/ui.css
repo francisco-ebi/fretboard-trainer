@@ -577,6 +577,25 @@
     color: white;
 }
 
+/* Detected (listening) variant: same geometry as the manual measurement, in
+   the prediction marker's gold so it reads as machine-detected. It is
+   informational only — it clears itself, so it carries no close button and
+   takes no pointer events. */
+.measurement-overlay-container.detected .measurement-line {
+    stroke: #D3AF37;
+    filter: drop-shadow(0 0 8px rgba(211, 175, 55, 0.8));
+}
+
+.measurement-overlay-container.detected .interval-popup {
+    border-color: rgba(211, 175, 55, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(211, 175, 55, 0.2);
+    pointer-events: none;
+}
+
+.measurement-overlay-container.detected .interval-popup-result {
+    color: #D3AF37;
+}
+
 @keyframes modalPopIn {
     from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
     to { transform: translate(-50%, -50%) scale(1); opacity: 1; }

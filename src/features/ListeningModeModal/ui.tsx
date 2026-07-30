@@ -2,12 +2,17 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import DeviceSelector from '@/features/DeviceSelector';
+import { INTERVAL_TRACKING_STORAGE_KEY } from '@/features/PredictionControls/interval-tracking';
 import './ui.css';
+
+export interface ListeningOptions {
+    trackIntervals: boolean;
+}
 
 interface ListeningModeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (deviceId: string | null) => void;
+    onConfirm: (deviceId: string | null, options: ListeningOptions) => void;
 }
 
 // WASM support cannot change at runtime — detect once at module load
@@ -29,6 +34,14 @@ const isWasmSupported = (() => {
 const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose, onConfirm }) => {
     const { t } = useTranslation();
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+    const [trackIntervals, setTrackIntervals] = useState(
+        () => localStorage.getItem(INTERVAL_TRACKING_STORAGE_KEY) === 'true'
+    );
+
+    const handleTrackIntervalsChange = (checked: boolean) => {
+        setTrackIntervals(checked);
+        localStorage.setItem(INTERVAL_TRACKING_STORAGE_KEY, String(checked));
+    };
 
     if (!isOpen) return null;
 
@@ -46,10 +59,22 @@ const ListeningModeModal: React.FC<ListeningModeModalProps> = ({ isOpen, onClose
 
                 <DeviceSelector onDeviceSelected={setSelectedDeviceId} />
 
+                <label className="listening-modal-toggle">
+                    <input
+                        type="checkbox"
+                        checked={trackIntervals}
+                        onChange={e => handleTrackIntervalsChange(e.target.checked)}
+                    />
+                    <span className="listening-modal-toggle-text">
+                        <strong>{t('listeningModal.trackIntervals.label')}</strong>
+                        <span>{t('listeningModal.trackIntervals.desc')}</span>
+                    </span>
+                </label>
+
                 <div className="listening-mode-options">
                     <div
                         className={`mode-card precision ${!isWasmSupported ? 'disabled' : ''}`}
-                        onClick={() => isWasmSupported && onConfirm(selectedDeviceId)}
+                        onClick={() => isWasmSupported && onConfirm(selectedDeviceId, { trackIntervals })}
                     >
                         <div className="mode-icon">🎯</div>
                         <div className="mode-info">

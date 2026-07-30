@@ -55,6 +55,22 @@ export const DETAILED_INTERVAL_KEYS: Record<number, string> = {
     22: 'min14', 23: 'maj14'
 };
 
+// Direction-agnostic: the interval spanned by a distance in semitones.
+export const getIntervalBySemitones = (semitoneDistance: number): { key: string, octaves: number } => {
+    const semitones = Math.abs(semitoneDistance);
+
+    if (DETAILED_INTERVAL_KEYS[semitones]) {
+        return { key: DETAILED_INTERVAL_KEYS[semitones], octaves: 0 };
+    }
+
+    // For larger intervals, simplify
+    const octaves = Math.floor(semitones / 12);
+    const remainder = semitones % 12;
+    const baseKey = DETAILED_INTERVAL_KEYS[remainder];
+
+    return { key: baseKey, octaves };
+};
+
 export const getDetailedInterval = (note1: Note, octave1: number, note2: Note, octave2: number): { key: string, octaves: number } | null => {
     const index1 = getNoteIndex(note1);
     const index2 = getNoteIndex(note2);
@@ -64,18 +80,7 @@ export const getDetailedInterval = (note1: Note, octave1: number, note2: Note, o
     const absolutePitch1 = octave1 * 12 + index1;
     const absolutePitch2 = octave2 * 12 + index2;
 
-    const semitones = Math.abs(absolutePitch2 - absolutePitch1);
-
-    if (DETAILED_INTERVAL_KEYS[semitones]) {
-        return { key: DETAILED_INTERVAL_KEYS[semitones], octaves: 0 };
-    }
-    
-    // For larger intervals, simplify
-    const octaves = Math.floor(semitones / 12);
-    const remainder = semitones % 12;
-    const baseKey = DETAILED_INTERVAL_KEYS[remainder];
-    
-    return { key: baseKey, octaves };
+    return getIntervalBySemitones(absolutePitch2 - absolutePitch1);
 };
 
 export const SHARPS_SCALE: Note[] = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
