@@ -1,14 +1,10 @@
 export type Note = string;
 export type NamingSystem = 'ENGLISH' | 'SOLFEGE';
 
+// Keyed by letter; the accidentals carry over verbatim (C# -> Do#, Bbb -> Sibb)
+// so double accidentals render like every other spelling.
 const SOLFEGE_MAP: Record<string, string> = {
-    'C': 'Do', 'C#': 'Do#', 'Cb': 'Dob',
-    'D': 'Re', 'D#': 'Re#', 'Db': 'Reb',
-    'E': 'Mi', 'E#': 'Mi#', 'Eb': 'Mib',
-    'F': 'Fa', 'F#': 'Fa#', 'Fb': 'Fab',
-    'G': 'Sol', 'G#': 'Sol#', 'Gb': 'Solb',
-    'A': 'La', 'A#': 'La#', 'Ab': 'Lab',
-    'B': 'Si', 'B#': 'Si#', 'Bb': 'Sib'
+    'C': 'Do', 'D': 'Re', 'E': 'Mi', 'F': 'Fa', 'G': 'Sol', 'A': 'La', 'B': 'Si'
 };
 
 const INTERVAL_NAMES: Record<number, string> = {
@@ -23,7 +19,8 @@ const INTERVAL_NAMES: Record<number, string> = {
 
 export const getNoteName = (note: Note, system: NamingSystem): string => {
     if (system === 'ENGLISH') return note;
-    return SOLFEGE_MAP[note] || note;
+    const syllable = SOLFEGE_MAP[note.charAt(0)];
+    return syllable ? `${syllable}${note.slice(1)}` : note;
 };
 
 export const getInterval = (root: Note, note: Note): string => {
@@ -90,16 +87,27 @@ export const ROOT_NOTES: Note[] = [
     'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'E#', 'Fb', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B', 'B#', 'Cb'
 ];
 
-export const getNoteIndex = (note: Note): number => {
-    // Handle enharmonics that are not in the standard arrays
-    if (note === 'Cb') return 11; // B
-    if (note === 'Fb') return 4;  // E
-    if (note === 'E#') return 5;  // F
-    if (note === 'B#') return 0;  // C
+const LETTER_PITCH_CLASSES: Record<string, number> = {
+    'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
+};
 
-    let index = SHARPS_SCALE.indexOf(note);
-    if (index === -1) index = FLATS_SCALE.indexOf(note);
-    return index;
+// Parses a letter plus its run of accidentals, so every spelling the theory
+// layer can produce resolves to a pitch class — including the double sharps and
+// double flats getProperSpelling emits (A# major spells its 3rd Cx, Db° spells
+// its 5th Abb). Returns -1 for anything that is not a pitch.
+export const getNoteIndex = (note: Note): number => {
+    let pitchClass = LETTER_PITCH_CLASSES[note.charAt(0)];
+    if (pitchClass === undefined) return -1;
+
+    for (let i = 1; i < note.length; i++) {
+        const accidental = note.charAt(i);
+        if (accidental === '#') pitchClass += 1;
+        else if (accidental === 'b') pitchClass -= 1;
+        else if (accidental === 'x') pitchClass += 2;
+        else return -1;
+    }
+
+    return ((pitchClass % 12) + 12) % 12;
 };
 
 export const areEnharmonicallyEquivalent = (note1: Note, note2: Note): boolean => {
@@ -123,9 +131,6 @@ export const getNoteDisplayLabel = (note: Note): string => {
 
 // --- Diatonic spelling logic ---
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-const LETTER_PITCH_CLASSES: Record<string, number> = {
-    'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
-};
 
 export const SCALE_DEGREES: Record<ScaleType, number[]> = {
     MAJOR: [0, 1, 2, 3, 4, 5, 6],

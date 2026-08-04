@@ -1,4 +1,4 @@
-import { getInstrumentConfig, CHORD_INTERVALS, type Note, type Instrument, type ChordQuality } from './musicTheory';
+import { getInstrumentConfig, getNoteIndex, CHORD_INTERVALS, type Note, type Instrument, type ChordQuality } from './musicTheory';
 
 export interface Voicing {
     frets: number[]; // Index maps to string index (0 is usually High E for standard Guitar config)
@@ -33,29 +33,6 @@ const OPEN_GRIP_MAX_FRET = 4;   // highest fretted fret that still blends with o
 const MUDDY_PITCH_CEILING = 35; // B2 in semitones-from-C0 (the baseSemitones scale)
 
 // ---------------------------------------------------------------------------
-// Pitch helpers
-// ---------------------------------------------------------------------------
-
-const LETTER_PITCH_CLASSES: Record<string, number> = {
-    'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
-};
-
-// Parses every spelling the theory layer can produce ('#', 'b', 'x', 'bb') so
-// enharmonic spellings (B# vs C, Fx vs G) compare equal on the fretboard.
-function noteToPitchClass(note: Note): number {
-    const base = LETTER_PITCH_CLASSES[note.charAt(0)];
-    if (base === undefined) return -1;
-    let pc = base;
-    for (let i = 1; i < note.length; i++) {
-        const mod = note.charAt(i);
-        if (mod === '#') pc += 1;
-        else if (mod === 'b') pc -= 1;
-        else if (mod === 'x') pc += 2;
-    }
-    return ((pc % 12) + 12) % 12;
-}
-
-// ---------------------------------------------------------------------------
 // Chord profile: which tones a grip must keep and which it may drop
 // ---------------------------------------------------------------------------
 
@@ -81,7 +58,7 @@ function isEssentialInterval(interval: number, intervals: number[]): boolean {
 }
 
 function buildChordProfile(root: Note, quality: ChordQuality): ChordProfile | null {
-    const rootPc = noteToPitchClass(root);
+    const rootPc = getNoteIndex(root);
     if (rootPc === -1) return null;
 
     const intervals = CHORD_INTERVALS[quality];

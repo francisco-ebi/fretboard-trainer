@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getScale, getChordNotes, getDiatonicChords, getSecondaryDominants, getBorrowedChords, getChromaticMediants, getDegreeTriadQuality, HARMONIZABLE_SCALES, SCALES, type ScaleType } from '../musicTheory';
+import { getScale, getChordNotes, getDiatonicChords, getSecondaryDominants, getBorrowedChords, getChromaticMediants, getDegreeTriadQuality, getNoteIndex, areEnharmonicallyEquivalent, getInterval, getNoteName, ROOT_NOTES, CHORD_INTERVALS, HARMONIZABLE_SCALES, SCALES, type ChordQuality, type ScaleType } from '../musicTheory';
 
 describe('musicTheory - Enharmonic Spelling', () => {
     describe('getScale', () => {
@@ -268,5 +268,86 @@ describe('musicTheory - Enharmonic Spelling', () => {
             expect(result.every(c => c.quality === 'MINOR')).toBe(true);
             expect(result.map(c => c.romanNumeral)).toEqual(['biii', 'iii', 'bvi', 'vi']);
         });
+    });
+});
+
+describe('musicTheory - Double accidentals', () => {
+    // getProperSpelling emits double sharps/flats, so every consumer that
+    // resolves a spelling to a pitch class has to parse them. When it did not,
+    // the Cx in A#7 matched no fret and vanished from the fretboard.
+    describe('getNoteIndex', () => {
+        it('should resolve double sharps and double flats', () => {
+            expect(getNoteIndex('Cx')).toBe(2);   // D
+            expect(getNoteIndex('Fx')).toBe(7);   // G
+            expect(getNoteIndex('Bx')).toBe(1);   // C#
+            expect(getNoteIndex('Bbb')).toBe(9);  // A
+            expect(getNoteIndex('Abb')).toBe(7);  // G
+            expect(getNoteIndex('Cbb')).toBe(10); // Bb
+        });
+
+        it('should still resolve single accidentals and naturals', () => {
+            expect(getNoteIndex('C')).toBe(0);
+            expect(getNoteIndex('A#')).toBe(10);
+            expect(getNoteIndex('Bb')).toBe(10);
+            expect(getNoteIndex('Cb')).toBe(11);
+            expect(getNoteIndex('Fb')).toBe(4);
+            expect(getNoteIndex('E#')).toBe(5);
+            expect(getNoteIndex('B#')).toBe(0);
+        });
+
+        it('should reject anything that is not a pitch', () => {
+            expect(getNoteIndex('H')).toBe(-1);
+            expect(getNoteIndex('')).toBe(-1);
+            expect(getNoteIndex('C4')).toBe(-1);
+            expect(getNoteIndex('Cmaj')).toBe(-1);
+        });
+    });
+
+    it('should match a double-sharp chord tone to its fretboard spelling', () => {
+        // The fretboard keys cells off areEnharmonicallyEquivalent
+        expect(getChordNotes('A#', 'DOM7')).toEqual(['A#', 'Cx', 'E#', 'G#']);
+        expect(areEnharmonicallyEquivalent('Cx', 'D')).toBe(true);
+        expect(areEnharmonicallyEquivalent('Fx', 'G')).toBe(true);
+        expect(areEnharmonicallyEquivalent('Bbb', 'A')).toBe(true);
+        expect(areEnharmonicallyEquivalent('Cx', 'C#')).toBe(false);
+    });
+
+    it('should label the interval of a double-accidental chord tone', () => {
+        expect(getInterval('A#', 'Cx')).toBe('3');   // major 3rd, not '?'
+        expect(getInterval('C', 'Bbb')).toBe('6');   // dim 7th of C dim7
+        expect(getInterval('D#', 'Fx')).toBe('3');
+    });
+
+    it('should render double accidentals in solfege', () => {
+        expect(getNoteName('Cx', 'SOLFEGE')).toBe('Dox');
+        expect(getNoteName('Bbb', 'SOLFEGE')).toBe('Sibb');
+        // unchanged for the spellings that were already mapped
+        expect(getNoteName('A#', 'SOLFEGE')).toBe('La#');
+        expect(getNoteName('Gb', 'SOLFEGE')).toBe('Solb');
+        expect(getNoteName('Sol', 'ENGLISH')).toBe('Sol');
+    });
+
+    it('should resolve every note of every root/quality pair in the library', () => {
+        const unresolved: string[] = [];
+        for (const root of ROOT_NOTES) {
+            for (const quality of Object.keys(CHORD_INTERVALS) as ChordQuality[]) {
+                for (const note of getChordNotes(root, quality)) {
+                    if (getNoteIndex(note) === -1) unresolved.push(`${root}${quality}: ${note}`);
+                }
+            }
+        }
+        expect(unresolved).toEqual([]);
+    });
+
+    it('should resolve every note of every root/scale pair in the library', () => {
+        const unresolved: string[] = [];
+        for (const root of ROOT_NOTES) {
+            for (const scale of Object.keys(SCALES) as ScaleType[]) {
+                for (const note of getScale(root, scale)) {
+                    if (getNoteIndex(note) === -1) unresolved.push(`${root} ${scale}: ${note}`);
+                }
+            }
+        }
+        expect(unresolved).toEqual([]);
     });
 });
