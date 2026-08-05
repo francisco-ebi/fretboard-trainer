@@ -7,6 +7,13 @@ const SOLFEGE_MAP: Record<string, string> = {
     'C': 'Do', 'D': 'Re', 'E': 'Mi', 'F': 'Fa', 'G': 'Sol', 'A': 'La', 'B': 'Si'
 };
 
+// The seven note letters in scale order, and their natural pitch classes.
+// Interval numbers and diatonic spelling are both derived from letter distance.
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_PITCH_CLASSES: Record<string, number> = {
+    'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
+};
+
 const INTERVAL_NAMES: Record<number, string> = {
     0: '1',
     1: 'b2', 2: '2',
@@ -23,6 +30,14 @@ export const getNoteName = (note: Note, system: NamingSystem): string => {
     return syllable ? `${syllable}${note.slice(1)}` : note;
 };
 
+// Semitones above the tonic for each diatonic degree of the major scale — the
+// reference an interval's accidentals are measured against.
+const MAJOR_DEGREE_SEMITONES = [0, 2, 4, 5, 7, 9, 11];
+
+// An interval's number comes from the distance between note letters, and only
+// its accidentals come from the semitone distance. Reading semitones alone
+// cannot tell an augmented 4th from a diminished 5th, which is why Hungarian
+// minor (C D Eb F# G Ab B) used to label F# 'b5' and read as two fifths.
 export const getInterval = (root: Note, note: Note): string => {
     const rootIndex = getNoteIndex(root);
     const noteIndex = getNoteIndex(note);
@@ -32,7 +47,26 @@ export const getInterval = (root: Note, note: Note): string => {
     let semitones = noteIndex - rootIndex;
     if (semitones < 0) semitones += 12;
 
-    return INTERVAL_NAMES[semitones] || '?';
+    const rootLetter = LETTERS.indexOf(root.charAt(0));
+    const noteLetter = LETTERS.indexOf(note.charAt(0));
+    if (rootLetter === -1 || noteLetter === -1) return INTERVAL_NAMES[semitones] || '?';
+
+    const degreeIndex = (noteLetter - rootLetter + 7) % 7;
+
+    // How far the note sits from the major-scale degree of that number. The
+    // wrap keeps octave-crossing spellings (B# over C) at a single accidental.
+    let alteration = semitones - MAJOR_DEGREE_SEMITONES[degreeIndex];
+    if (alteration > 6) alteration -= 12;
+    if (alteration < -6) alteration += 12;
+
+    // Past a double accidental the note is not spelled on its diatonic letter —
+    // getProperSpelling has run out of accidentals and returned an enharmonic
+    // (B#aug needs an F triple sharp for its 5th and yields Ab). The letter is
+    // then meaningless, so name the interval by semitones instead.
+    if (Math.abs(alteration) > 2) return INTERVAL_NAMES[semitones] || '?';
+
+    const accidentals = alteration > 0 ? '#'.repeat(alteration) : 'b'.repeat(-alteration);
+    return `${accidentals}${degreeIndex + 1}`;
 };
 
 export const DETAILED_INTERVAL_KEYS: Record<number, string> = {
@@ -87,10 +121,6 @@ export const ROOT_NOTES: Note[] = [
     'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'E#', 'Fb', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B', 'B#', 'Cb'
 ];
 
-const LETTER_PITCH_CLASSES: Record<string, number> = {
-    'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
-};
-
 // Parses a letter plus its run of accidentals, so every spelling the theory
 // layer can produce resolves to a pitch class — including the double sharps and
 // double flats getProperSpelling emits (A# major spells its 3rd Cx, Db° spells
@@ -130,8 +160,6 @@ export const getNoteDisplayLabel = (note: Note): string => {
 };
 
 // --- Diatonic spelling logic ---
-const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-
 export const SCALE_DEGREES: Record<ScaleType, number[]> = {
     MAJOR: [0, 1, 2, 3, 4, 5, 6],
     MINOR: [0, 1, 2, 3, 4, 5, 6],
@@ -223,7 +251,7 @@ export type ScaleType = keyof typeof SCALES;
 export const CHARACTERISTIC_INTERVALS: Partial<Record<ScaleType, string>> = {
     DORIAN: '6', // Major 6th in a minor context
     PHRYGIAN: 'b2', // Minor 2nd
-    LYDIAN: 'b5', // Augmented 4th (mapped to b5 physically)
+    LYDIAN: '#4', // Augmented 4th
     MIXOLYDIAN: 'b7', // Minor 7th in a major context
     AEOLIAN: 'b6', // Minor 6th
     LOCRIAN: 'b5' // Diminished 5th

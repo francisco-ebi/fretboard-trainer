@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getScale, getChordNotes, getDiatonicChords, getSecondaryDominants, getBorrowedChords, getChromaticMediants, getDegreeTriadQuality, getNoteIndex, areEnharmonicallyEquivalent, getInterval, getNoteName, ROOT_NOTES, CHORD_INTERVALS, HARMONIZABLE_SCALES, SCALES, type ChordQuality, type ScaleType } from '../musicTheory';
+import { getScale, getChordNotes, getDiatonicChords, getSecondaryDominants, getBorrowedChords, getChromaticMediants, getDegreeTriadQuality, getNoteIndex, areEnharmonicallyEquivalent, getInterval, getNoteName, CHARACTERISTIC_INTERVALS, ROOT_NOTES, CHORD_INTERVALS, HARMONIZABLE_SCALES, SCALES, type ChordQuality, type ScaleType } from '../musicTheory';
 
 describe('musicTheory - Enharmonic Spelling', () => {
     describe('getScale', () => {
@@ -313,8 +313,8 @@ describe('musicTheory - Double accidentals', () => {
     });
 
     it('should label the interval of a double-accidental chord tone', () => {
-        expect(getInterval('A#', 'Cx')).toBe('3');   // major 3rd, not '?'
-        expect(getInterval('C', 'Bbb')).toBe('6');   // dim 7th of C dim7
+        expect(getInterval('A#', 'Cx')).toBe('3');     // major 3rd, not '?'
+        expect(getInterval('C', 'Bbb')).toBe('bb7');   // dim 7th of C dim7
         expect(getInterval('D#', 'Fx')).toBe('3');
     });
 
@@ -349,5 +349,93 @@ describe('musicTheory - Double accidentals', () => {
             }
         }
         expect(unresolved).toEqual([]);
+    });
+});
+
+describe('musicTheory - Interval naming follows spelling', () => {
+    // An interval's number comes from letter distance, not semitone count.
+    // Naming by semitones alone called every 6-semitone note 'b5', so Hungarian
+    // minor's F# read as a second fifth next to its actual G.
+    it('should name a raised 4th #4 and leave the 5th alone', () => {
+        const notes = getScale('C', 'HUNGARIAN_MINOR');
+        expect(notes).toEqual(['C', 'D', 'Eb', 'F#', 'G', 'Ab', 'B']);
+        expect(notes.map(n => getInterval('C', n))).toEqual(['1', '2', 'b3', '#4', '5', 'b6', '7']);
+    });
+
+    it('should distinguish an augmented 4th from a diminished 5th', () => {
+        // Same pitch class, opposite spellings
+        expect(getInterval('C', 'F#')).toBe('#4');
+        expect(getInterval('C', 'Gb')).toBe('b5');
+        // Lydian is sharp-4; Locrian is flat-5
+        expect(getScale('C', 'LYDIAN').map(n => getInterval('C', n)))
+            .toEqual(['1', '2', '3', '#4', '5', '6', '7']);
+        expect(getScale('C', 'LOCRIAN').map(n => getInterval('C', n)))
+            .toEqual(['1', 'b2', 'b3', '4', 'b5', 'b6', 'b7']);
+    });
+
+    it('should name altered chord tones by their spelling', () => {
+        expect(getChordNotes('C', 'AUGMENTED').map(n => getInterval('C', n))).toEqual(['1', '3', '#5']);
+        expect(getChordNotes('C', 'DIM7').map(n => getInterval('C', n))).toEqual(['1', 'b3', 'b5', 'bb7']);
+        expect(getChordNotes('C', 'MIN7B5').map(n => getInterval('C', n))).toEqual(['1', 'b3', 'b5', 'b7']);
+        expect(getChordNotes('A#', 'DOM7').map(n => getInterval('A#', n))).toEqual(['1', '3', '5', 'b7']);
+        expect(getChordNotes('Db', 'DIM7').map(n => getInterval('Db', n))).toEqual(['1', 'b3', 'b5', 'bb7']);
+    });
+
+    it('should keep every characteristic interval reachable in its scale', () => {
+        for (const [scale, characteristic] of Object.entries(CHARACTERISTIC_INTERVALS)) {
+            const labels = getScale('C', scale as ScaleType).map(n => getInterval('C', n));
+            expect(labels, `${scale} should contain ${characteristic}`).toContain(characteristic);
+        }
+    });
+
+    it('should never label two different notes of a scale or chord alike', () => {
+        const collisions: string[] = [];
+        const check = (root: string, notes: string[], tag: string) => {
+            const byLabel = new Map<string, Set<string>>();
+            notes.forEach(n => {
+                const label = getInterval(root, n);
+                if (!byLabel.has(label)) byLabel.set(label, new Set());
+                byLabel.get(label)!.add(n);
+            });
+            for (const [label, spellings] of byLabel) {
+                if (spellings.size > 1) collisions.push(`${tag}: ${label} <- ${[...spellings].join('/')}`);
+            }
+        };
+        for (const root of ROOT_NOTES) {
+            for (const scale of Object.keys(SCALES) as ScaleType[]) check(root, getScale(root, scale), `${root} ${scale}`);
+            for (const q of Object.keys(CHORD_INTERVALS) as ChordQuality[]) check(root, getChordNotes(root, q), `${root} ${q}`);
+        }
+        expect(collisions).toEqual([]);
+    });
+
+    it('should always produce a well-formed label', () => {
+        const malformed: string[] = [];
+        for (const root of ROOT_NOTES) {
+            for (const scale of Object.keys(SCALES) as ScaleType[]) {
+                for (const n of getScale(root, scale)) {
+                    const l = getInterval(root, n);
+                    if (!/^(#|b){0,2}[1-7]$/.test(l)) malformed.push(`${root} ${scale} ${n} -> ${l}`);
+                }
+            }
+            for (const q of Object.keys(CHORD_INTERVALS) as ChordQuality[]) {
+                for (const n of getChordNotes(root, q)) {
+                    const l = getInterval(root, n);
+                    if (!/^(#|b){0,2}[1-7]$/.test(l)) malformed.push(`${root} ${q} ${n} -> ${l}`);
+                }
+            }
+        }
+        expect(malformed).toEqual([]);
+    });
+
+    it('should fall back to semitone naming when a note is off its diatonic letter', () => {
+        // B#aug's 5th needs an F triple sharp; getProperSpelling yields Ab
+        // instead, so the letter cannot be trusted and 'bbb7' must not appear.
+        expect(getChordNotes('B#', 'AUGMENTED')).toEqual(['B#', 'Dx', 'Ab']);
+        expect(getInterval('B#', 'Ab')).toBe('b6');
+    });
+
+    it('should return ? for notes it cannot resolve', () => {
+        expect(getInterval('C', 'H')).toBe('?');
+        expect(getInterval('H', 'C')).toBe('?');
     });
 });
