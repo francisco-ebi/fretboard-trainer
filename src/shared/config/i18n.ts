@@ -123,7 +123,13 @@ const resources = {
                 practiceAgain: "Practice again",
                 allCaughtUp: "All caught up",
                 allCaughtUpNote: "Nothing is due right now. Come back later, or review ahead of schedule.",
-                reviewAhead: "Review ahead"
+                reviewAhead: "Review ahead",
+                audioInput: "Electric Guitar Input",
+                audioInputDesc: "Play answers directly on your guitar via an audio interface.",
+                listening: "Listening...",
+                detectedNote: "Detected: {{note}} (Fret {{fret}})",
+                handsFreeHint: "Pluck the revealed note or press Space to continue",
+                audioError: "Could not access audio device"
             },
             groups: {
                 triads: "Triads",
@@ -371,7 +377,13 @@ const resources = {
                 practiceAgain: "Practicar otra vez",
                 allCaughtUp: "Todo al día",
                 allCaughtUpNote: "No hay nada pendiente ahora mismo. Vuelve más tarde o adelanta el repaso.",
-                reviewAhead: "Adelantar repaso"
+                reviewAhead: "Adelantar repaso",
+                audioInput: "Entrada de Guitarra Eléctrica",
+                audioInputDesc: "Toca las respuestas en tu guitarra a través de tu interfaz de audio.",
+                listening: "Escuchando...",
+                detectedNote: "Detectado: {{note}} (Traste {{fret}})",
+                handsFreeHint: "Toca la nota correcta o pulsa Espacio para continuar",
+                audioError: "No se pudo acceder al dispositivo de audio"
             },
             groups: {
                 triads: "Tríadas",

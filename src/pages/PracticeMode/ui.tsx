@@ -4,6 +4,8 @@ import Fretboard, { FRETS } from '@/widgets/Fretboard';
 import BottomSheet from '@/widgets/BottomSheet';
 import { useInstrument, useNaming } from '@/app/providers';
 import { useIsMobile } from '@/shared/lib/hooks/useMediaQuery';
+import { useAudioDevices } from '@/shared/hooks/useAudioDevices';
+import { usePracticeAudio } from './hooks/usePracticeAudio';
 import { type PracticeCellState } from '@/entities/note';
 import {
     getIntervalBySemitones,
@@ -108,6 +110,9 @@ const PracticeMode: React.FC<PracticeModeProps> = ({ isFullScreen = false }) => 
         () => (localStorage.getItem('practice-stage') as StageId) || 'ROOT_AND_FIFTH'
     );
     const [skips, setSkipsState] = useState<number[]>(readStoredSkips);
+    const [isAudioEnabled, setIsAudioEnabled] = useState<boolean>(
+        () => localStorage.getItem('practice-audio-enabled') === 'true'
+    );
 
     const setStage = (next: StageId) => {
         setStageState(next);
@@ -121,6 +126,22 @@ const PracticeMode: React.FC<PracticeModeProps> = ({ isFullScreen = false }) => 
         setSkipsState(sorted);
         localStorage.setItem('practice-skips', JSON.stringify(sorted));
     };
+
+    const toggleAudio = useCallback(() => {
+        setIsAudioEnabled(prev => {
+            const next = !prev;
+            localStorage.setItem('practice-audio-enabled', String(next));
+            return next;
+        });
+    }, []);
+
+    const {
+        devices,
+        selectedDeviceId,
+        updateSelectedDevice,
+        isPermissionGranted,
+        requestPermissionsAndFetchDevices
+    } = useAudioDevices();
 
     const pitches = useMemo(
         () => getOpenStringPitches(instrument, stringCount, tuningOffsets),
@@ -197,6 +218,36 @@ const PracticeMode: React.FC<PracticeModeProps> = ({ isFullScreen = false }) => 
             };
         });
     }, [movesById]);
+
+    // Spacebar listener to advance past missed feedback hands-free
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' && feedback && !feedback.correct) {
+                e.preventDefault();
+                advance();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [feedback, advance]);
+
+    // Electric guitar audio hook
+    const { isListening, detectedNote, audioError } = usePracticeAudio({
+        enabled: isAudioEnabled,
+        deviceId: selectedDeviceId,
+        question,
+        feedback,
+        openStringPitches: pitches,
+        onAnswer: handleCellClick,
+        onAdvance: advance
+    });
+
+    // Auto-request audio device permissions if enabled but not granted
+    useEffect(() => {
+        if (isAudioEnabled && !isPermissionGranted) {
+            requestPermissionsAndFetchDevices();
+        }
+    }, [isAudioEnabled, isPermissionGranted, requestPermissionsAndFetchDevices]);
 
     // A correct answer flows on by itself. A miss waits for the learner to
     // acknowledge it — they need time to look at where the note actually was.
@@ -291,6 +342,34 @@ const PracticeMode: React.FC<PracticeModeProps> = ({ isFullScreen = false }) => 
             </div>
 
             <div className="practice-setting-group">
+                <span className="practice-setting-label">{t('practice.audioInput')}</span>
+                <button
+                    type="button"
+                    className={`practice-audio-toggle ${isAudioEnabled ? 'active' : ''}`}
+                    onClick={toggleAudio}
+                    aria-pressed={isAudioEnabled}
+                >
+                    <span className="practice-audio-toggle-icon" aria-hidden="true">🎸</span>
+                    <span>{isAudioEnabled ? t('controls.stopListening') : t('controls.startListening')}</span>
+                </button>
+                {isAudioEnabled && devices.length > 1 && (
+                    <select
+                        className="practice-select practice-device-select"
+                        value={selectedDeviceId || ''}
+                        onChange={e => updateSelectedDevice(e.target.value)}
+                        aria-label={t('controls.inputDevice')}
+                    >
+                        {devices.map(d => (
+                            <option key={d.deviceId} value={d.deviceId}>
+                                {d.label || `Interface (${d.deviceId.slice(0, 6)})`}
+                            </option>
+                        ))}
+                    </select>
+                )}
+                <p className="practice-setting-hint">{t('practice.audioInputDesc')}</p>
+            </div>
+
+            <div className="practice-setting-group">
                 <span className="practice-setting-label">{t('practice.deckSize')}</span>
                 <span className="practice-deck-size">
                     {t('practice.deckSizeValue', { count: moves.length })}
@@ -301,18 +380,48 @@ const PracticeMode: React.FC<PracticeModeProps> = ({ isFullScreen = false }) => 
 
     const prompt = question && (
         <div className={`practice-prompt ${feedback ? (feedback.correct ? 'correct' : 'wrong') : ''}`}>
-            <div className="practice-prompt-main">
-                <span className="practice-prompt-from">
-                    {getNoteName(anchorNote, namingSystem)}
-                </span>
-                <span className="practice-prompt-arrow" aria-hidden="true">→</span>
-                <span className="practice-prompt-interval">
-                    {intervalLabel(question.move.interval)}
-                </span>
+            <div className="practice-prompt-header">
+                <div className="practice-prompt-main">
+                    <span className="practice-prompt-from">
+                        {getNoteName(anchorNote, namingSystem)}
+                    </span>
+                    <span className="practice-prompt-arrow" aria-hidden="true">→</span>
+                    <span className="practice-prompt-interval">
+                        {intervalLabel(question.move.interval)}
+                    </span>
+                </div>
+                <button
+                    type="button"
+                    className={`practice-quick-audio-btn ${isAudioEnabled ? 'active' : ''}`}
+                    onClick={toggleAudio}
+                    title={isAudioEnabled ? t('controls.stopListening') : t('controls.startListening')}
+                    aria-label={t('practice.audioInput')}
+                >
+                    <span aria-hidden="true">🎸</span>
+                </button>
             </div>
             <div className="practice-prompt-target">
                 {t('practice.onString', { string: question.move.to + 1 })}
             </div>
+            {isAudioEnabled && (
+                <div className="practice-audio-status-pill">
+                    {audioError ? (
+                        <span className="practice-audio-status-error">{t('practice.audioError')}</span>
+                    ) : detectedNote && performance.now() - detectedNote.timestamp < 2000 ? (
+                        <span className="practice-audio-status-note">
+                            {t('practice.detectedNote', {
+                                note: detectedNote.noteName,
+                                fret: detectedNote.fret
+                            })}
+                        </span>
+                    ) : isListening ? (
+                        <span className="practice-audio-status-listening">
+                            <span className="practice-pulse-dot" aria-hidden="true" />
+                            {t('practice.listening')}
+                        </span>
+                    ) : null}
+                </div>
+            )}
         </div>
     );
 
@@ -337,7 +446,12 @@ const PracticeMode: React.FC<PracticeModeProps> = ({ isFullScreen = false }) => 
 
     const feedbackBar = feedback && !feedback.correct && (
         <div className="practice-feedback">
-            <span className="practice-feedback-text">{t('practice.missed')}</span>
+            <div className="practice-feedback-content">
+                <span className="practice-feedback-text">{t('practice.missed')}</span>
+                {isAudioEnabled && (
+                    <span className="practice-feedback-hint">{t('practice.handsFreeHint')}</span>
+                )}
+            </div>
             <button className="practice-continue-btn" onClick={advance} autoFocus>
                 {t('practice.continue')}
             </button>
