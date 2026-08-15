@@ -4,6 +4,7 @@ Interactive fretboard trainer (scales, chords) with an experimental audio featur
 
 - **[Audio pipeline & model documentation](docs/audio-pipeline.md)** — how the audio analysis works, the features used, training/inference flows, current limitations, and the improvement roadmap. Start here if you're new to the audio side of the project.
 - **[Dataset recording protocol](docs/recording-protocol.md)** — the step-by-step procedure for recording a training dataset (coverage plan, variation grid, sanity checks).
+- **[Practice mode & spaced repetition](docs/practice-mode.md)** — how intervals are modelled as moves on the grid, the scheduler, the session loop, and how it plugs into the Fretboard widget. No audio involved.
 
 ---
 

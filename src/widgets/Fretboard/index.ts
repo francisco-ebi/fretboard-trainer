@@ -1,1 +1,1 @@
-export { default } from './ui';
+export { default, FRETS, type PracticeLayer } from './ui';

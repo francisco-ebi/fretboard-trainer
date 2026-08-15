@@ -5,11 +5,12 @@ import '@/app/styles/FullScreenStyles.css';
 import TopBar from '@/widgets/TopBar';
 import ScaleMode from '@/pages/ScaleMode';
 import ChordMode from '@/pages/ChordMode';
+import PracticeMode from '@/pages/PracticeMode';
 
 import { OrientationProvider } from '@/app/providers';
 
 
-type AppMode = 'SCALE' | 'CHORD' | 'LIBRARY' | 'VISUAL';
+type AppMode = 'SCALE' | 'CHORD' | 'PRACTICE' | 'LIBRARY' | 'VISUAL';
 
 import PredictionControls from '@/features/PredictionControls';
 import { ReloadPrompt } from '@/app/providers';
@@ -115,6 +116,12 @@ const AppContent = () => {
               {t('modes.chord')}
             </button>
             <button
+              className={`mode-btn ${currentMode === 'PRACTICE' ? 'active' : ''}`}
+              onClick={() => setCurrentMode('PRACTICE')}
+            >
+              {t('modes.practice')}
+            </button>
+            <button
               className={`mode-btn ${currentMode === 'LIBRARY' ? 'active' : ''}`}
               onClick={() => setCurrentMode('LIBRARY')}
             >
@@ -159,6 +166,8 @@ const AppContent = () => {
           <ScaleMode isFullScreen={isFullScreen} />
         ) : currentMode === 'CHORD' ? (
           <ChordMode isFullScreen={isFullScreen} />
+        ) : currentMode === 'PRACTICE' ? (
+          <PracticeMode isFullScreen={isFullScreen} />
         ) : currentMode === 'LIBRARY' ? (
           <Suspense fallback={<div>Loading Library...</div>}>
             <ChordLibrary isFullScreen={isFullScreen} />

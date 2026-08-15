@@ -6,10 +6,24 @@ import { type Voicing } from '@/shared/lib/music/chordVoicings';
 import { useOrientation } from '@/app/providers';
 import { useInstrument } from '@/app/providers';
 
-import { FretCell } from '@/entities/note';
+import { FretCell, type PracticeCellState } from '@/entities/note';
 import { PredictionOverlay, PredictionIntervalOverlay } from '@/features/PredictionControls';
 import { guitarPredictionEngine } from '@/shared/lib/audio/prediction-engine';
 import './ui.css';
+
+/**
+ * Overrides the board into a question: only the cells named here show a marker,
+ * and the cells on the string being asked about become tappable. Passing this
+ * suppresses the interval-measurement interaction, which would otherwise
+ * compete for the same clicks.
+ */
+export interface PracticeLayer {
+    /** Keyed "stringIndex-fret", matching the cell DOM ids. */
+    cellStates: Map<string, PracticeCellState>;
+    onCellClick: (stringIndex: number, fret: number) => void;
+    /** Frozen after an answer, so feedback stays put until the page advances. */
+    locked: boolean;
+}
 
 interface FretboardProps {
     selectedRoot: Note;
@@ -24,11 +38,12 @@ interface FretboardProps {
     interactiveRootNotePos?: { stringIndex: number, fret: number } | null;
     interactiveTogglableNotes?: Note[];
     customVoicingKeys?: string[];
+    practice?: PracticeLayer;
     onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
     onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
 }
 
-const FRETS = 18; // 0 (open) to 18
+export const FRETS = 18; // 0 (open) to 18
 const INLAY_FRETS = [3, 5, 7, 9, 15, 17];
 const DOUBLE_INLAY_FRETS = [12];
 
@@ -45,6 +60,7 @@ const Fretboard: React.FC<FretboardProps> = ({
     selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument,
     tuningOffsets, stringCount, voicings,
     interactiveMode, interactiveRootNotePos, interactiveTogglableNotes, customVoicingKeys,
+    practice,
     onInteractiveRootClick, onInteractiveNoteToggle
 }) => {
     const { t } = useTranslation();
@@ -246,13 +262,23 @@ const Fretboard: React.FC<FretboardProps> = ({
             const isMeasured = measuredNotes.some(mn => mn.stringIndex === stringIndex && mn.fret === fret);
             const isPredicted = predictedKey === `${stringIndex}-${fret}`;
 
+            const practiceState = practice?.cellStates.get(`${stringIndex}-${fret}`) ?? null;
+            // A practice board shows only what the question names — drawing the
+            // scale underneath would hand over the answer. CANDIDATE cells stay
+            // blank on purpose: finding them is the exercise.
+            const isPracticeVisible = practiceState !== null && practiceState !== 'CANDIDATE';
+            const isAnswerable = !!practice && !practice.locked && practiceState === 'CANDIDATE';
+
+            const cellIsActive = practice ? isPracticeVisible : !!isActive;
+            const cellIsRoot = practice ? practiceState === 'ANCHOR' : isRoot;
+
             fretElements.push(
                 <FretCell
                     key={`fret-${stringIndex}-${fret}`}
                     stringIndex={stringIndex}
                     fret={fret}
                     noteToDisplay={noteToDisplay}
-                    isRoot={isRoot}
+                    isRoot={cellIsRoot}
                     namingSystem={namingSystem}
                     interval={interval}
                     isCharacteristic={isCharacteristic}
@@ -261,16 +287,18 @@ const Fretboard: React.FC<FretboardProps> = ({
                     isClickableRoot={isClickableRoot || false}
                     isOutline={isOutline || false}
                     isCustomActive={isCustomActive || false}
-                    isActive={isActive || false}
+                    isActive={cellIsActive}
                     shouldShake={shouldShake || false}
                     isSingleInlay={isSingleInlay || false}
                     isDoubleInlayTop={isDoubleInlayTop || false}
                     isDoubleInlayBottom={isDoubleInlayBottom || false}
                     isMeasured={isMeasured}
                     isPredicted={isPredicted}
-                    onNoteMeasureClick={interactiveMode ? undefined : handleNoteMeasureClick}
+                    practiceState={practiceState}
+                    onNoteMeasureClick={(interactiveMode || practice) ? undefined : handleNoteMeasureClick}
                     onInteractiveRootClick={onInteractiveRootClick}
                     onInteractiveNoteToggle={onInteractiveNoteToggle}
+                    onPracticeClick={isAnswerable ? practice.onCellClick : undefined}
                 />
             );
         }
@@ -400,7 +428,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                 {orientation === 'HORIZONTAL' && renderDesktopVoicingCarousel()}
                 <div
                     ref={fretboardRef}
-                    className={`fretboard ${orientation.toLowerCase()}`}
+                    className={`fretboard ${orientation.toLowerCase()} ${practice?.locked ? 'practice-locked' : ''}`}
                     role="grid"
                     aria-label={`${instrument} fretboard`}
                 >

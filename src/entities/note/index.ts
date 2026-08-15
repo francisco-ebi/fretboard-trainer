@@ -1,2 +1,2 @@
 export { default as NoteMarker } from './NoteMarker';
-export { FretCell } from './FretCell';
+export { FretCell, type PracticeCellState } from './FretCell';

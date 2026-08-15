@@ -2,6 +2,16 @@ import React from 'react';
 import { NoteMarker } from '@/entities/note';
 import { type Note, type NamingSystem } from '@/shared/lib/music/musicTheory';
 
+/**
+ * Role a cell plays in a practice question. Kept as a single string rather than
+ * a set of booleans so it stays cheap to compare in the memo below.
+ *
+ * CANDIDATE marks a tappable cell on the string being asked about; its marker
+ * stays hidden (that is the whole question), so the hit target has to live on
+ * the cell itself rather than on the note marker.
+ */
+export type PracticeCellState = 'ANCHOR' | 'CANDIDATE' | 'CORRECT' | 'WRONG' | 'REVEAL';
+
 interface FretCellProps {
     stringIndex: number;
     fret: number;
@@ -22,9 +32,11 @@ interface FretCellProps {
     isDoubleInlayBottom: boolean;
     isMeasured?: boolean;
     isPredicted?: boolean;
+    practiceState?: PracticeCellState | null;
     onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
     onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
     onNoteMeasureClick?: (stringIndex: number, fret: number, note: Note, octave: number) => void;
+    onPracticeClick?: (stringIndex: number, fret: number) => void;
 }
 
 const FretCellComponent: React.FC<FretCellProps> = ({
@@ -32,7 +44,8 @@ const FretCellComponent: React.FC<FretCellProps> = ({
     isCharacteristic, octave, customInterval, isClickableRoot,
     isOutline, isCustomActive, isActive, shouldShake,
     isSingleInlay, isDoubleInlayTop, isDoubleInlayBottom, isMeasured, isPredicted,
-    onInteractiveRootClick, onInteractiveNoteToggle, onNoteMeasureClick
+    practiceState,
+    onInteractiveRootClick, onInteractiveNoteToggle, onNoteMeasureClick, onPracticeClick
 }) => {
     const handleNoteClick = () => {
         if (onNoteMeasureClick) {
@@ -44,12 +57,17 @@ const FretCellComponent: React.FC<FretCellProps> = ({
         }
     };
 
+    const practiceClass = practiceState ? `practice-${practiceState.toLowerCase()}` : '';
+
     return (
         <div
             id={`fret-${stringIndex}-${fret}`}
-            className={`fret ${fret === 0 ? 'open-string' : ''}`}
+            className={`fret ${fret === 0 ? 'open-string' : ''} ${practiceClass}`}
             role="gridcell"
             aria-label={isActive ? `${noteToDisplay} at Fret ${fret}` : `Fret ${fret} (Empty)`}
+            // The answer to a practice question is a cell whose marker is
+            // hidden, so the whole cell has to be the hit target.
+            onClick={onPracticeClick ? () => onPracticeClick(stringIndex, fret) : undefined}
         >
             <div className="string-line"></div>
 
@@ -95,5 +113,9 @@ export const FretCell = React.memo(FretCellComponent, (prev, next) => {
         prev.isDoubleInlayTop === next.isDoubleInlayTop &&
         prev.isDoubleInlayBottom === next.isDoubleInlayBottom &&
         prev.isMeasured === next.isMeasured &&
-        prev.isPredicted === next.isPredicted;
+        prev.isPredicted === next.isPredicted &&
+        prev.practiceState === next.practiceState &&
+        // Practice mode swaps this callback between undefined and a handler as
+        // cells become answerable; missing it would freeze cells un-tappable.
+        !!prev.onPracticeClick === !!next.onPracticeClick;
 });

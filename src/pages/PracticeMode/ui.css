@@ -1,0 +1,286 @@
+.practice-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+}
+
+/* --- Prompt --- */
+
+.practice-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1.5rem;
+    min-width: min(320px, 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(28, 28, 34, 0.97);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.practice-prompt.correct {
+    border-color: #4ade80;
+    box-shadow: 0 0 18px rgba(74, 222, 128, 0.35);
+}
+
+.practice-prompt.wrong {
+    border-color: #f87171;
+    box-shadow: 0 0 18px rgba(248, 113, 113, 0.35);
+}
+
+.practice-prompt-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.practice-prompt-from {
+    color: #fca5a5;
+}
+
+.practice-prompt-arrow {
+    opacity: 0.5;
+    font-weight: 400;
+}
+
+.practice-prompt-interval {
+    color: #93c5fd;
+}
+
+.practice-prompt-target {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    color: #fff;
+}
+
+/* --- Stats --- */
+
+.practice-stats,
+.practice-summary-grid {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.practice-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.practice-stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+}
+
+.practice-stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.55;
+    color: #fff;
+}
+
+/* --- Feedback --- */
+
+.practice-feedback {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    border-radius: 12px;
+    background: rgba(60, 26, 26, 0.9);
+}
+
+.practice-feedback-text {
+    color: #fecaca;
+    font-size: 0.9rem;
+}
+
+.practice-continue-btn,
+.practice-primary-btn {
+    padding: 0.5rem 1.25rem;
+    min-height: 44px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.practice-continue-btn:hover,
+.practice-primary-btn:hover {
+    background: #1d4ed8;
+}
+
+/* --- Summary --- */
+
+.practice-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    width: min(480px, 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    background: rgba(28, 28, 34, 0.97);
+}
+
+.practice-summary-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #fff;
+}
+
+.practice-summary-note {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    color: #fff;
+    text-align: center;
+}
+
+.practice-missed-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 100%;
+    font-size: 0.85rem;
+    color: #fff;
+    opacity: 0.8;
+}
+
+.practice-missed-list li {
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* --- Settings --- */
+
+.practice-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 1rem 1.25rem;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.practice-setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.practice-setting-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+    color: #fff;
+}
+
+.practice-setting-hint {
+    margin: 0;
+    max-width: 22rem;
+    font-size: 0.75rem;
+    opacity: 0.5;
+    color: #fff;
+}
+
+.practice-select {
+    padding: 0.5rem 0.75rem;
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.practice-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.practice-chip {
+    padding: 0.4rem 0.8rem;
+    min-height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.practice-chip.active {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.practice-deck-size {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* --- Mobile --- */
+
+.practice-mode.mobile-stage {
+    /* Keep the fixed bottom-sheet peek bar off the last frets */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+.practice-mode.mobile-stage .practice-prompt {
+    position: sticky;
+    /* Below the fixed TopBar, matching .scale-summary-bar */
+    top: 52px;
+    z-index: 60;
+    width: 100%;
+}
+
+.practice-mode.mobile-stage .fretboard-wrapper {
+    width: 100%;
+}
+
+@media (max-width: 600px) {
+    .practice-settings {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .practice-stats {
+        gap: 1.5rem;
+    }
+}

@@ -601,9 +601,87 @@
     to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
+/* --- Practice mode ---
+   Cell-level states set by the PracticeLayer. CANDIDATE cells carry no marker
+   (finding them is the question) so the affordance has to be drawn on the cell
+   itself. */
+
+.fret.practice-candidate {
+    cursor: pointer;
+    background-color: rgba(96, 165, 250, 0.1);
+}
+
+.fret.practice-candidate::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(191, 219, 254, 0.35);
+    transition: background-color 0.15s ease, width 0.15s ease, height 0.15s ease;
+}
+
+.fret.practice-candidate:hover::after {
+    width: 1.75rem;
+    height: 1.75rem;
+    background-color: rgba(191, 219, 254, 0.6);
+}
+
+/* Once answered, the string stays lit so the feedback keeps its context, but it
+   must stop inviting taps that are no longer accepted. */
+.fretboard.practice-locked .fret.practice-candidate {
+    cursor: default;
+}
+
+.fretboard.practice-locked .fret.practice-candidate::after,
+.fretboard.practice-locked .fret.practice-candidate:hover::after {
+    width: 0.75rem;
+    height: 0.75rem;
+    background-color: rgba(191, 219, 254, 0.15);
+}
+
+/* Where the learner is standing: the note the next move departs from. */
+.fret.practice-anchor .note-marker {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 18px rgba(255, 255, 255, 0.45);
+}
+
+.fret.practice-correct .note-marker {
+    box-shadow: 0 0 0 3px #4ade80, 0 0 22px rgba(74, 222, 128, 0.75);
+}
+
+.fret.practice-wrong .note-marker {
+    box-shadow: 0 0 0 3px #f87171, 0 0 22px rgba(248, 113, 113, 0.75);
+    animation: practiceWrongShake 0.4s ease;
+}
+
+/* The answer, shown only after a miss. */
+.fret.practice-reveal .note-marker {
+    box-shadow: 0 0 0 3px #fbbf24, 0 0 22px rgba(251, 191, 36, 0.8);
+    animation: practiceRevealPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes practiceWrongShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+@keyframes practiceRevealPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .measurement-line,
     .prediction-marker-ring {
+        animation: none;
+    }
+
+    .fret.practice-wrong .note-marker,
+    .fret.practice-reveal .note-marker {
         animation: none;
     }
 }

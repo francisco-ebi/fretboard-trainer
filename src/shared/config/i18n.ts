@@ -92,7 +92,38 @@ const resources = {
             modes: {
                 scale: "Scale Explorer",
                 chord: "Chord Viewer",
+                practice: "Practice",
                 library: "Chord Library"
+            },
+            practice: {
+                stage: "Stage",
+                stages: {
+                    ROOT_AND_FIFTH: "Root & 5th",
+                    TRIADS: "Triads (adds 3rds)",
+                    PENTATONIC: "Pentatonic (adds 4th, b7)",
+                    FULL_SCALE: "Full scale (adds 2nd, 6th, 7th)"
+                },
+                stringSkip: "Strings crossed",
+                stringSkipHint: "How many strings a move may jump. Start with one; add more to drill octave shapes.",
+                skipN_one: "{{count}} string",
+                skipN_other: "{{count}} strings",
+                deckSize: "Moves in deck",
+                deckSizeValue: "{{count}} moves",
+                sameNote: "Same note",
+                onString: "on string {{string}}",
+                stringToString: "string {{from}} → {{to}}",
+                progress: "Progress",
+                streak: "Streak",
+                accuracy: "Accuracy",
+                bestStreak: "Best streak",
+                toRevisit: "To revisit",
+                missed: "Not quite — here's where it was.",
+                continue: "Continue",
+                sessionComplete: "Session complete",
+                practiceAgain: "Practice again",
+                allCaughtUp: "All caught up",
+                allCaughtUpNote: "Nothing is due right now. Come back later, or review ahead of schedule.",
+                reviewAhead: "Review ahead"
             },
             groups: {
                 triads: "Triads",
@@ -309,7 +340,38 @@ const resources = {
             modes: {
                 scale: "Explorador de Escalas",
                 chord: "Visor de Acordes",
+                practice: "Práctica",
                 library: "Biblioteca de Acordes"
+            },
+            practice: {
+                stage: "Etapa",
+                stages: {
+                    ROOT_AND_FIFTH: "Tónica y 5ª",
+                    TRIADS: "Tríadas (añade 3ª)",
+                    PENTATONIC: "Pentatónica (añade 4ª, b7)",
+                    FULL_SCALE: "Escala completa (añade 2ª, 6ª, 7ª)"
+                },
+                stringSkip: "Cuerdas cruzadas",
+                stringSkipHint: "Cuántas cuerdas puede saltar un movimiento. Empieza con una; añade más para practicar las octavas.",
+                skipN_one: "{{count}} cuerda",
+                skipN_other: "{{count}} cuerdas",
+                deckSize: "Movimientos en el mazo",
+                deckSizeValue: "{{count}} movimientos",
+                sameNote: "La misma nota",
+                onString: "en la cuerda {{string}}",
+                stringToString: "cuerda {{from}} → {{to}}",
+                progress: "Progreso",
+                streak: "Racha",
+                accuracy: "Precisión",
+                bestStreak: "Mejor racha",
+                toRevisit: "Para repasar",
+                missed: "Casi — aquí estaba.",
+                continue: "Continuar",
+                sessionComplete: "Sesión completada",
+                practiceAgain: "Practicar otra vez",
+                allCaughtUp: "Todo al día",
+                allCaughtUpNote: "No hay nada pendiente ahora mismo. Vuelve más tarde o adelanta el repaso.",
+                reviewAhead: "Adelantar repaso"
             },
             groups: {
                 triads: "Tríadas",
