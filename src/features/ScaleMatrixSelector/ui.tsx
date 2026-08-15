@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SCALES, SCALE_DEGREES, getProperSpelling, getNoteName, getNoteIndex, type Note, type ScaleType } from '@/shared/lib/music/musicTheory';
 import { useNaming } from '@/app/providers';
+import { Well } from '@/shared/ui';
 import './ui.css';
 
 interface ScaleMatrixSelectorProps {
@@ -175,36 +176,39 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
     };
 
     return (
-        <div className="scale-matrix-selector">
-            {/* The whole header toggles the collapse; the select opts out */}
-            <div className="matrix-header" onClick={() => setIsCollapsed(!isCollapsed)}>
-                <div className="matrix-scale-label" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                    <div>
-                        <span>{t('controls.selectedScale')}: </span>
-                        <strong>{t(`scales.${selectedScale}`)}</strong>
+        <Well
+            className="scale-matrix-selector"
+            onHeaderClick={() => setIsCollapsed(!isCollapsed)}
+            header={
+                <>
+                    <div className="matrix-scale-label" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div>
+                            <span>{t('controls.selectedScale')}: </span>
+                            <strong>{t(`scales.${selectedScale}`)}</strong>
+                        </div>
+                        <select
+                            value={scaleLengthFilter}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => handleFilterChange(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value) as 5 | 6 | 7)}
+                            className="scale-length-select"
+                        >
+                            <option value="ALL">{t('controls.scaleLengths.all')}</option>
+                            <option value="5">{t('controls.scaleLengths.5')}</option>
+                            <option value="6">{t('controls.scaleLengths.6')}</option>
+                            <option value="7">{t('controls.scaleLengths.7')}</option>
+                        </select>
                     </div>
-                    <select
-                        value={scaleLengthFilter}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => handleFilterChange(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value) as 5 | 6 | 7)}
-                        className="scale-length-select"
+                    <button
+                        className="matrix-collapse-btn"
+                        onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}
+                        aria-expanded={!isCollapsed}
+                        aria-label={isCollapsed ? "Expand Matrix" : "Collapse Matrix"}
                     >
-                        <option value="ALL">{t('controls.scaleLengths.all')}</option>
-                        <option value="5">{t('controls.scaleLengths.5')}</option>
-                        <option value="6">{t('controls.scaleLengths.6')}</option>
-                        <option value="7">{t('controls.scaleLengths.7')}</option>
-                    </select>
-                </div>
-                <button
-                    className="matrix-collapse-btn"
-                    onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}
-                    aria-expanded={!isCollapsed}
-                    aria-label={isCollapsed ? "Expand Matrix" : "Collapse Matrix"}
-                >
-                    {isCollapsed ? '▼' : '▲'}
-                </button>
-            </div>
-
+                        {isCollapsed ? '▼' : '▲'}
+                    </button>
+                </>
+            }
+        >
             <div className={`matrix-body single-view ${isCollapsed ? 'collapsed' : ''}`}>
                 {!isCollapsed && (
                     <div className="matrix-grid-header">
@@ -316,7 +320,7 @@ const ScaleMatrixSelector: React.FC<ScaleMatrixSelectorProps> = ({ selectedScale
                     </div>
                 </div>
             </div>
-        </div>
+        </Well>
     );
 };
 

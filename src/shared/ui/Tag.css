@@ -1,0 +1,35 @@
+.ft-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-family: inherit;
+    letter-spacing: 0.02em;
+}
+
+.ft-tag--neutral {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ccc;
+}
+
+.ft-tag--accent {
+    background-color: rgba(100, 108, 255, 0.2);
+    color: #646cff;
+}
+
+.ft-tag--info {
+    background-color: rgba(99, 179, 237, 0.2);
+    color: #63b3ed;
+}
+
+.ft-tag--warning {
+    background-color: rgba(246, 173, 85, 0.2);
+    color: #f6ad55;
+}
+
+.ft-tag--brass {
+    background-color: rgba(211, 175, 55, 0.18);
+    color: #d3af37;
+}

@@ -3,51 +3,6 @@
     max-width: 600px;
 }
 
-.help-card {
-    background: rgba(40, 40, 45, 0.95);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    width: 100%;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-.help-header {
-    padding: 0.75rem 1rem;
-    cursor: pointer;
-    font-weight: bold;
-    color: #ccc;
-    user-select: none;
-    background: rgba(255, 255, 255, 0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.3s ease;
-}
-
-.help-card.collapsed .help-header {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.9rem;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.help-header:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.arrow {
-    display: inline-block;
-    font-size: 0.8rem;
-    margin-left: 1rem;
-}
-
-/* help-content-wrapper handled by Framer Motion */
-.help-content-wrapper {
-    overflow: hidden;
-    max-height: 415px;
-}
-
 .help-content {
     padding: 1rem;
     display: flex;

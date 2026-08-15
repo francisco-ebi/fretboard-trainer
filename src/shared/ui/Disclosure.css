@@ -1,0 +1,68 @@
+.ft-disclosure {
+    background: rgba(40, 40, 45, 0.95);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ft-disclosure__header {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: bold;
+    color: #ccc;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.ft-disclosure__header:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ft-disclosure.is-collapsed .ft-disclosure__header {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ft-disclosure__arrow {
+    display: inline-block;
+    font-size: 0.8rem;
+    margin-left: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.ft-disclosure.is-open .ft-disclosure__arrow {
+    transform: rotate(180deg);
+}
+
+/* Grid-rows trick: animates to/from an intrinsic height without JS measurement. */
+.ft-disclosure__content-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.4s ease;
+}
+
+.ft-disclosure.is-open .ft-disclosure__content-wrap {
+    grid-template-rows: 1fr;
+}
+
+.ft-disclosure__content {
+    overflow: hidden;
+    min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ft-disclosure__content-wrap,
+    .ft-disclosure__header,
+    .ft-disclosure__arrow {
+        transition: none;
+    }
+}

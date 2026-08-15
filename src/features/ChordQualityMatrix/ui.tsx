@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CHORD_SYMBOLS, type ChordQuality, type Note } from '@/shared/lib/music/musicTheory';
+import { Well, FieldLabel } from '@/shared/ui';
 import './ui.css';
 
 interface ChordQualityMatrixProps {
@@ -56,13 +57,13 @@ const ChordQualityMatrix: React.FC<ChordQualityMatrixProps> = ({
     };
 
     return (
-        <div className="chord-quality-matrix">
+        <Well className="chord-quality-matrix">
             <div className="matrix-grid">
                 <div className="matrix-corner" aria-hidden="true"></div>
                 {COLUMN_LABELS.map((label, i) => (
-                    <div key={label} className="matrix-col-header">
+                    <FieldLabel key={label} as="div" variant="quiet" className="matrix-col-header">
                         {i === 0 ? t('chordFamilies.triad') : label}
-                    </div>
+                    </FieldLabel>
                 ))}
 
                 {FAMILY_ROWS.map(row => (
@@ -87,7 +88,7 @@ const ChordQualityMatrix: React.FC<ChordQualityMatrixProps> = ({
                     {MODIFIERS.map(quality => renderQualityButton(quality, false))}
                 </div>
             </div>
-        </div>
+        </Well>
     );
 };
 

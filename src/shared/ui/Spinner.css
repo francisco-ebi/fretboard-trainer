@@ -1,0 +1,15 @@
+.ft-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-left-color: currentColor;
+    border-radius: 50%;
+    animation: ft-spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes ft-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

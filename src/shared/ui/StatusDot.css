@@ -1,0 +1,34 @@
+.ft-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: currentColor;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.ft-status-dot.is-pulsing {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: ft-pulse-red 2s infinite;
+}
+
+@keyframes ft-pulse-red {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ft-status-dot.is-pulsing {
+        animation: none;
+    }
+}

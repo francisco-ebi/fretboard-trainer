@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { guitarPredictionEngine } from '@/shared/lib/audio/prediction-engine';
 import ListeningModeModal, { type ListeningOptions } from '@/features/ListeningModeModal';
 import { intervalTrackingEnabled$ } from './interval-tracking';
+import { StatusDot, Spinner } from '@/shared/ui';
 import './ui.css';
 
 interface PredictionControlsProps {
@@ -58,10 +59,10 @@ const PredictionControls: React.FC<PredictionControlsProps> = ({ disabled = fals
                 title={disabled ? "Only available for 6-string Guitar" : ""}
             >
                 {isLoading ? (
-                    <div className="loading-spinner" />
+                    <Spinner />
                 ) : (
                     <>
-                        <div className={`status-dot ${isListening ? 'pulsing' : ''}`} />
+                        <StatusDot pulsing={isListening} />
                         {isListening ? t('controls.stopListening') : t('controls.startListening')}
                     </>
                 )}

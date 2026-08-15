@@ -5,6 +5,7 @@ import { INSTRUMENT_CONFIGS, GUITAR_TUNINGS, GUITAR_TUNINGS_7, GUITAR_TUNINGS_8,
 import { useInstrument } from '@/app/providers';
 import { useNaming } from '@/app/providers';
 import CircleOfFifths from '@/features/CircleOfFifths';
+import { FieldLabel } from '@/shared/ui';
 import './ui.css';
 
 // Shared control panel for every mode page: key selector, instrument,
@@ -76,7 +77,7 @@ const Controls: React.FC<ControlsProps> = ({
         <div className="controls">
             {/* 1. Context: Instrument (Top) */}
             <div className="control-group instrument-group">
-                <label htmlFor="instrument-select">{t('controls.instrument')}:</label>
+                <FieldLabel variant="eyebrow" htmlFor="instrument-select">{t('controls.instrument')}:</FieldLabel>
                 <select
                     id="instrument-select"
                     value={instrument}
@@ -127,7 +128,7 @@ const Controls: React.FC<ControlsProps> = ({
                         >
                             {/* Preference: Naming System */}
                             <div className="control-group secondary-group">
-                                <label htmlFor="naming-select">{t('controls.noteNames')}:</label>
+                                <FieldLabel htmlFor="naming-select">{t('controls.noteNames')}:</FieldLabel>
                                 <select
                                     id="naming-select"
                                     value={namingSystem}
@@ -140,7 +141,7 @@ const Controls: React.FC<ControlsProps> = ({
 
                             {/* Preference: Color Scheme */}
                             <div className="control-group secondary-group">
-                                <label htmlFor="theme-select">{t('controls.colorScheme')}:</label>
+                                <FieldLabel htmlFor="theme-select">{t('controls.colorScheme')}:</FieldLabel>
                                 <select
                                     id="theme-select"
                                     value={colorScheme}
@@ -154,7 +155,7 @@ const Controls: React.FC<ControlsProps> = ({
                             {instrument === 'GUITAR' && (
                                 <>
                                     <div className="control-group">
-                                        <label htmlFor="string-count-select">{t('controls.strings')}:</label>
+                                        <FieldLabel htmlFor="string-count-select">{t('controls.strings')}:</FieldLabel>
                                         <select
                                             id="string-count-select"
                                             value={stringCount}
@@ -166,7 +167,7 @@ const Controls: React.FC<ControlsProps> = ({
                                         </select>
                                     </div>
                                     <div className="control-group">
-                                        <label htmlFor="tuning-select">{t('controls.tuning')}:</label>
+                                        <FieldLabel htmlFor="tuning-select">{t('controls.tuning')}:</FieldLabel>
                                         <select
                                             id="tuning-select"
                                             value={getCurrentTuningKey()}
