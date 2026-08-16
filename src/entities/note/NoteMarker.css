@@ -226,3 +226,23 @@
     transform: scale(1.15);
     z-index: 10;
 }
+
+/* ==========================================================
+   Practice mastery heat map (Scale mode, once practice history exists)
+   ==========================================================
+   Painted with filter + outline rather than background or box-shadow, since
+   root-note/characteristic-note/measured-highlight already own that
+   property — layering here instead of overriding lets mastery compose with
+   any of them instead of fighting their CSS-order specificity. --strength is
+   0..1; 0 renders identically to an unset outline (alpha 0), so a note the
+   learner has never drilled looks merely a little flat, never broken. */
+.note-marker.mastery {
+    filter: saturate(calc(0.35 + var(--strength, 0) * 0.65)) brightness(calc(0.82 + var(--strength, 0) * 0.18));
+    outline: calc(1px + var(--strength, 0) * 2px) solid rgba(74, 222, 128, calc(var(--strength, 0) * 0.75));
+    outline-offset: 2px;
+    transition: filter 0.3s ease, outline-color 0.3s ease, outline-width 0.3s ease;
+}
+
+.theme-legacy .note-marker.mastery {
+    filter: saturate(calc(0.5 + var(--strength, 0) * 0.5)) brightness(calc(0.85 + var(--strength, 0) * 0.15));
+}

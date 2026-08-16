@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Fretboard from '@/widgets/Fretboard';
 import Controls from '@/widgets/Controls';
@@ -9,6 +9,9 @@ import { useInstrument } from '@/app/providers';
 import { useIsMobile } from '@/shared/lib/hooks/useMediaQuery';
 
 import { getScale, getNoteName, CHARACTERISTIC_INTERVALS, type Note, type ScaleType } from '@/shared/lib/music/musicTheory';
+import { makeContextKey } from '@/shared/lib/music/fretboardMoves';
+import { loadCards } from '@/shared/lib/srs/storage';
+import { buildStrengthIndex } from '@/shared/lib/srs/heatmap';
 import { useNaming } from '@/app/providers';
 import './ui.css';
 
@@ -41,6 +44,22 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ isFullScreen = false }) => {
     // Use Context
     const { instrument, stringCount, tuningOffsets } = useInstrument();
 
+    // Practice mastery, painted as a heat map on top of the ordinary scale
+    // display. ScaleMode is unmounted whenever the app switches away from it
+    // (App.tsx renders modes as a ternary), so this initializer re-reads fresh
+    // progress on every visit without needing a storage listener.
+    const contextKey = useMemo(
+        () => makeContextKey(instrument, stringCount, tuningOffsets),
+        [instrument, stringCount, tuningOffsets]
+    );
+    const [practiceCards, setPracticeCards] = useState(() => loadCards(contextKey));
+    useEffect(() => { setPracticeCards(loadCards(contextKey)); }, [contextKey]);
+    const strengthIndex = useMemo(() => buildStrengthIndex(practiceCards), [practiceCards]);
+    // A learner who has never practiced would otherwise see every note read
+    // as "cold" (strength 0) — indistinguishable from a broken feature. Only
+    // switch the heat map on once there is at least one card to show.
+    const hasPracticeHistory = Object.keys(practiceCards).length > 0;
+
     const scaleNotes = getScale(selectedRoot, selectedScale);
     const characteristicInterval = CHARACTERISTIC_INTERVALS[selectedScale];
     const scaleSummary = `${getNoteName(selectedRoot, namingSystem)} · ${t(`scales.${selectedScale}`)}`;
@@ -65,6 +84,7 @@ const ScaleMode: React.FC<ScaleModeProps> = ({ isFullScreen = false }) => {
                 tuningOffsets={tuningOffsets}
                 stringCount={stringCount}
                 namingSystem={namingSystem}
+                masteryIndex={hasPracticeHistory ? strengthIndex : undefined}
             />
         </div>
     );

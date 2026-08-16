@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { getNoteAtPosition, getInterval, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, getDetailedInterval, type Note, type NamingSystem, type Instrument } from '@/shared/lib/music/musicTheory';
+import { getNoteAtPosition, getInterval, getNoteIndex, getOctave, getInstrumentConfig, areEnharmonicallyEquivalent, getDetailedInterval, type Note, type NamingSystem, type Instrument } from '@/shared/lib/music/musicTheory';
 import { type Voicing } from '@/shared/lib/music/chordVoicings';
 import { useOrientation } from '@/app/providers';
 import { useInstrument } from '@/app/providers';
@@ -9,6 +9,7 @@ import { useInstrument } from '@/app/providers';
 import { FretCell, type PracticeCellState } from '@/entities/note';
 import { PredictionOverlay, PredictionIntervalOverlay } from '@/features/PredictionControls';
 import { guitarPredictionEngine } from '@/shared/lib/audio/prediction-engine';
+import { getCellStrength, type StrengthIndex } from '@/shared/lib/srs/heatmap';
 import './ui.css';
 
 /**
@@ -39,6 +40,8 @@ interface FretboardProps {
     interactiveTogglableNotes?: Note[];
     customVoicingKeys?: string[];
     practice?: PracticeLayer;
+    /** Practice mastery per (string, interval-from-root). Ignored while `practice` is active. */
+    masteryIndex?: StrengthIndex;
     onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
     onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
 }
@@ -60,7 +63,7 @@ const Fretboard: React.FC<FretboardProps> = ({
     selectedRoot, scaleNotes, characteristicInterval, namingSystem, instrument,
     tuningOffsets, stringCount, voicings,
     interactiveMode, interactiveRootNotePos, interactiveTogglableNotes, customVoicingKeys,
-    practice,
+    practice, masteryIndex,
     onInteractiveRootClick, onInteractiveNoteToggle
 }) => {
     const { t } = useTranslation();
@@ -272,6 +275,19 @@ const Fretboard: React.FC<FretboardProps> = ({
             const cellIsActive = practice ? isPracticeVisible : !!isActive;
             const cellIsRoot = practice ? practiceState === 'ANCHOR' : isRoot;
 
+            // Practice mode has its own cell-state overlay; the heat map only
+            // applies to ordinary marker rendering, and only where a marker is
+            // actually shown.
+            let strength: number | null = null;
+            if (!practice && masteryIndex && cellIsActive) {
+                const noteIndex = getNoteIndex(noteToDisplay);
+                const rootIndex = getNoteIndex(selectedRoot);
+                if (noteIndex !== -1 && rootIndex !== -1) {
+                    const semitoneInterval = ((noteIndex - rootIndex) % 12 + 12) % 12;
+                    strength = getCellStrength(masteryIndex, stringIndex, semitoneInterval);
+                }
+            }
+
             fretElements.push(
                 <FretCell
                     key={`fret-${stringIndex}-${fret}`}
@@ -295,6 +311,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                     isMeasured={isMeasured}
                     isPredicted={isPredicted}
                     practiceState={practiceState}
+                    strength={strength}
                     onNoteMeasureClick={(interactiveMode || practice) ? undefined : handleNoteMeasureClick}
                     onInteractiveRootClick={onInteractiveRootClick}
                     onInteractiveNoteToggle={onInteractiveNoteToggle}

@@ -33,6 +33,8 @@ interface FretCellProps {
     isMeasured?: boolean;
     isPredicted?: boolean;
     practiceState?: PracticeCellState | null;
+    /** Practice mastery, 0..1. Null/undefined means untracked — no visual change. */
+    strength?: number | null;
     onInteractiveRootClick?: (stringIndex: number, fret: number) => void;
     onInteractiveNoteToggle?: (stringIndex: number, fret: number) => void;
     onNoteMeasureClick?: (stringIndex: number, fret: number, note: Note, octave: number) => void;
@@ -44,7 +46,7 @@ const FretCellComponent: React.FC<FretCellProps> = ({
     isCharacteristic, octave, customInterval, isClickableRoot,
     isOutline, isCustomActive, isActive, shouldShake,
     isSingleInlay, isDoubleInlayTop, isDoubleInlayBottom, isMeasured, isPredicted,
-    practiceState,
+    practiceState, strength,
     onInteractiveRootClick, onInteractiveNoteToggle, onNoteMeasureClick, onPracticeClick
 }) => {
     const handleNoteClick = () => {
@@ -86,6 +88,7 @@ const FretCellComponent: React.FC<FretCellProps> = ({
                     isInactiveOutline={!!isOutline}
                     isMeasured={!!isMeasured}
                     customInterval={customInterval}
+                    strength={strength ?? undefined}
                     onClick={(onNoteMeasureClick || isClickableRoot || isOutline || isCustomActive) ? handleNoteClick : undefined}
                 />
             </div>
@@ -115,6 +118,7 @@ export const FretCell = React.memo(FretCellComponent, (prev, next) => {
         prev.isMeasured === next.isMeasured &&
         prev.isPredicted === next.isPredicted &&
         prev.practiceState === next.practiceState &&
+        prev.strength === next.strength &&
         // Practice mode swaps this callback between undefined and a handler as
         // cells become answerable; missing it would freeze cells un-tappable.
         !!prev.onPracticeClick === !!next.onPracticeClick;

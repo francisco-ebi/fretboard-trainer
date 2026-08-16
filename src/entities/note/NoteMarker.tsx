@@ -13,10 +13,12 @@ export interface NoteMarkerProps {
     isInactiveOutline?: boolean;
     isMeasured?: boolean;
     customInterval?: string | null;
+    /** Practice mastery for this note, 0..1. Undefined means untracked — no visual change. */
+    strength?: number;
     onClick?: () => void;
 }
 
-const NoteMarkerComponent: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, isCharacteristic, shouldShake, octave, isInactiveOutline, isMeasured, customInterval, onClick }) => {
+const NoteMarkerComponent: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSystem, interval, isCharacteristic, shouldShake, octave, isInactiveOutline, isMeasured, customInterval, strength, onClick }) => {
     const [isShaking, setIsShaking] = useState(false);
 
     useEffect(() => {
@@ -52,10 +54,18 @@ const NoteMarkerComponent: React.FC<NoteMarkerProps> = ({ note, isRoot, namingSy
     // We bind a normalized octave ratio (0 at oct 2, increasing upwards)
     const normalizedOctave = Math.max(0, octave - 2);
 
+    // Only Scale mode's heat map sets this, and only once the learner has
+    // practice history — so the class (and the --strength it relies on) is
+    // absent everywhere else, leaving every other marker unchanged.
+    const style = {
+        '--octave': normalizedOctave,
+        ...(strength !== undefined ? { '--strength': strength } : {})
+    } as React.CSSProperties;
+
     return (
-        <div 
-            className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${isShaking ? 'shake' : ''} ${isInactiveOutline ? 'outline-only' : ''} ${isMeasured ? 'measured-highlight' : ''} ${onClick ? 'clickable' : ''}`}
-            style={{ '--octave': normalizedOctave } as React.CSSProperties}
+        <div
+            className={`note-marker ${intervalClass} ${isRoot ? 'root-note' : ''} ${isCharacteristic ? 'characteristic-note' : ''} ${isShaking ? 'shake' : ''} ${isInactiveOutline ? 'outline-only' : ''} ${isMeasured ? 'measured-highlight' : ''} ${onClick ? 'clickable' : ''} ${strength !== undefined ? 'mastery' : ''}`}
+            style={style}
             onClick={(e) => {
                 if (onClick) {
                     e.stopPropagation();
